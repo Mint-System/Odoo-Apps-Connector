@@ -1,0 +1,8 @@
+<odoo>
+
+  <record id="index0" model="meilisearch.index">
+    <field name="name">Development</field>
+    <field name="index_name">development</field>
+  </record>
+
+</odoo>

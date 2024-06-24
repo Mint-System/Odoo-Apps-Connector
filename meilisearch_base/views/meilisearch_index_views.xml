@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="index_view_tree" model="ir.ui.view">
+        <field name="name">meilisearch_base.index_view_tree</field>
+        <field name="model">meilisearch.index</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="index_name" />
+            </tree>
+        </field>
+    </record>
+
+
+    <record id="action_index_view_tree" model="ir.actions.act_window">
+        <field name="name">Meilisearch Indexes</field>
+        <field name="res_model">meilisearch.index</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- <menuitem name="Meilisearch Indexes" id="meilisearch_base.menu_document" parent="meilisearch_base.documents_menu" action="meilisearch_base.index_view_tree" /> -->
+
+</odoo>
