@@ -6,14 +6,44 @@
 Meilisearch Base
 ================
 
-Setup meilisearch connection and provide document mixin.
+Sets up meilisearch indexes and provides document mixin.
 
 For a detailed documentation have a look at https://www.odoo-wiki.org/meilisearch-base.html
 
 Configuration
 ~~~~~~~~~~~~~
 
-* No additional configurations needed
+* Setup Meilisearch API and Meilisearch index
+* Inherit the Meilisearch document mixin in your model:
+
+.. code-block:: python
+  
+    class Country(models.Model):
+        _name = "res.country"
+        _inherit = ["res.country", "meilisearch.document.mixin"]
+
+* Modify the document schema for your model :
+
+.. code-block:: python
+  
+    def _prepare_index_document(self):
+        document = super()._prepare_index_document()
+        document['code'] = self.code
+        return document
+
+
+* Add action for updating the index document to your model:
+
+.. code-block:: xml
+  
+    <record id="model_res_country_action_update_index_document" model="ir.actions.server">
+        <field name="name">Update Index Document</field>
+        <field name="model_id" ref="base.model_res_country"/>
+        <field name="binding_model_id" ref="base.model_res_country"/>
+        <field name="binding_view_types">tree,form</field>
+        <field name="state">code</field>
+        <field name="code">records.update_index_document()</field>
+    </record>
 
 Maintainer
 ~~~~~~~~~~

@@ -1,8 +1,10 @@
 <odoo>
 
-  <record id="index0" model="meilisearch.index">
-    <field name="name">Development</field>
-    <field name="index_name">development</field>
-  </record>
+    <record id="index0" model="meilisearch.index">
+        <field name="name">Countries</field>
+        <field name="api_id" ref="meilisearch_base.api0" />
+        <field name="index_name">countries</field>
+        <field name="model_id" ref="base.model_res_country" />
+    </record>
 
 </odoo>

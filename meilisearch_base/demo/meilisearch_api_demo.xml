@@ -1,0 +1,9 @@
+<odoo>
+
+    <record id="api0" model="meilisearch.api">
+        <field name="name">Localhost</field>
+        <field name="url">http://meili01:7700</field>
+        <field name="api_key">test</field>
+    </record>
+
+</odoo>
