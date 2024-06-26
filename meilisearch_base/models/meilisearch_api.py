@@ -26,6 +26,7 @@ class MeilisearchAPI(models.Model):
             "res_model": "meilisearch.index",
             "domain": [("api_id", "=", self.id)],
         }
+
     def button_check_api_key(self):
         return self._get_indexes()
 

@@ -5,6 +5,8 @@ import requests
 
 from odoo import api, fields, models
 
+from datetime import datetime
+
 _logger = logging.getLogger(__name__)
 
 
@@ -17,7 +19,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     index_result = fields.Selection(
         [("success", "Success"), ("error", "Error"), ("no_index", "No Index")]
     )
-    index_resopnse = fields.Text()
+    index_response = fields.Text()
 
     def _prepare_index_document(self):
         return {"id": self.id, "name": self.name}
@@ -35,7 +37,6 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _post_document(self, index, document):
         self.ensure_one()
-        _logger.warning([index, document])
         if index:
             client = requests.Session()
             resp = client.post(
@@ -49,8 +50,12 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
             if resp.status_code == 202:
                 self.index_result = "success"
+                self.index_response = resp.text
+                enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
+                self.index_date = datetime.strptime(enqued_date, "%Y-%m-%dT%H:%M:%S")
             else:
                 self.index_result = "error"
-                self.index_resopnse = resp.text
+                self.index_response = resp.text
         else:
             self.index_result = "no_index"
+            self.index_response = "Index not found"

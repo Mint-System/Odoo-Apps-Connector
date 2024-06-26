@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="document_view_tree" model="ir.ui.view">
+        <field name="name">meilisearch_base.document_view_tree</field>
+        <field name="model">meilisearch.document.mixin</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="index_date" />
+                <field name="index_result" />
+            </tree>
+        </field>
+    </record>
+
+</odoo>

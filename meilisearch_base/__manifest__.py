@@ -13,6 +13,7 @@
         "security/ir.model.access.csv",
         "views/meilisearch_api_views.xml",
         "views/meilisearch_index_views.xml",
+        "views/meilisearch_document_views.xml",
         "views/res_country_views.xml",
     ],
     "installable": True,

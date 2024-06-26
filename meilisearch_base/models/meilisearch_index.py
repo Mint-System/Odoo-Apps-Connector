@@ -42,10 +42,12 @@ class MeilisearchIndex(models.Model):
         return index
 
     def button_view_documents(self):
+        tree_view_id = self.env.ref("meilisearch_base.document_view_tree")
         return {
             "name": "Index Documents",
             "type": "ir.actions.act_window",
             "view_mode": "tree,form",
+            "views": [(tree_view_id.id, "tree"), (False, "form")],
             "res_model": self.model_name,
             "context": {"group_by": ["index_result"]},
         }
