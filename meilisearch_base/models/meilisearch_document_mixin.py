@@ -14,10 +14,11 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     _name = "meilisearch.document.mixin"
     _description = "Meilisearch Document Mixin"
 
+    name = fields.Char()
     index_date = fields.Datetime()
     index_document = fields.Text(compute="_compute_index_document", store=True)
     index_result = fields.Selection(
-        [("success", "Success"), ("error", "Error"), ("no_index", "No Index")]
+        [("queued", "Queued"), ("error", "Error"), ("no_index", "No Index")]
     )
     index_response = fields.Text()
 
@@ -32,7 +33,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         index = self.env["meilisearch.index"].get_matching_index(self[:0])
         for record in self:
             document = record._prepare_index_document()
-            record.index_document = json.dumps([document])
+            record.index_document = json.dumps([document], indent=4)
             record._post_document(index, document)
 
     def _post_document(self, index, document):
@@ -49,7 +50,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             )
 
             if resp.status_code == 202:
-                self.index_result = "success"
+                self.index_result = "queued"
                 self.index_response = resp.text
                 enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
                 self.index_date = datetime.strptime(enqued_date, "%Y-%m-%dT%H:%M:%S")
