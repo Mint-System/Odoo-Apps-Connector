@@ -18,6 +18,24 @@
         <field name="model">meilisearch.document.mixin</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button
+                        name="check_index_document"
+                        string="Check Document"
+                        type="object"
+                        class="btn-primary"
+                    />
+                    <button
+                        name="update_index_document"
+                        string="Create Document"
+                        type="object"
+                    />
+                    <button
+                        name="delete_index_document"
+                        string="Delete Document"
+                        type="object"
+                    />
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>
