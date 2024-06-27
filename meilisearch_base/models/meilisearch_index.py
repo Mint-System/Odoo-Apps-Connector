@@ -50,7 +50,12 @@ class MeilisearchIndex(models.Model):
             "view_mode": "tree,form",
             "views": [(tree_view_id.id, "tree"), (form_view_id.id, "form")],
             "res_model": self.model_name,
-            "context": {"group_by": ["index_result"], "create": False, "delete": False, "edit": False},
+            "context": {
+                "group_by": ["index_result"],
+                "create": False,
+                "delete": False,
+                "edit": False,
+            },
         }
 
     def button_check_index(self):
@@ -66,7 +71,7 @@ class MeilisearchIndex(models.Model):
         self.ensure_one()
         client = requests.Session()
         resp = client.get(
-            url=self.api_id.url + "/indexes" + "/" + self.index_name,
+            url=f"{self.api_id.url}/indexes/{self.index_name}",
             headers={"Authorization": "Bearer " + self.api_id.api_key},
         )
         if resp.ok:
@@ -95,7 +100,7 @@ class MeilisearchIndex(models.Model):
         self.ensure_one()
         client = requests.Session()
         resp = client.post(
-            url=self.api_id.url + "/indexes",
+            url=f"{self.api_id.url}/indexes",
             headers={"Authorization": "Bearer " + self.api_id.api_key},
             json={"uid": self.index_name, "primaryKey": "id"},
             timeout=10,
@@ -126,7 +131,7 @@ class MeilisearchIndex(models.Model):
         self.ensure_one()
         client = requests.Session()
         resp = client.delete(
-            url=self.api_id.url + "/indexes/" + self.index_name,
+            url=f"{self.api_id.url}/indexes/{self.index_name}",
             headers={"Authorization": "Bearer " + self.api_id.api_key},
             timeout=10,
         )

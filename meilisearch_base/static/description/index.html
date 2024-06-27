@@ -623,19 +623,19 @@ a { text-decoration: none; }
 </a>
 <section id="meilisearch-base">
 <h2>Meilisearch Base</h2>
-<p>Sets up meilisearch indexes and provides document mixin.</p>
+<p>Sets up meilisearch indexes and provides a document mixin.</p>
 <p>For a detailed documentation have a look at <a class="reference external" href="https://www.odoo-wiki.org/meilisearch-base.html">https://www.odoo-wiki.org/meilisearch-base.html</a></p>
 <section id="configuration">
 <h3>Configuration</h3>
 <ul class="simple">
-<li><p>Setup Meilisearch API and Meilisearch index</p></li>
-<li><p>Inherit the Meilisearch document mixin in your model:</p></li>
+<li><p>Setup Meilisearch API and Meilisearch Index</p></li>
+<li><p>Inherit the Meilisearch document mixin in the model:</p></li>
 </ul>
 <pre class="code python literal-block"><code><span class="keyword">class</span> <span class="name class">Country</span><span class="punctuation">(</span><span class="name">models</span><span class="operator">.</span><span class="name">Model</span><span class="punctuation">):</span><span class="whitespace">
 </span>    <span class="name">_name</span> <span class="operator">=</span> <span class="literal string double">&quot;res.country&quot;</span><span class="whitespace">
 </span>    <span class="name">_inherit</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string double">&quot;res.country&quot;</span><span class="punctuation">,</span> <span class="literal string double">&quot;meilisearch.document.mixin&quot;</span><span class="punctuation">]</span></code></pre>
 <ul class="simple">
-<li><p>Modify the document schema for your model :</p></li>
+<li><p>Modify the document schema for the model :</p></li>
 </ul>
 <pre class="code python literal-block"><code><span class="keyword">def</span> <span class="name function">_prepare_index_document</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
 </span>    <span class="name">document</span> <span class="operator">=</span> <span class="name builtin">super</span><span class="punctuation">()</span><span class="operator">.</span><span class="name">_prepare_index_document</span><span class="punctuation">()</span><span class="whitespace">
@@ -647,15 +647,45 @@ a { text-decoration: none; }
 </span><span class="keyword">def</span> <span class="name function">_compute_index_document</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
 </span>    <span class="keyword">return</span> <span class="name builtin">super</span><span class="punctuation">()</span><span class="operator">.</span><span class="name">_compute_index_document</span><span class="punctuation">()</span></code></pre>
 <ul class="simple">
-<li><p>Add action for updating the index document to your model:</p></li>
+<li><p>Add actions for checking, updating and deleting the index document to the model:</p></li>
 </ul>
-<pre class="code xml literal-block"><code><span class="name tag">&lt;record</span><span class="whitespace"> </span><span class="name attribute">id=</span><span class="literal string">&quot;model_res_country_action_update_index_document&quot;</span><span class="whitespace"> </span><span class="name attribute">model=</span><span class="literal string">&quot;ir.actions.server&quot;</span><span class="name tag">&gt;</span><span class="whitespace">
+<pre class="code xml literal-block"><code><span class="name tag">&lt;record</span><span class="whitespace">
+    </span><span class="name attribute">id=</span><span class="literal string">&quot;model_res_country_action_update_index_document&quot;</span><span class="whitespace">
+    </span><span class="name attribute">model=</span><span class="literal string">&quot;ir.actions.server&quot;</span><span class="whitespace">
+</span><span class="name tag">&gt;</span><span class="whitespace">
     </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;name&quot;</span><span class="name tag">&gt;</span>Update<span class="whitespace"> </span>Index<span class="whitespace"> </span>Document<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
-    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="name tag">/&gt;</span><span class="whitespace">
-    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="name tag">/&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
     </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_view_types&quot;</span><span class="name tag">&gt;</span>tree,form<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
     </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;state&quot;</span><span class="name tag">&gt;</span>code<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
     </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;code&quot;</span><span class="name tag">&gt;</span>records.update_index_document()<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;groups_id&quot;</span><span class="whitespace"> </span><span class="name attribute">eval=</span><span class="literal string">&quot;[(4, ref('base.group_erp_manager'))]&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+</span><span class="name tag">&lt;/record&gt;</span><span class="whitespace">
+
+</span><span class="name tag">&lt;record</span><span class="whitespace">
+    </span><span class="name attribute">id=</span><span class="literal string">&quot;model_res_country_action_check_index_document&quot;</span><span class="whitespace">
+    </span><span class="name attribute">model=</span><span class="literal string">&quot;ir.actions.server&quot;</span><span class="whitespace">
+</span><span class="name tag">&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;name&quot;</span><span class="name tag">&gt;</span>Check<span class="whitespace"> </span>Index<span class="whitespace"> </span>Document<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_view_types&quot;</span><span class="name tag">&gt;</span>tree,form<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;state&quot;</span><span class="name tag">&gt;</span>code<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;code&quot;</span><span class="name tag">&gt;</span>records.check_index_document()<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;groups_id&quot;</span><span class="whitespace"> </span><span class="name attribute">eval=</span><span class="literal string">&quot;[(4, ref('base.group_erp_manager'))]&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+</span><span class="name tag">&lt;/record&gt;</span><span class="whitespace">
+
+</span><span class="name tag">&lt;record</span><span class="whitespace">
+    </span><span class="name attribute">id=</span><span class="literal string">&quot;model_res_country_action_delete_index_document&quot;</span><span class="whitespace">
+    </span><span class="name attribute">model=</span><span class="literal string">&quot;ir.actions.server&quot;</span><span class="whitespace">
+</span><span class="name tag">&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;name&quot;</span><span class="name tag">&gt;</span>Delete<span class="whitespace"> </span>Index<span class="whitespace"> </span>Document<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_model_id&quot;</span><span class="whitespace"> </span><span class="name attribute">ref=</span><span class="literal string">&quot;base.model_res_country&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;binding_view_types&quot;</span><span class="name tag">&gt;</span>tree,form<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;state&quot;</span><span class="name tag">&gt;</span>code<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;code&quot;</span><span class="name tag">&gt;</span>records.delete_index_document()<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
+    </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;groups_id&quot;</span><span class="whitespace"> </span><span class="name attribute">eval=</span><span class="literal string">&quot;[(4, ref('base.group_erp_manager'))]&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
 </span><span class="name tag">&lt;/record&gt;</span></code></pre>
 </section>
 <section id="maintainer">

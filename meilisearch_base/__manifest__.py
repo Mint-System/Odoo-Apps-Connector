@@ -1,7 +1,7 @@
 {
     "name": "Meilisearch Base",
     "summary": """
-        Sets up meilisearch indexes and provides document mixin.
+        Sets up meilisearch indexes and provides a document mixin.
     """,
     "author": "Mint System GmbH, Odoo Community Association (OCA)",
     "website": "https://www.mint-system.ch",
