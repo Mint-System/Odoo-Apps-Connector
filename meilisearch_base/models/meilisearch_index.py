@@ -1,7 +1,5 @@
 import logging
 
-import requests
-
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -46,7 +44,10 @@ class MeilisearchIndex(models.Model):
             ],
             limit=1,
         )
-        return index
+        if index:
+            return index.api_id.get_meilisearch_client().index(index.index_name)
+        else:
+            return False
 
     def button_view_documents(self):
         tree_view_id = self.env.ref("meilisearch_base.document_view_tree")
@@ -71,19 +72,15 @@ class MeilisearchIndex(models.Model):
         return self._get_index()
 
     def button_create_index(self):
-        return self._post_index()
+        return self._create_index()
 
     def button_delete_index(self):
         return self._delete_index()
 
     def _get_index(self):
         self.ensure_one()
-        client = requests.Session()
-        resp = client.get(
-            url=f"{self.api_id.url}/indexes/{self.index_name}",
-            headers={"Authorization": "Bearer " + self.api_id.api_key},
-        )
-        if resp.ok:
+        try:
+            self.api_id.get_meilisearch_client().get_index(self.index_name)
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -96,25 +93,19 @@ class MeilisearchIndex(models.Model):
                     "type": "success",
                 },
             }
-        else:
+        except Exception as e:
             raise UserError(
                 _(
                     "Could not get Meilisearch index '%s': %s",
                     self.index_name,
-                    resp.text,
+                    e.message,
                 )
             )
 
-    def _post_index(self):
+    def _create_index(self):
         self.ensure_one()
-        client = requests.Session()
-        resp = client.post(
-            url=f"{self.api_id.url}/indexes",
-            headers={"Authorization": "Bearer " + self.api_id.api_key},
-            json={"uid": self.index_name, "primaryKey": "id"},
-            timeout=10,
-        )
-        if resp.status_code == 202:
+        try:
+            self.api_id.get_meilisearch_client().create_index(self.index_name)
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -127,41 +118,36 @@ class MeilisearchIndex(models.Model):
                     "type": "success",
                 },
             }
-        else:
+        except Exception as e:
             raise UserError(
                 _(
                     "Could not create the Meilisearch index '%s': %s",
                     self.index_name,
-                    resp.text,
+                    e.message,
                 )
             )
 
     def _delete_index(self):
         self.ensure_one()
-        client = requests.Session()
-        resp = client.delete(
-            url=f"{self.api_id.url}/indexes/{self.index_name}",
-            headers={"Authorization": "Bearer " + self.api_id.api_key},
-            timeout=10,
-        )
-        if resp.status_code == 202:
+        try:
+            self.api_id.get_meilisearch_client().delete_index(self.index_name)
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
                 "params": {
                     "title": _("Meilisearch Index Deleted"),
                     "message": _(
-                        "The Meilisearch index '%s' has been deleted.", self.index_name
+                        "The Meilisearch index '%s' was deleted.", self.index_name
                     ),
                     "sticky": False,
                     "type": "success",
                 },
             }
-        else:
+        except Exception as e:
             raise UserError(
                 _(
                     "Could not delete the Meilisearch index '%s': %s",
                     self.index_name,
-                    resp.text,
+                    e.message,
                 )
             )

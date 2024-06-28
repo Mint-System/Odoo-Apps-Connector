@@ -21,4 +21,9 @@
     "auto_install": False,
     "images": ["images/screen.png"],
     "demo": ["demo/meilisearch_api_demo.xml", "demo/meilisearch_index_demo.xml"],
+    "external_dependencies": {
+        "python": [
+            "meilisearch",
+        ],
+    },
 }

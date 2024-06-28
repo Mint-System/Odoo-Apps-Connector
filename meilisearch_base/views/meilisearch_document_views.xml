@@ -50,7 +50,7 @@
                     />
                     <button
                         name="update_index_document"
-                        string="Create Document"
+                        string="Update Document"
                         type="object"
                     />
                     <button

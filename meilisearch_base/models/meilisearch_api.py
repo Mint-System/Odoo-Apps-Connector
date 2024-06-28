@@ -1,6 +1,6 @@
 import logging
 
-import requests
+import meilisearch
 
 from odoo import _, fields, models
 from odoo.exceptions import UserError
@@ -28,16 +28,16 @@ class MeilisearchAPI(models.Model):
         }
 
     def button_check_api_key(self):
-        return self._get_indexes()
+        return self._get_version()
 
-    def _get_indexes(self):
+    def get_meilisearch_client(self):
+        return meilisearch.Client(self.url, self.api_key)
+
+    def _get_version(self):
         self.ensure_one()
-        client = requests.Session()
-        resp = client.get(
-            url=self.url + "/indexes",
-            headers={"Authorization": "Bearer " + self.api_key},
-        )
-        if resp.ok:
+        try:
+            client = self.get_meilisearch_client()
+            client.get_version()
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -48,7 +48,7 @@ class MeilisearchAPI(models.Model):
                     "type": "success",
                 },
             }
-        else:
+        except Exception:
             raise UserError(
                 _("The Meilisearch API key for '%s' does not work.", self.url)
             )

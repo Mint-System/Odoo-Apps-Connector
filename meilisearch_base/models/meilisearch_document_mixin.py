@@ -1,8 +1,5 @@
 import json
 import logging
-from datetime import datetime
-
-import requests
 
 from odoo import api, fields, models
 
@@ -61,34 +58,24 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     def _compute_index_document(self):
         for record in self:
             document = record._prepare_index_document()
-            record.index_document = json.dumps([document], indent=4)
-        self._post_documents()
+            record.index_document = json.dumps(document, indent=4)
+        self._update_documents()
 
-    def _post_documents(self):
+    def _update_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(self[:0])
         for document in self:
-            document._post_document(index)
+            document._update_document(index)
 
-    def _post_document(self, index):
+    def _update_document(self, index):
         if index:
-            resp = requests.Session().post(
-                url=f"{index.api_id.url}/indexes/{index.index_name}/documents",
-                headers={
-                    "Authorization": "Bearer " + index.api_id.api_key,
-                    "Content-type": "application/json",
-                },
-                timeout=10,
-                json=json.loads(self.index_document),
-            )
-
-            if resp.status_code == 202:
+            try:
+                resp = index.update_documents([json.loads(self.index_document)])
                 self.index_result = "queued"
-                self.index_response = resp.text
-                enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
-                self.index_date = datetime.strptime(enqued_date, "%Y-%m-%dT%H:%M:%S")
-            else:
+                self.index_response = resp
+                self.index_date = resp.enqueued_at
+            except Exception as e:
                 self.index_result = "error"
-                self.index_response = resp.text
+                self.index_response = e
         else:
             self.index_result = "no_index"
             self.index_response = "Index not found"
@@ -100,20 +87,14 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _get_document(self, index):
         if index:
-            resp = requests.Session().get(
-                url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{self.id}",
-                headers={
-                    "Authorization": "Bearer " + index.api_id.api_key,
-                },
-                timeout=10,
-            )
-
-            if resp.ok:
+            try:
+                resp = index.get_document(self.id)
+                fields = json.loads(self.index_document).keys()
                 self.index_result = "indexed"
-                self.index_response = resp.text
-            else:
+                self.index_response = {field: getattr(resp, field) for field in fields}
+            except Exception as e:
                 self.index_result = "no_document"
-                self.index_response = resp.text
+                self.index_response = e
         else:
             self.index_result = "no_index"
             self.index_response = "Index not found"
@@ -125,22 +106,14 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _delete_document(self, index):
         if index:
-            resp = requests.Session().delete(
-                url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{self.id}",
-                headers={
-                    "Authorization": "Bearer " + index.api_id.api_key,
-                },
-                timeout=10,
-            )
-
-            if resp.status_code == 202:
+            try:
+                resp = index.delete_document(self.id)
                 self.index_result = "queued"
-                self.index_response = resp.text
-                enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
-                self.index_date = datetime.strptime(enqued_date, "%Y-%m-%dT%H:%M:%S")
-            else:
+                self.index_response = resp
+                self.index_date = resp.enqueued_at
+            except Exception as e:
                 self.index_result = "error"
-                self.index_response = resp.text
+                self.index_response = e
         else:
             self.index_result = "no_index"
             self.index_response = "Index not found"
