@@ -14,7 +14,7 @@ class MeilisearchIndex(models.Model):
 
     sequence = fields.Integer(default=10)
     name = fields.Char(required=True)
-    api_id = fields.Many2one("meilisearch.api", required=True)
+    api_id = fields.Many2one("meilisearch.api", string="API", required=True)
     index_name = fields.Char(required=True)
     database_filter = fields.Char(
         help="If set the index is only active on matching databases."

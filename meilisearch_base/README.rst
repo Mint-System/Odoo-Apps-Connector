@@ -13,7 +13,6 @@ For a detailed documentation have a look at https://www.odoo-wiki.org/meilisearc
 Configuration
 ~~~~~~~~~~~~~
 
-* Setup Meilisearch API and Meilisearch Index
 * Inherit the Meilisearch document mixin in the model:
 
 .. code-block:: python
@@ -78,6 +77,11 @@ Configuration
         <field name="code">records.delete_index_document()</field>
         <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
     </record>
+
+Usage
+=====
+
+* Setup Meilisearch API and Meilisearch Index
 
 Maintainer
 ~~~~~~~~~~

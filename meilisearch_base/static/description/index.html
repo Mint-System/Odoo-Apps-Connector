@@ -628,7 +628,6 @@ a { text-decoration: none; }
 <section id="configuration">
 <h3>Configuration</h3>
 <ul class="simple">
-<li><p>Setup Meilisearch API and Meilisearch Index</p></li>
 <li><p>Inherit the Meilisearch document mixin in the model:</p></li>
 </ul>
 <pre class="code python literal-block"><code><span class="keyword">class</span> <span class="name class">Country</span><span class="punctuation">(</span><span class="name">models</span><span class="operator">.</span><span class="name">Model</span><span class="punctuation">):</span><span class="whitespace">
@@ -687,6 +686,12 @@ a { text-decoration: none; }
     </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;code&quot;</span><span class="name tag">&gt;</span>records.delete_index_document()<span class="name tag">&lt;/field&gt;</span><span class="whitespace">
     </span><span class="name tag">&lt;field</span><span class="whitespace"> </span><span class="name attribute">name=</span><span class="literal string">&quot;groups_id&quot;</span><span class="whitespace"> </span><span class="name attribute">eval=</span><span class="literal string">&quot;[(4, ref('base.group_erp_manager'))]&quot;</span><span class="whitespace"> </span><span class="name tag">/&gt;</span><span class="whitespace">
 </span><span class="name tag">&lt;/record&gt;</span></code></pre>
+<section id="usage">
+<h4>Usage</h4>
+<ul class="simple">
+<li><p>Setup Meilisearch API and Meilisearch Index</p></li>
+</ul>
+</section>
 </section>
 <section id="maintainer">
 <h3>Maintainer</h3>
