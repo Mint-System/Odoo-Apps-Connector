@@ -37,6 +37,14 @@
                     />
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button
+                            name="button_view_document"
+                            type="object"
+                            string="Open Document"
+                            icon="fa-file"
+                        />
+                    </div>
                     <div class="oe_title">
                         <h1>
                             <field name="name" />

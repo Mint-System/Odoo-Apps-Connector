@@ -41,7 +41,7 @@
                         <button
                             name="button_view_documents"
                             type="object"
-                            string="View Documents"
+                            string="Index Documents"
                             icon="fa-file"
                         />
                     </div>

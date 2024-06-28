@@ -27,6 +27,13 @@ class MeilisearchIndex(models.Model):
     )
     model_name = fields.Char(string="Model Name", related="model_id.model", store=True)
 
+    def copy(self, default=None):
+        self.ensure_one()
+        default = default or {}
+        if not default.get("name"):
+            default["name"] = _("%s (copy)", self.name)
+        return super().copy(default)
+
     @api.model
     def get_matching_index(self, record):
         index = self.search(

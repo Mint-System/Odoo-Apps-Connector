@@ -27,6 +27,19 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     )
     index_response = fields.Text()
 
+    def button_view_document(self):
+        return {
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": self._name,
+            "res_id": self.id,
+            "context": {
+                "create": True,
+                "delete": True,
+                "edit": True,
+            },
+        }
+
     def update_index_document(self):
         return self._compute_index_document()
 
@@ -51,7 +64,6 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             record.index_document = json.dumps([document], indent=4)
         self._post_documents()
 
-
     def _post_document(self, client, index):
         if index:
             resp = client.post(
@@ -68,9 +80,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 self.index_result = "queued"
                 self.index_response = resp.text
                 enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
-                self.index_date = datetime.strptime(
-                    enqued_date, "%Y-%m-%dT%H:%M:%S"
-                )
+                self.index_date = datetime.strptime(enqued_date, "%Y-%m-%dT%H:%M:%S")
             else:
                 self.index_result = "error"
                 self.index_response = resp.text
@@ -124,16 +134,13 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 self.index_result = "queued"
                 self.index_response = resp.text
                 enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
-                self.index_date = datetime.strptime(
-                    enqued_date, "%Y-%m-%dT%H:%M:%S"
-                )
+                self.index_date = datetime.strptime(enqued_date, "%Y-%m-%dT%H:%M:%S")
             else:
                 self.index_result = "error"
                 self.index_response = resp.text
         else:
             self.index_result = "no_index"
             self.index_response = "Index not found"
-
 
     def _delete_documents(self):
         client = requests.Session()
