@@ -51,82 +51,92 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             record.index_document = json.dumps([document], indent=4)
         self._post_documents()
 
-    def _post_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
-        client = requests.Session()
-        for document in self:
-            if index:
-                resp = client.post(
-                    url=f"{index.api_id.url}/indexes/{index.index_name}/documents",
-                    headers={
-                        "Authorization": "Bearer " + index.api_id.api_key,
-                        "Content-type": "application/json",
-                    },
-                    timeout=10,
-                    json=document._prepare_index_document(),
-                )
 
-                if resp.status_code == 202:
-                    document.index_result = "queued"
-                    document.index_response = resp.text
-                    enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
-                    document.index_date = datetime.strptime(
-                        enqued_date, "%Y-%m-%dT%H:%M:%S"
-                    )
-                else:
-                    document.index_result = "error"
-                    document.index_response = resp.text
+    def _post_document(self, client, index):
+        if index:
+            resp = client.post(
+                url=f"{index.api_id.url}/indexes/{index.index_name}/documents",
+                headers={
+                    "Authorization": "Bearer " + index.api_id.api_key,
+                    "Content-type": "application/json",
+                },
+                timeout=10,
+                json=self._prepare_index_document(),
+            )
+
+            if resp.status_code == 202:
+                self.index_result = "queued"
+                self.index_response = resp.text
+                enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
+                self.index_date = datetime.strptime(
+                    enqued_date, "%Y-%m-%dT%H:%M:%S"
+                )
             else:
-                document.index_result = "no_index"
-                document.index_response = "Index not found"
+                self.index_result = "error"
+                self.index_response = resp.text
+        else:
+            self.index_result = "no_index"
+            self.index_response = "Index not found"
+
+    def _post_documents(self):
+        client = requests.Session()
+        index = self.env["meilisearch.index"].get_matching_index(self[:0])
+        for document in self:
+            document._post_document(client, index)
+
+    def _get_document(self, client, index):
+        if index:
+            resp = client.get(
+                url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{self.id}",
+                headers={
+                    "Authorization": "Bearer " + index.api_id.api_key,
+                },
+                timeout=10,
+            )
+
+            if resp.ok:
+                self.index_result = "indexed"
+                self.index_response = resp.text
+            else:
+                self.index_result = "no_document"
+                self.index_response = resp.text
+        else:
+            self.index_result = "no_index"
+            self.index_response = "Index not found"
 
     def _get_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
         client = requests.Session()
+        index = self.env["meilisearch.index"].get_matching_index(self[:0])
         for document in self:
-            if index:
-                resp = client.get(
-                    url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{document.id}",
-                    headers={
-                        "Authorization": "Bearer " + index.api_id.api_key,
-                    },
-                    timeout=10,
-                )
+            document._get_document(client, index)
 
-                if resp.ok:
-                    document.index_result = "indexed"
-                    document.index_response = resp.text
-                else:
-                    document.index_result = "no_document"
-                    document.index_response = resp.text
+    def _delete_document(self, client, index):
+        if index:
+            resp = client.delete(
+                url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{self.id}",
+                headers={
+                    "Authorization": "Bearer " + index.api_id.api_key,
+                },
+                timeout=10,
+            )
+
+            if resp.status_code == 202:
+                self.index_result = "queued"
+                self.index_response = resp.text
+                enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
+                self.index_date = datetime.strptime(
+                    enqued_date, "%Y-%m-%dT%H:%M:%S"
+                )
             else:
-                document.index_result = "no_index"
-                document.index_response = "Index not found"
+                self.index_result = "error"
+                self.index_response = resp.text
+        else:
+            self.index_result = "no_index"
+            self.index_response = "Index not found"
+
 
     def _delete_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
         client = requests.Session()
+        index = self.env["meilisearch.index"].get_matching_index(self[:0])
         for document in self:
-            if index:
-                resp = client.delete(
-                    url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{document.id}",
-                    headers={
-                        "Authorization": "Bearer " + index.api_id.api_key,
-                    },
-                    timeout=10,
-                )
-
-                if resp.status_code == 202:
-                    document.index_result = "queued"
-                    document.index_response = resp.text
-                    enqued_date = json.loads(resp.text)["enqueuedAt"].split(".")[0]
-                    document.index_date = datetime.strptime(
-                        enqued_date, "%Y-%m-%dT%H:%M:%S"
-                    )
-                else:
-                    document.index_result = "error"
-                    document.index_response = resp.text
-            else:
-                document.index_result = "no_index"
-                document.index_response = "Index not found"
-
+            document._delete_document(client, index)
