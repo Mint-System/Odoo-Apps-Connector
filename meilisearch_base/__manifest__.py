@@ -8,7 +8,7 @@
     "category": "Technical",
     "version": "16.0.1.0.0",
     "license": "AGPL-3",
-    "depends": ["base", "queue_job"],
+    "depends": ["base"],
     "data": [
         "security/ir.model.access.csv",
         "views/meilisearch_api_views.xml",

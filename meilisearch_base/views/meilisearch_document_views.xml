@@ -1,6 +1,29 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
+    <record id="document_view_search" model="ir.ui.view">
+        <field name="name">meilisearch_base.document_view_search</field>
+        <field name="model">meilisearch.document.mixin</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="index_result" />
+                <field
+                    name="index_response"
+                    filter_domain="[('index_response','ilike',self)]"
+                />
+                <filter name="index_date" date="index_date" />
+                <group expand="0" string="Group By...">
+                    <filter
+                        name="group_by_index_result"
+                        string="Index Result"
+                        context="{'group_by':'index_result'}"
+                    />
+                  </group>
+            </search>
+        </field>
+    </record>
+
     <record id="document_view_tree" model="ir.ui.view">
         <field name="name">meilisearch_base.document_view_tree</field>
         <field name="model">meilisearch.document.mixin</field>

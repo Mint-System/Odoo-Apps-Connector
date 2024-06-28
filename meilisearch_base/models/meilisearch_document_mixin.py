@@ -64,16 +64,21 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             record.index_document = json.dumps([document], indent=4)
         self._post_documents()
 
-    def _post_document(self, client, index):
+    def _post_documents(self):
+        index = self.env["meilisearch.index"].get_matching_index(self[:0])
+        for document in self:
+            document._post_document(index)
+
+    def _post_document(self, index):
         if index:
-            resp = client.post(
+            resp = requests.Session().post(
                 url=f"{index.api_id.url}/indexes/{index.index_name}/documents",
                 headers={
                     "Authorization": "Bearer " + index.api_id.api_key,
                     "Content-type": "application/json",
                 },
                 timeout=10,
-                json=self._prepare_index_document(),
+                json=json.loads(self.index_document),
             )
 
             if resp.status_code == 202:
@@ -88,15 +93,14 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             self.index_result = "no_index"
             self.index_response = "Index not found"
 
-    def _post_documents(self):
-        client = requests.Session()
+    def _get_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(self[:0])
         for document in self:
-            document._post_document(client, index)
+            document._get_document(index)
 
-    def _get_document(self, client, index):
+    def _get_document(self, index):
         if index:
-            resp = client.get(
+            resp = requests.Session().get(
                 url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{self.id}",
                 headers={
                     "Authorization": "Bearer " + index.api_id.api_key,
@@ -114,15 +118,14 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             self.index_result = "no_index"
             self.index_response = "Index not found"
 
-    def _get_documents(self):
-        client = requests.Session()
+    def _delete_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(self[:0])
         for document in self:
-            document._get_document(client, index)
+            document._delete_document(index)
 
-    def _delete_document(self, client, index):
+    def _delete_document(self, index):
         if index:
-            resp = client.delete(
+            resp = requests.Session().delete(
                 url=f"{index.api_id.url}/indexes/{index.index_name}/documents/{self.id}",
                 headers={
                     "Authorization": "Bearer " + index.api_id.api_key,
@@ -141,9 +144,3 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         else:
             self.index_result = "no_index"
             self.index_response = "Index not found"
-
-    def _delete_documents(self):
-        client = requests.Session()
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
-        for document in self:
-            document._delete_document(client, index)
