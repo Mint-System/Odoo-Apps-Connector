@@ -25,6 +25,7 @@ class MeilisearchAPI(models.Model):
             "view_mode": "tree,form",
             "res_model": "meilisearch.index",
             "domain": [("api_id", "=", self.id)],
+            "context": {"default_api_id": self.id},
         }
 
     def button_check_api_key(self):
@@ -37,7 +38,7 @@ class MeilisearchAPI(models.Model):
         self.ensure_one()
         try:
             client = self.get_meilisearch_client()
-            client.get_version()
+            client.health()
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -48,7 +49,7 @@ class MeilisearchAPI(models.Model):
                     "type": "success",
                 },
             }
-        except Exception:
+        except Exception as e:
             raise UserError(
-                _("The Meilisearch API key for '%s' does not work.", self.url)
+                _("The Meilisearch API key for '%s' does not work: %s", self.url, e)
             )
