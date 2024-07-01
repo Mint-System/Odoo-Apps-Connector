@@ -62,7 +62,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         self._update_documents()
 
     def _update_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
+        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         for document in self:
             document._update_document(index)
 
@@ -81,7 +81,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             self.index_response = "Index not found"
 
     def _get_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
+        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         for document in self:
             document._get_document(index)
 
@@ -100,7 +100,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             self.index_response = "Index not found"
 
     def _delete_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(self[:0])
+        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         for document in self:
             document._delete_document(index)
 

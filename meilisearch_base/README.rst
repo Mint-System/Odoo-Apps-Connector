@@ -40,19 +40,6 @@ Configuration
 .. code-block:: xml
   
     <record
-        id="model_res_country_action_update_index_document"
-        model="ir.actions.server"
-    >
-        <field name="name">Update Index Document</field>
-        <field name="model_id" ref="base.model_res_country" />
-        <field name="binding_model_id" ref="base.model_res_country" />
-        <field name="binding_view_types">tree,form</field>
-        <field name="state">code</field>
-        <field name="code">records.update_index_document()</field>
-        <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
-    </record>
-
-    <record
         id="model_res_country_action_check_index_document"
         model="ir.actions.server"
     >
@@ -62,6 +49,19 @@ Configuration
         <field name="binding_view_types">tree,form</field>
         <field name="state">code</field>
         <field name="code">records.check_index_document()</field>
+        <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
+    </record>
+
+    <record
+        id="model_res_country_action_update_index_document"
+        model="ir.actions.server"
+    >
+        <field name="name">Update Index Document</field>
+        <field name="model_id" ref="base.model_res_country" />
+        <field name="binding_model_id" ref="base.model_res_country" />
+        <field name="binding_view_types">tree,form</field>
+        <field name="state">code</field>
+        <field name="code">records.update_index_document()</field>
         <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
     </record>
 

@@ -23,7 +23,7 @@ class MeilisearchIndex(models.Model):
         help="Select the model this index should be active for.",
         ondelete="cascade",
     )
-    model_name = fields.Char(string="Model Name", related="model_id.model", store=True)
+    model = fields.Char(string="Model Name", related="model_id.model", store=True)
 
     def copy(self, default=None):
         self.ensure_one()
@@ -33,11 +33,11 @@ class MeilisearchIndex(models.Model):
         return super().copy(default)
 
     @api.model
-    def get_matching_index(self, record):
+    def get_matching_index(self, model):
         index = self.search(
             [
                 "&",
-                ("model_name", "=", record._name),
+                ("model", "=", model),
                 "|",
                 ("database_filter", "=", False),
                 ("database_filter", "=", self._cr.dbname),
@@ -58,7 +58,7 @@ class MeilisearchIndex(models.Model):
             "type": "ir.actions.act_window",
             "view_mode": "tree,form",
             "views": [(tree_view_id.id, "tree"), (form_view_id.id, "form")],
-            "res_model": self.model_name,
+            "res_model": self.model,
             "context": {
                 "search_default_group_by_index_result": True,
                 "create": False,
