@@ -90,8 +90,9 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             try:
                 resp = index.get_document(self.id)
                 fields = json.loads(self.index_document).keys()
+                document = {field: getattr(resp, field) for field in fields}
                 self.index_result = "indexed"
-                self.index_response = {field: getattr(resp, field) for field in fields}
+                self.index_response = json.dumps(document, indent = 4)
             except Exception as e:
                 self.index_result = "no_document"
                 self.index_response = e

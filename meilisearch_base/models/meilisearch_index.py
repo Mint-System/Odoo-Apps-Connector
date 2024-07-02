@@ -11,6 +11,7 @@ class MeilisearchIndex(models.Model):
     _description = "Meilisearch Index"
 
     sequence = fields.Integer(default=10)
+    active = fields.Boolean(default=True)
     name = fields.Char(required=True)
     api_id = fields.Many2one("meilisearch.api", string="API", required=True)
     index_name = fields.Char(required=True)
@@ -37,6 +38,7 @@ class MeilisearchIndex(models.Model):
         index = self.search(
             [
                 "&",
+                ("active", "=", True),
                 ("model", "=", model),
                 "|",
                 ("database_filter", "=", False),
