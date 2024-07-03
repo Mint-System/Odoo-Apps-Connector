@@ -32,6 +32,11 @@
                         type="object"
                     />
                     <button
+                        name="button_update_index"
+                        string="Update Index"
+                        type="object"
+                    />
+                    <button
                         name="button_delete_index"
                         string="Delete Index"
                         type="object"

@@ -76,6 +76,9 @@ class MeilisearchIndex(models.Model):
     def button_create_index(self):
         return self._create_index()
 
+    def button_update_index(self):
+        return self._update_index()
+
     def button_delete_index(self):
         return self._delete_index()
 
@@ -115,6 +118,35 @@ class MeilisearchIndex(models.Model):
                     "title": _("Meilisearch Index Created"),
                     "message": _(
                         "The Meilisearch index '%s' has been created.", self.index_name
+                    ),
+                    "sticky": False,
+                    "type": "success",
+                },
+            }
+        except Exception as e:
+            raise UserError(
+                _(
+                    "Could not create the Meilisearch index '%s': %s",
+                    self.index_name,
+                    e.message,
+                )
+            )
+
+    def _update_index(self):
+        self.ensure_one()
+        try:
+            self.api_id.get_meilisearch_client().index(self.index_name).update_settings({
+                'filterableAttributes': [
+                    'id',
+                ],
+            })
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Meilisearch Index Created"),
+                    "message": _(
+                        "The Meilisearch index settings updated for '%s'.", self.index_name
                     ),
                     "sticky": False,
                     "type": "success",

@@ -63,30 +63,31 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         if index:
             self._update_documents(index)
 
-    def _get_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        for document in self:
-            if index:
-                try:
-                    res = index.get_document(document.id)
-                    fields = json.loads(document.index_document).keys()
-                    res_document = {field: getattr(res, field) for field in fields}
-                    document.index_result = "indexed"
-                    document.index_response = json.dumps(res_document, indent = 4)
-                except Exception as e:
-                    document.index_result = "no_document"
-                    document.index_response = e
-            else:
-                document.index_result = "no_index"
-                document.index_response = "Index not found"
-
     def _get_batches(self, batch_size):
         for i in range(0, len(self), batch_size):
             yield self[i : i + batch_size]
 
+    def _get_documents(self):
+        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
+        for batch in self._get_batches(80):
+            if index:
+                try:
+                    res = index.search('', {"filter": f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"})
+                    if res.get("hits"):
+                        for document in res["hits"]:
+                            rec = batch.browse(int(document["id"]))
+                            rec.index_result = "indexed"
+                            rec.index_response = json.dumps(document, indent = 4)
+                except Exception as e:
+                    batch.index_result = "no_document"
+                    batch.index_response = e
+            else:
+                batch.index_result = "no_index"
+                batch.index_response = "Index not found"
+
+
     def _update_documents(self, index):
         for batch in self._get_batches(80):
-            _logger.warning(batch)
             if index:
                 try:
                     res = index.update_documents([json.loads(self.index_document) for self in batch])
