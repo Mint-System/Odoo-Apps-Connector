@@ -37,11 +37,11 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             },
         }
 
-    def update_index_document(self):
-        return self._compute_index_document()
-
     def check_index_document(self):
         return self._get_documents()
+
+    def update_index_document(self):
+        return self._compute_index_document()
 
     def delete_index_document(self):
         return self._delete_documents()
@@ -56,65 +56,62 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     @api.depends("name")
     def _compute_index_document(self):
+        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         for record in self:
             document = record._prepare_index_document()
             record.index_document = json.dumps(document, indent=4)
-        self._update_documents()
-
-    def _update_documents(self):
-        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        for document in self:
-            document._update_document(index)
-
-    def _update_document(self, index):
         if index:
-            try:
-                resp = index.update_documents([json.loads(self.index_document)])
-                self.index_result = "queued"
-                self.index_response = resp
-                self.index_date = resp.enqueued_at
-            except Exception as e:
-                self.index_result = "error"
-                self.index_response = e
-        else:
-            self.index_result = "no_index"
-            self.index_response = "Index not found"
+            self._update_documents(index)
 
     def _get_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         for document in self:
-            document._get_document(index)
+            if index:
+                try:
+                    res = index.get_document(document.id)
+                    fields = json.loads(document.index_document).keys()
+                    res_document = {field: getattr(res, field) for field in fields}
+                    document.index_result = "indexed"
+                    document.index_response = json.dumps(res_document, indent = 4)
+                except Exception as e:
+                    document.index_result = "no_document"
+                    document.index_response = e
+            else:
+                document.index_result = "no_index"
+                document.index_response = "Index not found"
 
-    def _get_document(self, index):
-        if index:
-            try:
-                resp = index.get_document(self.id)
-                fields = json.loads(self.index_document).keys()
-                document = {field: getattr(resp, field) for field in fields}
-                self.index_result = "indexed"
-                self.index_response = json.dumps(document, indent = 4)
-            except Exception as e:
-                self.index_result = "no_document"
-                self.index_response = e
-        else:
-            self.index_result = "no_index"
-            self.index_response = "Index not found"
+    def _get_batches(self, batch_size):
+        for i in range(0, len(self), batch_size):
+            yield self[i : i + batch_size]
+
+    def _update_documents(self, index):
+        for batch in self._get_batches(80):
+            _logger.warning(batch)
+            if index:
+                try:
+                    res = index.update_documents([json.loads(self.index_document) for self in batch])
+                    batch.index_result = "queued"
+                    batch.index_response = res
+                    batch.index_date = res.enqueued_at
+                except Exception as e:
+                    batch.index_result = "error"
+                    batch.index_response = e
+            else:
+                batch.index_result = "no_index"
+                batch.index_response = "Index not found"
 
     def _delete_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         for document in self:
-            document._delete_document(index)
-
-    def _delete_document(self, index):
-        if index:
-            try:
-                resp = index.delete_document(self.id)
-                self.index_result = "queued"
-                self.index_response = resp
-                self.index_date = resp.enqueued_at
-            except Exception as e:
-                self.index_result = "error"
-                self.index_response = e
-        else:
-            self.index_result = "no_index"
-            self.index_response = "Index not found"
+            if index:
+                try:
+                    res = index.delete_document(document.id)
+                    document.index_result = "queued"
+                    document.index_response = res
+                    document.index_date = res.enqueued_at
+                except Exception as e:
+                    document.index_result = "error"
+                    document.index_response = e
+            else:
+                document.index_result = "no_index"
+                document.index_response = "Index not found"
