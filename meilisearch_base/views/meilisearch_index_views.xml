@@ -64,6 +64,9 @@
                             <field name="database_filter" />
                             <field name="model_id" />
                         </group>
+                        <group>
+                            <field name="index_settings" />
+                        </group>
                     </group>
                 </sheet>
             </form>

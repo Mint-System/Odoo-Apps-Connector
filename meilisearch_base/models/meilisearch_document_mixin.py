@@ -69,17 +69,27 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _get_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        for batch in self._get_batches(80):
+        # Batch size has to match the max operators in the filter
+        for batch in self._get_batches(20):
             if index:
                 try:
-                    res = index.search('', {"filter": f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"})
-                    if res.get("hits"):
+                    filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                    res = index.search('', {"filter": filter})
+                    if res["hits"]:
+                        found_ids = []
                         for document in res["hits"]:
-                            rec = batch.browse(int(document["id"]))
+                            rec = self.browse(int(document["id"]))
                             rec.index_result = "indexed"
                             rec.index_response = json.dumps(document, indent = 4)
+                            found_ids.append(rec.id)
+                        not_found = batch.filtered(lambda r: r.id not in found_ids)
+                        not_found.index_result = "no_document"
+                        not_found.index_response = "Document not found"
+                    else:
+                        batch.index_result = "no_document"
+                        batch.index_response = res
                 except Exception as e:
-                    batch.index_result = "no_document"
+                    batch.index_result = "error"
                     batch.index_response = e
             else:
                 batch.index_result = "no_index"
