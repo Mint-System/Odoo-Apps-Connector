@@ -113,16 +113,17 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _delete_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        for document in self:
+        for batch in self._get_batches(80):
             if index:
                 try:
-                    res = index.delete_document(document.id)
-                    document.index_result = "queued"
-                    document.index_response = res
-                    document.index_date = res.enqueued_at
+                    filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                    res = index.delete_documents(filter=filter)
+                    batch.index_result = "queued"
+                    batch.index_response = res
+                    batch.index_date = res.enqueued_at
                 except Exception as e:
-                    document.index_result = "error"
-                    document.index_response = e
+                    batch.index_result = "error"
+                    batch.index_response = e
             else:
-                document.index_result = "no_index"
-                document.index_response = "Index not found"
+                batch.index_result = "no_index"
+                batch.index_response = "Index not found"
