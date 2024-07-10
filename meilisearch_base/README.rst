@@ -35,7 +35,7 @@ Configuration
     def _compute_index_document(self):
         return super()._compute_index_document()
 
-* Add actions for checking, updating and deleting the index document to the model:
+* Optionally add actions for checking, updating and deleting the index document to the model:
 
 .. code-block:: xml
   
