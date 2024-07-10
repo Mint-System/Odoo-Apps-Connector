@@ -1,5 +1,5 @@
-import logging
 import json
+import logging
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
@@ -26,11 +26,14 @@ class MeilisearchIndex(models.Model):
         ondelete="cascade",
     )
     model = fields.Char(string="Model Name", related="model_id.model", store=True)
-    index_settings = fields.Text(required=True, default="""{
+    index_settings = fields.Text(
+        required=True,
+        default="""{
     "filterableAttributes": [
         "id"
     ]
-}""")
+}""",
+    )
 
     def copy(self, default=None):
         self.ensure_one()
@@ -141,14 +144,17 @@ class MeilisearchIndex(models.Model):
     def _update_index(self):
         self.ensure_one()
         try:
-            self.api_id.get_meilisearch_client().index(self.index_name).update_settings(json.loads(self.index_settings))
+            self.api_id.get_meilisearch_client().index(self.index_name).update_settings(
+                json.loads(self.index_settings)
+            )
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
                 "params": {
                     "title": _("Meilisearch Index Created"),
                     "message": _(
-                        "The Meilisearch index settings updated for '%s'.", self.index_name
+                        "The Meilisearch index settings updated for '%s'.",
+                        self.index_name,
                     ),
                     "sticky": False,
                     "type": "success",

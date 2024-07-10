@@ -74,13 +74,13 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             if index:
                 try:
                     filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                    res = index.search('', {"filter": filter})
+                    res = index.search("", {"filter": filter})
                     if res["hits"]:
                         found_ids = []
                         for document in res["hits"]:
                             rec = self.browse(int(document["id"]))
                             rec.index_result = "indexed"
-                            rec.index_response = json.dumps(document, indent = 4)
+                            rec.index_response = json.dumps(document, indent=4)
                             found_ids.append(rec.id)
                         not_found = batch.filtered(lambda r: r.id not in found_ids)
                         not_found.index_result = "no_document"
@@ -95,12 +95,13 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 batch.index_result = "no_index"
                 batch.index_response = "Index not found"
 
-
     def _update_documents(self, index):
         for batch in self._get_batches(80):
             if index:
                 try:
-                    res = index.update_documents([json.loads(self.index_document) for self in batch])
+                    res = index.update_documents(
+                        [json.loads(self.index_document) for self in batch]
+                    )
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
