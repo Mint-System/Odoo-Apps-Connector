@@ -60,7 +60,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     @api.depends("name")
     def _compute_index_document(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        records = self.search(self._get_index_document_domain())
+        if self._get_index_document_domain():
+            records = self.search(self._get_index_document_domain())
         for record in records:
             document = record._prepare_index_document()
             record.index_document = json.dumps(document, indent=4)
