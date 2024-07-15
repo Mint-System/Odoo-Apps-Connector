@@ -13,7 +13,7 @@ For a detailed documentation have a look at https://www.odoo-wiki.org/meilisearc
 Configuration
 ~~~~~~~~~~~~~
 
-* Inherit the Meilisearch document mixin in the model:
+* Inherit the Meilisearch document mixin for the model:
 
 .. code-block:: python
   
@@ -21,7 +21,7 @@ Configuration
         _name = "res.country"
         _inherit = ["res.country", "meilisearch.document.mixin"]
 
-* Modify the document schema for the model :
+* Modify the document schema:
 
 .. code-block:: python
   
@@ -35,7 +35,14 @@ Configuration
     def _compute_index_document(self):
         return super()._compute_index_document()
 
-* Optionally add actions for checking, updating and deleting the index document to the model:
+* Modify the search domain:
+
+.. code-block:: python
+
+    def _get_index_document_domain(self):
+        return [("code", "=", "CH")]
+
+* Add actions for checking, updating and deleting the documents of the model:
 
 .. code-block:: xml
   
