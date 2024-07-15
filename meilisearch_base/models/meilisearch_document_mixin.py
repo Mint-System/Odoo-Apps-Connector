@@ -55,7 +55,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         return {"id": self.id, "name": self.name}
 
     def _get_index_document_domain(self):
-        return [()]
+        return []
 
     @api.depends("name")
     def _compute_index_document(self):
