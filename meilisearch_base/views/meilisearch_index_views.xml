@@ -9,7 +9,10 @@
                 <field name="sequence" widget="handle" />
                 <field name="active" />
                 <field name="name" />
+                <field name="api_id" />
+                <field name="database_filter" />
                 <field name="index_name" />
+                <field name="model_id" />
             </tree>
         </field>
     </record>
