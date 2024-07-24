@@ -11,7 +11,7 @@
                 <field name="name" />
                 <field name="index_name" />
                 <field name="database_filter" />
-                <field name="model_name" />
+                <field name="model" />
             </tree>
         </field>
     </record>
