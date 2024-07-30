@@ -32,7 +32,7 @@ class MeilisearchAPI(models.Model):
         return self._get_version()
 
     def get_meilisearch_client(self):
-        return meilisearch.Client(self.url, self.api_key)
+        return meilisearch.Client(url=self.url, api_key=self.api_key, timeout=10)
 
     def _get_version(self):
         self.ensure_one()
