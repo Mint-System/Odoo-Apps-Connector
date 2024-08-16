@@ -112,8 +112,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
-                    task = index.get_task(res.task_uid)
-                    _logger.warning(task)
+                    # task = index.get_task(res.task_uid)
+                    # _logger.warning(task)
                 except Exception as e:
                     batch.index_result = "error"
                     batch.index_response = e
