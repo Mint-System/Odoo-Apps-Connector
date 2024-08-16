@@ -102,7 +102,6 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 batch.index_response = "Index not found"
 
     def _update_documents(self, index):
-        _logger.warning([self, index])
         for batch in self._get_batches(80):
             if index:
                 try:
