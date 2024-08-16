@@ -112,14 +112,16 @@ class MeilisearchIndex(models.Model):
                 _(
                     "Could not get Meilisearch index '%s': %s",
                     self.index_name,
-                    e.message,
+                    e,
                 )
             )
 
     def _create_index(self):
         self.ensure_one()
         try:
-            self.api_id.get_meilisearch_client().create_index(self.index_name)
+            self.api_id.get_meilisearch_client().create_index(
+                self.index_name, {"primaryKey": "id"}
+            )
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",

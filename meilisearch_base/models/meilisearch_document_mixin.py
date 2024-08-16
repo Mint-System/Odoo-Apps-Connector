@@ -54,13 +54,13 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         self.ensure_one()
         return {"id": self.id, "name": self.name}
 
-    def _get_index_document_domain(self):
-        return []
+    def _get_index_document_filter(self):
+        return lambda r: True
 
     @api.depends("name")
     def _compute_index_document(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        records = self.search(self._get_index_document_domain())
+        records = self.filtered(self._get_index_document_filter())
         for record in records:
             document = record._prepare_index_document()
             record.index_document = json.dumps(document, indent=4)
@@ -77,8 +77,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         for batch in self._get_batches(20):
             if index:
                 try:
-                    filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                    res = index.search("", {"filter": filter})
+                    search_filter = (
+                        f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                    )
+                    res = index.search("", {"filter": search_filter})
                     if res["hits"]:
                         found_ids = []
                         for document in res["hits"]:
@@ -100,6 +102,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 batch.index_response = "Index not found"
 
     def _update_documents(self, index):
+        _logger.warning([self, index])
         for batch in self._get_batches(80):
             if index:
                 try:
@@ -109,6 +112,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
+                    task = index.get_task(res.task_uid)
+                    _logger.warning(task)
                 except Exception as e:
                     batch.index_result = "error"
                     batch.index_response = e
@@ -121,8 +126,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         for batch in self._get_batches(80):
             if index:
                 try:
-                    filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                    res = index.delete_documents(filter=filter)
+                    search_filter = (
+                        f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                    )
+                    res = index.delete_documents(filter=search_filter)
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
