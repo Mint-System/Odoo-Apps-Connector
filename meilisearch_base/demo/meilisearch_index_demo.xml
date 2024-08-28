@@ -1,9 +1,5 @@
 <odoo>
 
-    <record id="demo_settings_module_meilisearch" model="res.config.settings">
-        <field name="module_meilisearch">True</field>
-    </record>
-
     <record id="demo_config_meilisearch_api_url" model="ir.config_parameter">
         <field name="key">meilisearch.api_url</field>
         <field name="value">http://meili01:7700</field>
