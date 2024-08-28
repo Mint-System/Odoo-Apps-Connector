@@ -8,10 +8,10 @@
     "category": "Technical",
     "version": "16.0.1.0.0",
     "license": "AGPL-3",
-    "depends": ["base"],
+    "depends": ["base_setup"],
     "data": [
         "security/ir.model.access.csv",
-        "views/meilisearch_api_views.xml",
+        "views/res_config_settings_view.xml",
         "views/meilisearch_index_views.xml",
         "views/meilisearch_document_views.xml",
         "views/res_country_views.xml",
@@ -20,7 +20,7 @@
     "application": False,
     "auto_install": False,
     "images": ["images/screen.png"],
-    "demo": ["demo/meilisearch_api_demo.xml", "demo/meilisearch_index_demo.xml"],
+    "demo": ["demo/meilisearch_index_demo.xml"],
     "external_dependencies": {
         "python": [
             "meilisearch",

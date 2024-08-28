@@ -1,6 +1,8 @@
 import json
 import logging
 
+import meilisearch
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
@@ -14,7 +16,6 @@ class MeilisearchIndex(models.Model):
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=True)
     name = fields.Char(required=True)
-    api_id = fields.Many2one("meilisearch.api", string="API", required=True)
     index_name = fields.Char(required=True)
     database_filter = fields.Char(
         help="If set the index is only active on matching databases."
@@ -42,6 +43,14 @@ class MeilisearchIndex(models.Model):
             default["name"] = _("%s (copy)", self.name)
         return super().copy(default)
 
+    def get_meilisearch_client(self):
+        icp = self.env["ir.config_parameter"].sudo()
+        return meilisearch.Client(
+            url=icp.get_param("meilisearch.api_url"),
+            api_key=icp.get_param("meilisearch.api_key"),
+            timeout=10,
+        )
+
     @api.model
     def get_matching_index(self, model):
         index = self.search(
@@ -56,7 +65,7 @@ class MeilisearchIndex(models.Model):
             limit=1,
         )
         if index:
-            return index.api_id.get_meilisearch_client().index(index.index_name)
+            return index.get_meilisearch_client().index(index.index_name)
         else:
             return False
 
@@ -91,10 +100,36 @@ class MeilisearchIndex(models.Model):
     def button_delete_index(self):
         return self._delete_index()
 
+    def button_check_api_key(self):
+        return self._get_version()
+
+    def _get_version(self):
+        self.ensure_one()
+        try:
+            url = (
+                self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url"),
+            )
+            client = self.get_meilisearch_client()
+            client.health()
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Meilisearch API Key"),
+                    "message": _("The Meilisearch API key for '%s' works.", url),
+                    "sticky": False,
+                    "type": "success",
+                },
+            }
+        except Exception as e:
+            raise UserError(
+                _("The Meilisearch API key for '%s' does not work: %s", url, e)
+            ) from None
+
     def _get_index(self):
         self.ensure_one()
         try:
-            self.api_id.get_meilisearch_client().get_index(self.index_name)
+            self.get_meilisearch_client().get_index(self.index_name)
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -114,12 +149,12 @@ class MeilisearchIndex(models.Model):
                     self.index_name,
                     e,
                 )
-            )
+            ) from None
 
     def _create_index(self):
         self.ensure_one()
         try:
-            self.api_id.get_meilisearch_client().create_index(
+            self.get_meilisearch_client().create_index(
                 self.index_name, {"primaryKey": "id"}
             )
             return {
@@ -141,12 +176,12 @@ class MeilisearchIndex(models.Model):
                     self.index_name,
                     e.message,
                 )
-            )
+            ) from None
 
     def _update_index(self):
         self.ensure_one()
         try:
-            self.api_id.get_meilisearch_client().index(self.index_name).update_settings(
+            self.get_meilisearch_client().index(self.index_name).update_settings(
                 json.loads(self.index_settings)
             )
             return {
@@ -169,12 +204,12 @@ class MeilisearchIndex(models.Model):
                     self.index_name,
                     e.message,
                 )
-            )
+            ) from None
 
     def _delete_index(self):
         self.ensure_one()
         try:
-            self.api_id.get_meilisearch_client().delete_index(self.index_name)
+            self.get_meilisearch_client().delete_index(self.index_name)
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -194,4 +229,4 @@ class MeilisearchIndex(models.Model):
                     self.index_name,
                     e.message,
                 )
-            )
+            ) from None

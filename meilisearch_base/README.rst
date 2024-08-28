@@ -88,7 +88,8 @@ Configuration
 Usage
 =====
 
-* Setup Meilisearch API and Meilisearch Index
+* Open "Settings > Integration" and set Meiliesarch API url and key
+* Create entries in "Settings > Technical > Meilisearch Indexes"
 
 Maintainer
 ~~~~~~~~~~
