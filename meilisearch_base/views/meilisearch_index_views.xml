@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
     <record id="index_view_tree" model="ir.ui.view">
@@ -15,7 +15,7 @@
                 <field
                     name="document_filtered_count"
                     string="Filtered"
-                    optional="hshowide"
+                    optional="show"
                 />
                 <field name="document_queued_count" string="Queued" optional="show" />
                 <field name="document_indexed_count" string="Indexed" optional="show" />
@@ -98,13 +98,12 @@
                                 type="object"
                                 class="btn-link"
                             >
-                            <i
+                                <i
                                     title="Update Document Count"
                                     role="img"
                                     aria-label="Update Document Count"
                                     class="fa fa-refresh"
-                                /> Update Document Count
-                            </button>
+                                /> Update Document Count </button>
                         </group>
                     </group>
                 </sheet>
