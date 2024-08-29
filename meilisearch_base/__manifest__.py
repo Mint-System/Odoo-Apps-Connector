@@ -10,6 +10,7 @@
     "license": "AGPL-3",
     "depends": ["base_setup"],
     "data": [
+        "data/cron.xml",
         "security/ir.model.access.csv",
         "security/security.xml",
         "views/res_config_settings_view.xml",

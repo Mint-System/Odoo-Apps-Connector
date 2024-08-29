@@ -12,6 +12,14 @@
                 <field name="index_name" />
                 <field name="database_filter" />
                 <field name="model" />
+                <field
+                    name="document_filtered_count"
+                    string="Filtered"
+                    optional="hshowide"
+                />
+                <field name="document_queued_count" string="Queued" optional="show" />
+                <field name="document_indexed_count" string="Indexed" optional="show" />
+                <field name="document_error_count" string="Error" optional="show" />
             </tree>
         </field>
     </record>
@@ -74,12 +82,29 @@
                             <field name="index_name" />
                             <field name="database_filter" />
                             <field name="model_id" />
-                        </group>
-                        <group>
                             <field
                                 name="index_settings"
                                 groups="meilisearch_base.group_index_manager"
                             />
+                        </group>
+                        <group>
+                            <field name="document_filtered_count" />
+                            <field name="document_queued_count" />
+                            <field name="document_indexed_count" />
+                            <field name="document_error_count" />
+                            <label for="button_update_document_count" />
+                            <button
+                                name="button_update_document_count"
+                                type="object"
+                                class="btn-link"
+                            >
+                            <i
+                                    title="Update Document Count"
+                                    role="img"
+                                    aria-label="Update Document Count"
+                                    class="fa fa-refresh"
+                                /> Update Document Count
+                            </button>
                         </group>
                     </group>
                 </sheet>

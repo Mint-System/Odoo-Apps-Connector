@@ -18,7 +18,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             ("queued", "Queued"),
             ("indexed", "Indexed"),
             ("error", "Error"),
-            ("no_document", "No Document"),
+            ("not_found", "Not Found"),
             ("no_index", "No Index"),
         ]
     )
@@ -89,10 +89,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                             rec.index_response = json.dumps(document, indent=4)
                             found_ids.append(rec.id)
                         not_found = batch.filtered(lambda r: r.id not in found_ids)
-                        not_found.index_result = "no_document"
+                        not_found.index_result = "not_found"
                         not_found.index_response = "Document not found"
                     else:
-                        batch.index_result = "no_document"
+                        batch.index_result = "not_found"
                         batch.index_response = res
                 except Exception as e:
                     batch.index_result = "error"

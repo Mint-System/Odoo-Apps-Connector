@@ -1,7 +1,7 @@
 Configuration:
 
 - Open the user group "Index Manager"
--
+- Add your user to the group
 
 Index Lifecycle:
 

@@ -36,6 +36,72 @@ class MeilisearchIndex(models.Model):
 }""",
     )
 
+    document_filtered_count = fields.Integer(
+        string="Documents Filtered", compute="_compute_document_count", store=True
+    )
+    document_queued_count = fields.Integer(
+        string="Documents Queued", compute="_compute_document_count", store=True
+    )
+    document_indexed_count = fields.Integer(
+        string="Documents Indexed", compute="_compute_document_count", store=True
+    )
+    document_error_count = fields.Integer(
+        string="Documents Error", compute="_compute_document_count", store=True
+    )
+    document_not_found_count = fields.Integer(
+        string="Documents Not Found", compute="_compute_document_count", store=True
+    )
+    document_no_index_count = fields.Integer(
+        string="Documents No Index", compute="_compute_document_count", store=True
+    )
+
+    def _compute_document_count(self):
+        for index in self:
+            if index.active:
+                model = self.env[index.model]
+                documents = index._get_documents()
+                index.document_filtered_count = len(
+                    documents.filtered(model._get_index_document_filter())
+                )
+                index.document_queued_count = len(
+                    documents.filtered(lambda d: d.index_result == "queued")
+                )
+                index.document_indexed_count = len(
+                    documents.filtered(lambda d: d.index_result == "indexed")
+                )
+                index.document_error_count = len(
+                    documents.filtered(lambda d: d.index_result == "error")
+                )
+                index.document_not_found_count = len(
+                    documents.filtered(lambda d: d.index_result == "not_found")
+                )
+                index.document_no_index_count = len(
+                    documents.filtered(lambda d: d.index_result == "no_index")
+                )
+            else:
+                index.document_filtered_count = 0
+                index.document_queued_count = 0
+                index.document_indexed_count = 0
+                index.document_error_count = 0
+                index.document_not_found_count = 0
+                index.document_no_index_count = 0
+
+    @api.model
+    def _cron_check_documents(self):
+        # Get all active indexes
+        for index in self.search(
+            [
+                ("active", "=", True),
+                "|",
+                ("database_filter", "=", False),
+                ("database_filter", "=", self._cr.dbname),
+            ]
+        ):
+            _logger.info("Checking documents for index: %s", index.name)
+            documents = index._get_documents()
+            documents._get_documents()
+            index._compute_document_count()
+
     def copy(self, default=None):
         self.ensure_one()
         default = default or {}
@@ -102,6 +168,9 @@ class MeilisearchIndex(models.Model):
 
     def button_check_api_key(self):
         return self._get_version()
+
+    def button_update_document_count(self):
+        return self._compute_document_count()
 
     def _get_version(self):
         self.ensure_one()
@@ -230,3 +299,7 @@ class MeilisearchIndex(models.Model):
                     e.message,
                 )
             ) from None
+
+    def _get_documents(self):
+        self.ensure_one()
+        return self.env[self.model].search([])

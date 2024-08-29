@@ -89,6 +89,7 @@ Usage
 =====
 
 * Open "Settings > Integration" and set Meiliesarch API url and key
+* Add user to the "Meilisearch Index Manager" group
 * Create entries in "Settings > Technical > Meilisearch Indexes"
 
 Maintainer
