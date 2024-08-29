@@ -1,3 +1,10 @@
+Configuration:
+
+- Open the user group "Index Manager"
+-
+
+Index Lifecycle:
+
 - Open Meilisearch Index "Countries"
 - Click "Check API Key" and ensure it works
 - Click on "Create Index" and "Update Index"

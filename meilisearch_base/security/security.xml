@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="group_index_manager" model="res.groups">
+        <field name="name">Meilisearch Index Manager</field>
+        <field name="category_id" ref="base.module_category_hidden" />
+    </record>
+
+</odoo>

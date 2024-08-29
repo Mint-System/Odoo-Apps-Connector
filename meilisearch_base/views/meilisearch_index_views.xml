@@ -33,21 +33,25 @@
                         string="Check Index"
                         type="object"
                         class="btn-primary"
+                        groups="meilisearch_base.group_index_manager"
                     />
                     <button
                         name="button_create_index"
                         string="Create Index"
                         type="object"
+                        groups="meilisearch_base.group_index_manager"
                     />
                     <button
                         name="button_update_index"
                         string="Update Index"
                         type="object"
+                        groups="meilisearch_base.group_index_manager"
                     />
                     <button
                         name="button_delete_index"
                         string="Delete Index"
                         type="object"
+                        groups="meilisearch_base.group_index_manager"
                     />
                 </header>
                 <sheet>
@@ -72,7 +76,10 @@
                             <field name="model_id" />
                         </group>
                         <group>
-                            <field name="index_settings" />
+                            <field
+                                name="index_settings"
+                                groups="meilisearch_base.group_index_manager"
+                            />
                         </group>
                     </group>
                 </sheet>
