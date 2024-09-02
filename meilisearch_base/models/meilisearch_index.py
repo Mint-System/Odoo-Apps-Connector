@@ -111,9 +111,19 @@ class MeilisearchIndex(models.Model):
 
     def get_meilisearch_client(self):
         icp = self.env["ir.config_parameter"].sudo()
+        url = icp.get_param("meilisearch.api_url")
+        api_key = icp.get_param("meilisearch.api_key")
+
+        if not url or not api_key:
+            raise UserError(
+                _(
+                    "Meilisearch URL and API key need to be configured in the system parameters."
+                )
+            )
+
         return meilisearch.Client(
-            url=icp.get_param("meilisearch.api_url"),
-            api_key=icp.get_param("meilisearch.api_key"),
+            url=url,
+            api_key=api_key,
             timeout=10,
         )
 

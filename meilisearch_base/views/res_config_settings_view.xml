@@ -27,14 +27,14 @@
                                     for="meilisearch_api_url"
                                     class="o_light_label"
                                 />
-                                <field name="meilisearch_api_url" />
+                                <field name="meilisearch_api_url" required="1" />
                             </div>
                             <div class="content-group">
                                 <label
                                     for="meilisearch_api_key"
                                     class="o_light_label"
                                 />
-                                <field name="meilisearch_api_key" />
+                                <field name="meilisearch_api_key" required="1" />
                             </div>
                         </div>
                     </div>
