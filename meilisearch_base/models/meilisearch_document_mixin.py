@@ -23,6 +23,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         ]
     )
     index_response = fields.Text()
+    index_task_uid = fields.Char("Index Task UID")
 
     def button_view_document(self):
         return {
@@ -39,6 +40,9 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def check_index_document(self):
         return self._get_documents()
+
+    def check_index_task(self):
+        return self._get_task()
 
     def update_index_document(self):
         return self._compute_index_document()
@@ -67,6 +71,21 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         if index:
             records._update_documents(index)
 
+    def _get_task(self):
+        self.ensure_one()
+        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
+
+        if index and self.index_task_uid:
+            try:
+                task = index.get_task(self.index_task_uid)
+                self.index_response = task
+            except Exception as e:
+                self.index_result = "error"
+                self.index_response = e
+        else:
+            self.index_result = "no_index"
+            self.index_response = "Index or task not found"
+
     def _get_batches(self, batch_size):
         for i in range(0, len(self), batch_size):
             yield self[i : i + batch_size]
@@ -88,6 +107,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                             rec.index_result = "indexed"
                             rec.index_response = json.dumps(document, indent=4)
                             found_ids.append(rec.id)
+
+                        # Update records not in hits set
                         not_found = batch.filtered(lambda r: r.id not in found_ids)
                         not_found.index_result = "not_found"
                         not_found.index_response = "Document not found"
@@ -111,8 +132,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
-                    # task = index.get_task(res.task_uid)
-                    # _logger.warning(task)
+                    batch.index_task_uid = res.task_uid
                 except Exception as e:
                     batch.index_result = "error"
                     batch.index_response = e
@@ -132,6 +152,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
+                    batch.index_task_uid = res.task_uid
                 except Exception as e:
                     batch.index_result = "error"
                     batch.index_response = e
