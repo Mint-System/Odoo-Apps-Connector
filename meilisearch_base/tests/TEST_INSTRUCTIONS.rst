@@ -6,6 +6,7 @@ Configuration:
 Index Lifecycle:
 
 - Open Meilisearch Index "Countries"
+- Enable the index
 - Click "Check API Key" and ensure it works
 - Click on "Create Index" and "Update Index"
 - Click "View Documents"

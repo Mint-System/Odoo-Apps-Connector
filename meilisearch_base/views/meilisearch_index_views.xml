@@ -24,6 +24,17 @@
         </field>
     </record>
 
+    <record id="index_view_search" model="ir.ui.view">
+        <field name="name">meilisearch_base.index_view_search</field>
+        <field name="model">meilisearch.index</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="index_name" />
+            </search>
+        </field>
+    </record>
+
     <record id="index_view_form" model="ir.ui.view">
         <field name="name">meilisearch_base.index_view_form</field>
         <field name="model">meilisearch.index</field>
