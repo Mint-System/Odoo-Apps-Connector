@@ -60,7 +60,7 @@ class MeilisearchIndex(models.Model):
         for index in self:
             if index.active:
                 model = self.env[index.model]
-                documents = index._get_documents()
+                documents = index._get_all_documents()
                 index.document_filtered_count = len(
                     documents.filtered(model._get_index_document_filter())
                 )
@@ -99,9 +99,7 @@ class MeilisearchIndex(models.Model):
             ]
         ):
             _logger.info("Checking documents for index: %s", index.name)
-            documents = index._get_documents()
-            documents._get_documents()
-            index._compute_document_count()
+            index.check_all_documents()
 
     def copy(self, default=None):
         self.ensure_one()
@@ -182,11 +180,20 @@ class MeilisearchIndex(models.Model):
     def button_delete_index(self):
         return self._delete_index()
 
+    def button_check_all_documents(self):
+        return self.check_all_documents()
+
     def button_check_api_key(self):
         return self._get_version()
 
     def button_update_document_count(self):
         return self._compute_document_count()
+
+    def check_all_documents(self):
+        documents = self._get_all_documents()
+        documents._get_documents()
+        self._compute_document_count()
+
 
     def _get_version(self):
         self.ensure_one()
@@ -326,6 +333,6 @@ class MeilisearchIndex(models.Model):
                     )
                 ) from None
 
-    def _get_documents(self):
+    def _get_all_documents(self):
         self.ensure_one()
         return self.env[self.model].search([])

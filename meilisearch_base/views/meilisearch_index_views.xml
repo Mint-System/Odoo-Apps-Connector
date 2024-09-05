@@ -72,6 +72,11 @@
                         type="object"
                         groups="meilisearch_base.group_index_manager"
                     />
+                    <button
+                        name="button_check_all_documents"
+                        string="Check All Documents"
+                        type="object"
+                    />
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
