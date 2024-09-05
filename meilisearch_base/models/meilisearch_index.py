@@ -115,11 +115,13 @@ class MeilisearchIndex(models.Model):
         api_key = icp.get_param("meilisearch.api_key")
 
         if not url or not api_key:
-            raise UserError(
+            _logger.error(
                 _(
-                    "Meilisearch URL and API key need to be configured in the system parameters."
+                    "Meilisearch URL and API key need to be configured "
+                    "in the system parameters."
                 )
             )
+            return
 
         return meilisearch.Client(
             url=url,
@@ -129,6 +131,9 @@ class MeilisearchIndex(models.Model):
 
     @api.model
     def get_matching_index(self, model):
+        client = self.get_meilisearch_client()
+        if not client:
+            return False
         index = self.search(
             [
                 "&",
@@ -141,7 +146,7 @@ class MeilisearchIndex(models.Model):
             limit=1,
         )
         if index:
-            return index.get_meilisearch_client().index(index.index_name)
+            return client.index(index.index_name)
         else:
             return False
 
@@ -184,131 +189,141 @@ class MeilisearchIndex(models.Model):
 
     def _get_version(self):
         self.ensure_one()
-        try:
-            url = (
-                self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url"),
-            )
-            client = self.get_meilisearch_client()
-            client.health()
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Meilisearch API Key"),
-                    "message": _("The Meilisearch API key for '%s' works.", url),
-                    "sticky": False,
-                    "type": "success",
-                },
-            }
-        except Exception as e:
-            raise UserError(
-                _("The Meilisearch API key for '%s' does not work: %s", url, e)
-            ) from None
+        client = self.get_meilisearch_client()
+        if client:
+            try:
+                url = (
+                    self.env["ir.config_parameter"]
+                    .sudo()
+                    .get_param("meilisearch.api_url"),
+                )
+                client.health()
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Meilisearch API Key"),
+                        "message": _("The Meilisearch API key for '%s' works.", url),
+                        "sticky": False,
+                        "type": "success",
+                    },
+                }
+            except Exception as e:
+                raise UserError(
+                    _("The Meilisearch API key for '%s' does not work: %s", url, e)
+                ) from None
 
     def _get_index(self):
         self.ensure_one()
-        try:
-            self.get_meilisearch_client().get_index(self.index_name)
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Meilisearch Index"),
-                    "message": _(
-                        "The Meilisearch index '%s' was found.", self.index_name
-                    ),
-                    "sticky": False,
-                    "type": "success",
-                },
-            }
-        except Exception as e:
-            raise UserError(
-                _(
-                    "Could not get Meilisearch index '%s': %s",
-                    self.index_name,
-                    e,
-                )
-            ) from None
+        client = self.get_meilisearch_client()
+        if client:
+            try:
+                client.get_index(self.index_name)
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Meilisearch Index"),
+                        "message": _(
+                            "The Meilisearch index '%s' was found.", self.index_name
+                        ),
+                        "sticky": False,
+                        "type": "success",
+                    },
+                }
+            except Exception as e:
+                raise UserError(
+                    _(
+                        "Could not get Meilisearch index '%s': %s",
+                        self.index_name,
+                        e,
+                    )
+                ) from None
 
     def _create_index(self):
         self.ensure_one()
-        try:
-            self.get_meilisearch_client().create_index(
-                self.index_name, {"primaryKey": "id"}
-            )
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Meilisearch Index Created"),
-                    "message": _(
-                        "The Meilisearch index '%s' has been created.", self.index_name
-                    ),
-                    "sticky": False,
-                    "type": "success",
-                },
-            }
-        except Exception as e:
-            raise UserError(
-                _(
-                    "Could not create the Meilisearch index '%s': %s",
-                    self.index_name,
-                    e.message,
-                )
-            ) from None
+        client = self.get_meilisearch_client()
+        if client:
+            try:
+                client.create_index(self.index_name, {"primaryKey": "id"})
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Meilisearch Index Created"),
+                        "message": _(
+                            "The Meilisearch index '%s' has been created.",
+                            self.index_name,
+                        ),
+                        "sticky": False,
+                        "type": "success",
+                    },
+                }
+            except Exception as e:
+                raise UserError(
+                    _(
+                        "Could not create the Meilisearch index '%s': %s",
+                        self.index_name,
+                        e.message,
+                    )
+                ) from None
 
     def _update_index(self):
         self.ensure_one()
-        try:
-            self.get_meilisearch_client().index(self.index_name).update_settings(
-                json.loads(self.index_settings)
-            )
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Meilisearch Index Created"),
-                    "message": _(
-                        "The Meilisearch index settings updated for '%s'.",
-                        self.index_name,
-                    ),
-                    "sticky": False,
-                    "type": "success",
-                },
-            }
-        except Exception as e:
-            raise UserError(
-                _(
-                    "Could not create the Meilisearch index '%s': %s",
-                    self.index_name,
-                    e.message,
+        client = self.get_meilisearch_client()
+        if client:
+            try:
+                client.index(self.index_name).update_settings(
+                    json.loads(self.index_settings)
                 )
-            ) from None
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Meilisearch Index Created"),
+                        "message": _(
+                            "The Meilisearch index settings updated for '%s'.",
+                            self.index_name,
+                        ),
+                        "sticky": False,
+                        "type": "success",
+                    },
+                }
+            except Exception as e:
+                raise UserError(
+                    _(
+                        "Could not create the Meilisearch index '%s': %s",
+                        self.index_name,
+                        e.message,
+                    )
+                ) from None
 
     def _delete_index(self):
         self.ensure_one()
-        try:
-            self.get_meilisearch_client().delete_index(self.index_name)
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Meilisearch Index Deleted"),
-                    "message": _(
-                        "The Meilisearch index '%s' was deleted.", self.index_name
-                    ),
-                    "sticky": False,
-                    "type": "success",
-                },
-            }
-        except Exception as e:
-            raise UserError(
-                _(
-                    "Could not delete the Meilisearch index '%s': %s",
-                    self.index_name,
-                    e.message,
-                )
-            ) from None
+        client = self.get_meilisearch_client()
+        if client:
+            try:
+                client.delete_index(self.index_name)
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Meilisearch Index Deleted"),
+                        "message": _(
+                            "The Meilisearch index '%s' was deleted.", self.index_name
+                        ),
+                        "sticky": False,
+                        "type": "success",
+                    },
+                }
+            except Exception as e:
+                raise UserError(
+                    _(
+                        "Could not delete the Meilisearch index '%s': %s",
+                        self.index_name,
+                        e.message,
+                    )
+                ) from None
 
     def _get_documents(self):
         self.ensure_one()
