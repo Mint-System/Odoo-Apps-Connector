@@ -56,7 +56,7 @@
                             icon="fa-file"
                         />
                     </div>
-                    <div class="oe_title">                        
+                    <div class="oe_title">
                         <h1>
                             <field name="name" />
                         </h1>

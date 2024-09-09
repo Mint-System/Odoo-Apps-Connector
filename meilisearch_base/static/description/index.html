@@ -36,46 +36,23 @@
             <pre data-language="python"><span class="k">def</span> <span class="nf">_get_index_document_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">return</span> <span class="p">[(</span><span class="s2">&quot;code&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;CH&quot;</span><span class="p">)]</span></pre>
             <ul>
-                <li>Add actions for checking, updating and deleting the documents of the model:</li>
+                <li>Modify the search domain:</li>
             </ul>
-            <pre data-language="xml"><span class="nt">&lt;record</span>
-<span class="w">    </span><span class="na">id=</span><span class="s">&quot;model_res_country_action_check_index_document&quot;</span>
-<span class="w">    </span><span class="na">model=</span><span class="s">&quot;ir.actions.server&quot;</span>
-<span class="nt">&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;name&quot;</span><span class="nt">&gt;</span>Check<span class="w"> </span>Index<span class="w"> </span>Document<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;model_id&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;base.model_res_country&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;binding_model_id&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;base.model_res_country&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;binding_view_types&quot;</span><span class="nt">&gt;</span>tree,form<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;state&quot;</span><span class="nt">&gt;</span>code<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;code&quot;</span><span class="nt">&gt;</span>records.check_index_document()<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;groups_id&quot;</span><span class="w"> </span><span class="na">eval=</span><span class="s">&quot;[(4, ref(&#39;base.group_erp_manager&#39;))]&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="nt">&lt;/record&gt;</span>
+            <pre data-language="python"><span class="k">def</span> <span class="nf">_get_index_document_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="s2">&quot;CH&quot;</span></pre>
+            <ul>
+                <li>Hook into meilisearch tasks:</li>
+            </ul>
+            <pre data-language="python"><span class="k">class</span> <span class="nc">MeilisearchTask</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">_inherit</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;meilisearch.task&quot;</span><span class="p">]</span>
 
-<span class="nt">&lt;record</span>
-<span class="w">    </span><span class="na">id=</span><span class="s">&quot;model_res_country_action_update_index_document&quot;</span>
-<span class="w">    </span><span class="na">model=</span><span class="s">&quot;ir.actions.server&quot;</span>
-<span class="nt">&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;name&quot;</span><span class="nt">&gt;</span>Update<span class="w"> </span>Index<span class="w"> </span>Document<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;model_id&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;base.model_res_country&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;binding_model_id&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;base.model_res_country&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;binding_view_types&quot;</span><span class="nt">&gt;</span>tree,form<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;state&quot;</span><span class="nt">&gt;</span>code<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;code&quot;</span><span class="nt">&gt;</span>records.update_index_document()<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;groups_id&quot;</span><span class="w"> </span><span class="na">eval=</span><span class="s">&quot;[(4, ref(&#39;base.group_erp_manager&#39;))]&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="nt">&lt;/record&gt;</span>
+    <span class="k">def</span> <span class="nf">task_succeeded</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Succeeded documents: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">document_ids</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">task_succeeded</span><span class="p">()</span>
 
-<span class="nt">&lt;record</span>
-<span class="w">    </span><span class="na">id=</span><span class="s">&quot;model_res_country_action_delete_index_document&quot;</span>
-<span class="w">    </span><span class="na">model=</span><span class="s">&quot;ir.actions.server&quot;</span>
-<span class="nt">&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;name&quot;</span><span class="nt">&gt;</span>Delete<span class="w"> </span>Index<span class="w"> </span>Document<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;model_id&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;base.model_res_country&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;binding_model_id&quot;</span><span class="w"> </span><span class="na">ref=</span><span class="s">&quot;base.model_res_country&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;binding_view_types&quot;</span><span class="nt">&gt;</span>tree,form<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;state&quot;</span><span class="nt">&gt;</span>code<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;code&quot;</span><span class="nt">&gt;</span>records.delete_index_document()<span class="nt">&lt;/field&gt;</span>
-<span class="w">    </span><span class="nt">&lt;field</span><span class="w"> </span><span class="na">name=</span><span class="s">&quot;groups_id&quot;</span><span class="w"> </span><span class="na">eval=</span><span class="s">&quot;[(4, ref(&#39;base.group_erp_manager&#39;))]&quot;</span><span class="w"> </span><span class="nt">/&gt;</span>
-<span class="nt">&lt;/record&gt;</span></pre>
+    <span class="k">def</span> <span class="nf">task_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed documents: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">document_ids</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">task_failed</span><span class="p">()</span></pre>
             <section id="usage">
                 <h3>Usage</h3>
                 <ul>

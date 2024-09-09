@@ -31,7 +31,10 @@ class MeilisearchTask(models.Model):
         res = []
         for task in self:
             res.append(
-                (task.id, _("%s - %s (%s)") % (task.name, task.index_id.model, task.uid))
+                (
+                    task.id,
+                    _("%s - %s (%s)") % (task.name, task.index_id.model, task.uid),
+                )
             )
         return res
 
@@ -102,3 +105,12 @@ class MeilisearchTask(models.Model):
             task.task_failed()
 
         return task
+
+    @api.autovacuum
+    def _gc_meilisearch_tasks(self):
+        for task in self.search([]):
+            document = self.env[task.index_id.model].search(
+                [("task_id", "=", task.id)], limit=1
+            )
+            if not document:
+                task.unlink()
