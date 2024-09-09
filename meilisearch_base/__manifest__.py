@@ -15,6 +15,7 @@
         "security/security.xml",
         "views/res_config_settings_view.xml",
         "views/meilisearch_index_views.xml",
+        "views/meilisearch_task_views.xml",
         "views/meilisearch_document_views.xml",
         "views/res_country_views.xml",
     ],

@@ -42,48 +42,27 @@ Configuration
     def _get_index_document_domain(self):
         return [("code", "=", "CH")]
 
-* Add actions for checking, updating and deleting the documents of the model:
+* Modify the search domain:
 
-.. code-block:: xml
-  
-    <record
-        id="model_res_country_action_check_index_document"
-        model="ir.actions.server"
-    >
-        <field name="name">Check Index Document</field>
-        <field name="model_id" ref="base.model_res_country" />
-        <field name="binding_model_id" ref="base.model_res_country" />
-        <field name="binding_view_types">tree,form</field>
-        <field name="state">code</field>
-        <field name="code">records.check_index_document()</field>
-        <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
-    </record>
+.. code-block:: python
 
-    <record
-        id="model_res_country_action_update_index_document"
-        model="ir.actions.server"
-    >
-        <field name="name">Update Index Document</field>
-        <field name="model_id" ref="base.model_res_country" />
-        <field name="binding_model_id" ref="base.model_res_country" />
-        <field name="binding_view_types">tree,form</field>
-        <field name="state">code</field>
-        <field name="code">records.update_index_document()</field>
-        <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
-    </record>
+    def _get_index_document_domain(self):
+        return lambda r: r.code != "CH"
 
-    <record
-        id="model_res_country_action_delete_index_document"
-        model="ir.actions.server"
-    >
-        <field name="name">Delete Index Document</field>
-        <field name="model_id" ref="base.model_res_country" />
-        <field name="binding_model_id" ref="base.model_res_country" />
-        <field name="binding_view_types">tree,form</field>
-        <field name="state">code</field>
-        <field name="code">records.delete_index_document()</field>
-        <field name="groups_id" eval="[(4, ref('base.group_erp_manager'))]" />
-    </record>
+* Hook into meilisearch tasks:
+
+.. code-block:: python
+
+    class MeilisearchTask(models.Model):
+        _inherit = ["meilisearch.task"]
+
+        def task_succeeded(self):
+            _logger.warning("Succeeded documents: %s" % self.document_ids)
+            return super().task_succeeded()
+
+        def task_failed(self):
+            _logger.error("Failed documents: %s" % self.document_ids)
+            return super().task_failed()
 
 Usage
 =====

@@ -36,6 +36,8 @@ class MeilisearchIndex(models.Model):
     ]
 }""",
     )
+    task_ids = fields.One2many("meilisearch.task", "index_id")
+    task_count = fields.Integer(compute="_compute_task_count", store=True)
 
     document_filtered_count = fields.Integer(
         string="Documents Filtered", compute="_compute_document_count", store=True
@@ -55,6 +57,10 @@ class MeilisearchIndex(models.Model):
     document_no_index_count = fields.Integer(
         string="Documents No Index", compute="_compute_document_count", store=True
     )
+
+    def _compute_task_count(self):
+        for index in self:
+            index.task_count = len(index.task_ids)
 
     def _compute_document_count(self):
         for index in self:
@@ -108,7 +114,8 @@ class MeilisearchIndex(models.Model):
             default["name"] = _("%s (copy)", self.name)
         return super().copy(default)
 
-    def get_meilisearch_client(self):
+    def get_client(self):
+        """Return the Meilisearch client."""
         icp = self.env["ir.config_parameter"].sudo()
         url = icp.get_param("meilisearch.api_url")
         api_key = icp.get_param("meilisearch.api_key")
@@ -130,9 +137,6 @@ class MeilisearchIndex(models.Model):
 
     @api.model
     def get_matching_index(self, model):
-        client = self.get_meilisearch_client()
-        if not client:
-            return False
         index = self.search(
             [
                 "&",
@@ -144,10 +148,7 @@ class MeilisearchIndex(models.Model):
             ],
             limit=1,
         )
-        if index:
-            return client.index(index.index_name)
-        else:
-            return False
+        return index
 
     def button_view_documents(self):
         tree_view_id = self.env.ref("meilisearch_base.document_view_tree")
@@ -166,6 +167,16 @@ class MeilisearchIndex(models.Model):
                 "edit": False,
             },
             "search_view_id": [search_view_id.id, "search"],
+        }
+
+    def button_view_tasks(self):
+        return {
+            "name": "Index Tasks",
+            "type": "ir.actions.act_window",
+            "view_mode": "tree,form",
+            "views": [(False, "tree"), (False, "form")],
+            "res_model": "meilisearch.task",
+            "domain": [("index_id", "=", self.id)],
         }
 
     def button_check_index(self):
@@ -194,10 +205,9 @@ class MeilisearchIndex(models.Model):
         documents._get_documents()
         self._compute_document_count()
 
-
     def _get_version(self):
         self.ensure_one()
-        client = self.get_meilisearch_client()
+        client = self.get_client()
         if client:
             try:
                 url = (
@@ -223,7 +233,7 @@ class MeilisearchIndex(models.Model):
 
     def _get_index(self):
         self.ensure_one()
-        client = self.get_meilisearch_client()
+        client = self.get_client()
         if client:
             try:
                 client.get_index(self.index_name)
@@ -250,7 +260,7 @@ class MeilisearchIndex(models.Model):
 
     def _create_index(self):
         self.ensure_one()
-        client = self.get_meilisearch_client()
+        client = self.get_client()
         if client:
             try:
                 client.create_index(self.index_name, {"primaryKey": "id"})
@@ -278,7 +288,7 @@ class MeilisearchIndex(models.Model):
 
     def _update_index(self):
         self.ensure_one()
-        client = self.get_meilisearch_client()
+        client = self.get_client()
         if client:
             try:
                 client.index(self.index_name).update_settings(
@@ -308,7 +318,7 @@ class MeilisearchIndex(models.Model):
 
     def _delete_index(self):
         self.ensure_one()
-        client = self.get_meilisearch_client()
+        client = self.get_client()
         if client:
             try:
                 client.delete_index(self.index_name)

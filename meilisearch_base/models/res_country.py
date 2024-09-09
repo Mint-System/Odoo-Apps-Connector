@@ -16,7 +16,7 @@ class Country(models.Model):
         return document
 
     def _get_index_document_filter(self):
-        return lambda r: r.code == "CH"
+        return lambda r: r.code != "CH"
 
     @api.depends("code", "currency_id.name")
     def _compute_index_document(self):

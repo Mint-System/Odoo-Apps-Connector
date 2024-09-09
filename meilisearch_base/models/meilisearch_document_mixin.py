@@ -23,7 +23,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         ]
     )
     index_response = fields.Text()
-    index_task_uid = fields.Char("Index Task UID")
+    task_id = fields.Many2one("meilisearch.task")
 
     def button_view_document(self):
         return {
@@ -40,9 +40,6 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def check_index_document(self):
         return self._get_documents()
-
-    def check_index_task(self):
-        return self._get_task()
 
     def update_index_document(self):
         return self._compute_index_document()
@@ -71,35 +68,48 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         if index:
             records._update_documents(index)
 
-    def _get_task(self):
-        self.ensure_one()
-        index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-
-        if index and self.index_task_uid:
-            try:
-                task = index.get_task(self.index_task_uid)
-                self.index_response = task
-            except Exception as e:
-                self.index_result = "error"
-                self.index_response = e
-        else:
-            self.index_result = "no_index"
-            self.index_response = "Index or task not found"
-
     def _get_batches(self, batch_size):
         for i in range(0, len(self), batch_size):
             yield self[i : i + batch_size]
 
+    def _update_documents(self, index):
+        client = index.get_client()
+
+        for batch in self._get_batches(80):
+            if client:
+                try:
+                    res = client.index(index.index_name).update_documents(
+                        [json.loads(self.index_document) for self in batch]
+                    )
+                    batch.index_result = "queued"
+                    batch.index_response = res
+                    batch.index_date = res.enqueued_at
+                    batch.task_id = self.env[
+                        "meilisearch.task"
+                    ]._create_and_wait_for_completion(
+                        index, "update_documents", res.task_uid
+                    )
+                except Exception as e:
+                    batch.index_result = "error"
+                    batch.index_response = e
+            else:
+                batch.index_result = "no_index"
+                batch.index_response = "Index not found"
+
     def _get_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
+        client = index.get_client()
+
         # Batch size has to match the max operators in the filter
         for batch in self._get_batches(20):
-            if index:
+            if client:
                 try:
                     search_filter = (
                         f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
                     )
-                    res = index.search("", {"filter": search_filter})
+                    res = client.index(index.index_name).search(
+                        "", {"filter": search_filter}
+                    )
                     if res["hits"]:
                         found_ids = []
                         for document in res["hits"]:
@@ -122,37 +132,27 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 batch.index_result = "no_index"
                 batch.index_response = "Index not found"
 
-    def _update_documents(self, index):
-        for batch in self._get_batches(80):
-            if index:
-                try:
-                    res = index.update_documents(
-                        [json.loads(self.index_document) for self in batch]
-                    )
-                    batch.index_result = "queued"
-                    batch.index_response = res
-                    batch.index_date = res.enqueued_at
-                    batch.index_task_uid = res.task_uid
-                except Exception as e:
-                    batch.index_result = "error"
-                    batch.index_response = e
-            else:
-                batch.index_result = "no_index"
-                batch.index_response = "Index not found"
-
     def _delete_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
+        client = index.get_client()
+
         for batch in self._get_batches(80):
-            if index:
+            if client:
                 try:
                     search_filter = (
                         f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
                     )
-                    res = index.delete_documents(filter=search_filter)
+                    res = client.index(index.index_name).delete_documents(
+                        filter=search_filter
+                    )
                     batch.index_result = "queued"
                     batch.index_response = res
                     batch.index_date = res.enqueued_at
-                    batch.index_task_uid = res.task_uid
+                    batch.task_id = self.env[
+                        "meilisearch.task"
+                    ]._create_and_wait_for_completion(
+                        index, "delete_documents", res.task_uid
+                    )
                 except Exception as e:
                     batch.index_result = "error"
                     batch.index_response = e

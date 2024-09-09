@@ -81,6 +81,12 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button
+                            name="button_view_tasks"
+                            type="object"
+                            string="Index Tasks"
+                            icon="fa-file"
+                        />
+                        <button
                             name="button_view_documents"
                             type="object"
                             string="Index Documents"
