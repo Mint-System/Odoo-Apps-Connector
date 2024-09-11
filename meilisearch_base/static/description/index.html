@@ -31,14 +31,9 @@
 <span class="k">def</span> <span class="nf">_compute_index_document</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_compute_index_document</span><span class="p">()</span></pre>
             <ul>
-                <li>Modify the search domain:</li>
+                <li>Modify the document filter:</li>
             </ul>
-            <pre data-language="python"><span class="k">def</span> <span class="nf">_get_index_document_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-    <span class="k">return</span> <span class="p">[(</span><span class="s2">&quot;code&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;CH&quot;</span><span class="p">)]</span></pre>
-            <ul>
-                <li>Modify the search domain:</li>
-            </ul>
-            <pre data-language="python"><span class="k">def</span> <span class="nf">_get_index_document_domain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <pre data-language="python"><span class="k">def</span> <span class="nf">_get_index_document_filter</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">return</span> <span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">code</span> <span class="o">!=</span> <span class="s2">&quot;CH&quot;</span></pre>
             <ul>
                 <li>Hook into meilisearch tasks:</li>
@@ -59,6 +54,7 @@
                     <li>Open "Settings &gt; Integration" and set Meiliesarch API url and key</li>
                     <li>Add user to the "Meilisearch Index Manager" group</li>
                     <li>Create entries in "Settings &gt; Technical &gt; Meilisearch Indexes"</li>
+                    <li>Use Odoo url <cite>/meilisearch/task-webhook</cite> path for the Meilisearch task webhook</li>
                 </ul>
             </section>
         </section>

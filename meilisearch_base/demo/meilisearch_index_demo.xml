@@ -2,7 +2,7 @@
 
     <record id="demo_config_meilisearch_api_url" model="ir.config_parameter">
         <field name="key">meilisearch.api_url</field>
-        <field name="value">http://meili01:7700</field>
+        <field name="value">http://localhost:7700</field>
     </record>
 
     <record id="demo_config_meilisearch_api_key" model="ir.config_parameter">
@@ -13,6 +13,7 @@
     <record id="demo_index0" model="meilisearch.index">
         <field name="name">Countries</field>
         <field name="index_name">countries</field>
+        <field name="active" eval="True" />
         <field name="model_id" ref="base.model_res_country" />
     </record>
 

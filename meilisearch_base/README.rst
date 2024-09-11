@@ -35,18 +35,11 @@ Configuration
     def _compute_index_document(self):
         return super()._compute_index_document()
 
-* Modify the search domain:
+* Modify the document filter:
 
 .. code-block:: python
 
-    def _get_index_document_domain(self):
-        return [("code", "=", "CH")]
-
-* Modify the search domain:
-
-.. code-block:: python
-
-    def _get_index_document_domain(self):
+    def _get_index_document_filter(self):
         return lambda r: r.code != "CH"
 
 * Hook into meilisearch tasks:
@@ -70,6 +63,7 @@ Usage
 * Open "Settings > Integration" and set Meiliesarch API url and key
 * Add user to the "Meilisearch Index Manager" group
 * Create entries in "Settings > Technical > Meilisearch Indexes"
+* Use Odoo url `/meilisearch/task-webhook` path for the Meilisearch task webhook
 
 Maintainer
 ~~~~~~~~~~

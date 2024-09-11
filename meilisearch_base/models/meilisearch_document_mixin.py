@@ -81,20 +81,27 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     res = client.index(index.index_name).update_documents(
                         [json.loads(self.index_document) for self in batch]
                     )
-                    batch.index_result = "queued"
-                    batch.index_response = res
-                    batch.index_date = res.enqueued_at
-                    batch.task_id = self.env[
-                        "meilisearch.task"
-                    ]._create_and_wait_for_completion(
-                        index, "update_documents", res.task_uid
+                    task_id = self.env["meilisearch.task"].create(
+                        {
+                            "name": "documentAdditionOrUpdate",
+                            "index_id": index.id,
+                            "uid": res.task_uid,
+                        }
+                    )
+                    batch.write(
+                        {
+                            "index_result": "queued",
+                            "index_response": res,
+                            "index_date": res.enqueued_at,
+                            "task_id": task_id.id,
+                        }
                     )
                 except Exception as e:
-                    batch.index_result = "error"
-                    batch.index_response = e
+                    batch.write({"index_result": "error", "index_response": e})
             else:
-                batch.index_result = "no_index"
-                batch.index_response = "Index not found"
+                batch.write(
+                    {"index_result": "no_index", "index_response": "Index not found"}
+                )
 
     def _get_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
@@ -114,23 +121,35 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                         found_ids = []
                         for document in res["hits"]:
                             rec = self.browse(int(document["id"]))
-                            rec.index_result = "indexed"
-                            rec.index_response = json.dumps(document, indent=4)
+                            rec.write(
+                                {
+                                    "index_result": "indexed",
+                                    "index_response": json.dumps(document, indent=4),
+                                }
+                            )
                             found_ids.append(rec.id)
 
                         # Update records not in hits set
                         not_found = batch.filtered(lambda r: r.id not in found_ids)
-                        not_found.index_result = "not_found"
-                        not_found.index_response = "Document not found"
+                        not_found.write(
+                            {
+                                "index_result": "not_found",
+                                "index_response": "Document not found",
+                            }
+                        )
                     else:
-                        batch.index_result = "not_found"
-                        batch.index_response = res
+                        batch.write(
+                            {
+                                "index_result": "not_found",
+                                "index_response": res,
+                            }
+                        )
                 except Exception as e:
-                    batch.index_result = "error"
-                    batch.index_response = e
+                    batch.write({"index_result": "error", "index_response": e})
             else:
-                batch.index_result = "no_index"
-                batch.index_response = "Index not found"
+                batch.write(
+                    {"index_result": "no_index", "index_response": "Index not found"}
+                )
 
     def _delete_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
@@ -145,17 +164,24 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     res = client.index(index.index_name).delete_documents(
                         filter=search_filter
                     )
-                    batch.index_result = "queued"
-                    batch.index_response = res
-                    batch.index_date = res.enqueued_at
-                    batch.task_id = self.env[
-                        "meilisearch.task"
-                    ]._create_and_wait_for_completion(
-                        index, "delete_documents", res.task_uid
+                    task_id = self.env["meilisearch.task"].create(
+                        {
+                            "name": "documentDeletion",
+                            "index_id": index.id,
+                            "uid": res.task_uid,
+                        }
+                    )
+                    batch.write(
+                        {
+                            "index_result": "queued",
+                            "index_response": res,
+                            "index_date": res.enqueued_at,
+                            "task_id": task_id.id,
+                        }
                     )
                 except Exception as e:
-                    batch.index_result = "error"
-                    batch.index_response = e
+                    batch.write({"index_result": "error", "index_response": e})
             else:
-                batch.index_result = "no_index"
-                batch.index_response = "Index not found"
+                batch.write(
+                    {"index_result": "no_index", "index_response": "Index not found"}
+                )

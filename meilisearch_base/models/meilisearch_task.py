@@ -8,6 +8,7 @@ _logger = logging.getLogger(__name__)
 class MeilisearchTask(models.Model):
     _name = "meilisearch.task"
     _description = "Meilisearch Task"
+    _order = "uid desc"
 
     name = fields.Char(required=True)
     uid = fields.Integer("UID", required=True)
@@ -79,32 +80,6 @@ class MeilisearchTask(models.Model):
         self.ensure_one()
         index_task = client.get_task(self.uid)
         self.write({"status": index_task.status, "response": index_task})
-
-    @api.model
-    def _create_and_wait_for_completion(self, index, name, uid):
-        client = index.get_client()
-        index_task = client.get_task(uid)
-        task = self.create(
-            {
-                "name": name,
-                "index_id": index.id,
-                "uid": uid,
-                "status": index_task.status,
-            }
-        )
-
-        # Loop until task is processed
-        # while index_task.status in ["enqueued", "processing"]:
-        #     task.fetch_status(client)
-        #     time.sleep(0.25)
-
-        # If task is finished call the hooks
-        if index_task.status == "succeeded":
-            task.task_succeeded()
-        elif index_task.status == "failed":
-            task.task_failed()
-
-        return task
 
     @api.autovacuum
     def _gc_meilisearch_tasks(self):
