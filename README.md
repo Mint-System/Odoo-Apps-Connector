@@ -7,11 +7,11 @@ Collection of Odoo apps to connect with other systems.
 Clone module into Odoo addon directory.
 
 ```bash
-git clone git@github.com:mint-system/odoo-apps-stock-logistics-workflow.git ./addons/stock_logistics_workflow
+git clone git@github.com:mint-system/odoo-apps-connector.git ./addons/connector
 ```
 
 ## Available modules
 
 | Module | Summary |
 | --- | --- |
-| [meilisearch_base](meilisearch_base) |         Setup meilisearch connection and provide document mixin. |
+| [*](*) |  |
