@@ -1,0 +1,49 @@
+<odoo>
+    
+    <record id="product_template_form_view" model="ir.ui.view">
+        <field name="name">product.template.kardex.form</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+                <xpath expr="//field[@name='purchase_ok']/.." position="after">
+                    <span class="d-inline-block">
+                        <field name="kardex"/>
+                        <label for="kardex"/>
+                    </span>
+                </xpath>
+                <xpath expr="//page[@name='inventory']" position="after">
+                   <page name="kardex" string="Kardex" invisible="not kardex">
+                   <form string="Kardex Daten">
+                   <header>
+                        <button name="send_to_kardex" type="object" string="An Kardex senden" invisible="kardex_done"/>
+                        <button name="sync_db" type="object" string="Sync DB"/>
+
+                    </header>
+                   <sheet>
+                        <group>
+                            <field name="kardex_product_id" readonly="1"/>
+                            <field name="kardex_product_name" readonly="1"/>
+                            <field name="kardex_info_1"/>
+                            <field name="kardex_info_2"/>
+                            <field name="kardex_info_3"/>
+                            <field name="kardex_info_4"/>
+                            <field name="kardex_ch_verw" /> 
+                            <field name="kardex_sn_verw" />
+                            <field name="kardex_search" /> 
+                            <field name="kardex_product_group" /> 
+                            <field name="kardex_unit" /> 
+                            <field name="kardex_row_create_time" /> 
+                            <field name="kardex_row_update_time" />
+                            <field name="kardex_is_fifo" />
+                            <field name="kardex_done" />
+                        </group>
+                    </sheet>
+                   </form>
+                   </page>
+                </xpath>
+        
+        </field>
+
+    </record>
+    
+</odoo>

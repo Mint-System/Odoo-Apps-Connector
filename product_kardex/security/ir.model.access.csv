@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_kardex_ppgartikel_user,kardex.ppgartikel,model_kardex_ppgartikel,base.group_user,1,0,0,0
+access_kardex_ppgartikel_manager,kardex.ppgartikel,model_kardex_ppgartikel,base.group_erp_manager,1,1,1,1
