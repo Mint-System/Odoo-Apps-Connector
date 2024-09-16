@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 class MeilsearchDocumentMixin(models.AbstractModel):
     _name = "meilisearch.document.mixin"
     _description = "Meilisearch Document Mixin"
+    _batch_size = 80
 
     name = fields.Char()
     index_date = fields.Datetime()
@@ -37,6 +38,9 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 "edit": True,
             },
         }
+
+    def documents_indexed(self, response):
+        self.write({"index_result": "indexed", "index_response": response})
 
     def check_index_document(self):
         return self._get_documents()
@@ -68,14 +72,16 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         if index:
             records._update_documents(index)
 
-    def _get_batches(self, batch_size):
+    def _get_batches(self, batch_size=0):
+        if not batch_size:
+            batch_size = self._batch_size
         for i in range(0, len(self), batch_size):
             yield self[i : i + batch_size]
 
     def _update_documents(self, index):
         client = index.get_client()
 
-        for batch in self._get_batches(80):
+        for batch in self._get_batches():
             if client:
                 try:
                     res = client.index(index.index_name).update_documents(
@@ -88,14 +94,16 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                             "uid": res.task_uid,
                         }
                     )
-                    batch.write(
+                    # _logger.warning(["updated", task_id.uid])
+                    batch.update(
                         {
                             "index_result": "queued",
-                            "index_response": res,
+                            "index_response": "Task enqueued",
                             "index_date": res.enqueued_at,
                             "task_id": task_id.id,
                         }
                     )
+                    self.env.cr.commit()
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
@@ -121,12 +129,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                         found_ids = []
                         for document in res["hits"]:
                             rec = self.browse(int(document["id"]))
-                            rec.write(
-                                {
-                                    "index_result": "indexed",
-                                    "index_response": json.dumps(document, indent=4),
-                                }
-                            )
+                            rec.documents_indexed(json.dumps(document, indent=4))
                             found_ids.append(rec.id)
 
                         # Update records not in hits set
@@ -138,7 +141,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                             }
                         )
                     else:
-                        batch.write(
+                        batch.update(
                             {
                                 "index_result": "not_found",
                                 "index_response": res,
@@ -155,7 +158,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         client = index.get_client()
 
-        for batch in self._get_batches(80):
+        for batch in self._get_batches():
             if client:
                 try:
                     search_filter = (
@@ -171,14 +174,16 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                             "uid": res.task_uid,
                         }
                     )
-                    batch.write(
+                    # _logger.warning(["deleted", task_id.uid])
+                    batch.update(
                         {
                             "index_result": "queued",
-                            "index_response": res,
+                            "index_response": "Task enqueued",
                             "index_date": res.enqueued_at,
                             "task_id": task_id.id,
                         }
                     )
+                    self.env.cr.commit()
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:

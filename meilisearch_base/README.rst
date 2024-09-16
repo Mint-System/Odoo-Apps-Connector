@@ -50,11 +50,11 @@ Configuration
         _inherit = ["meilisearch.task"]
 
         def task_succeeded(self):
-            _logger.warning("Succeeded documents: %s" % self.document_ids)
+            _logger.warning("Succeeded documents: %s" % self._get_document_ids())
             return super().task_succeeded()
 
         def task_failed(self):
-            _logger.error("Failed documents: %s" % self.document_ids)
+            _logger.error("Failed documents: %s" % self._get_document_ids())
             return super().task_failed()
 
 Usage

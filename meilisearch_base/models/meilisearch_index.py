@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 class MeilisearchIndex(models.Model):
     _name = "meilisearch.index"
     _description = "Meilisearch Index"
-    _order = "sequence, id"
+    _order = "sequence, active, id"
 
     sequence = fields.Integer(default=10)
     active = fields.Boolean(default=False)
@@ -143,6 +143,8 @@ class MeilisearchIndex(models.Model):
                 ("active", "=", True),
                 ("model", "=", model),
                 "|",
+                "|",
+                ("database_filter", "=", ""),
                 ("database_filter", "=", False),
                 ("database_filter", "=", self._cr.dbname),
             ],

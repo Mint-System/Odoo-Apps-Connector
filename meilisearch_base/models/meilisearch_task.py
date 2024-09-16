@@ -24,9 +24,6 @@ class MeilisearchTask(models.Model):
     )
     response = fields.Text()
     index_id = fields.Many2one("meilisearch.index", required=True)
-    document_ids = fields.One2many(
-        "meilisearch.document.mixin", compute="_compute_document_ids"
-    )
 
     def name_get(self):
         res = []
@@ -39,11 +36,10 @@ class MeilisearchTask(models.Model):
             )
         return res
 
-    def _compute_document_ids(self):
-        for task in self:
-            task.document_ids = self.env[task.index_id.model].search(
-                [("task_id", "=", task.id)]
-            )
+    def _get_document_ids(self):
+        self.ensure_one()
+        document_ids = self.env[self.index_id.model].search([("task_id", "=", self.id)])
+        return document_ids
 
     def button_check_task(self):
         self.ensure_one()
@@ -71,10 +67,27 @@ class MeilisearchTask(models.Model):
         }
 
     def task_succeeded(self):
-        self.write({"status": "succeeded"})
+        self.ensure_one()
+        self.write(
+            {
+                "status": "succeeded",
+                "response": "Task succeeded",
+            }
+        )
+        if self.name == "documentAdditionOrUpdate":
+            document_ids = self._get_document_ids()
+            document_ids.documents_indexed("Task succeeded")
 
     def task_failed(self):
-        self.write({"status": "failed"})
+        self.ensure_one()
+        self.write(
+            {
+                "status": "failed",
+                "response": "Task failed",
+            }
+        )
+        documents = self._get_document_ids()
+        documents.write({"index_result": "error", "index_response": "Task failed"})
 
     def fetch_status(self, client):
         self.ensure_one()

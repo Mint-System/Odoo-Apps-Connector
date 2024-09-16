@@ -32,8 +32,24 @@ class MeilissearchController(http.Controller):
             for line in ndjson_lines:
                 data = json.loads(line)
 
-                # Update task status
-                task = request.env["meilisearch.task"].sudo().search([])
+                # Get task by uid
+                task = (
+                    request.env["meilisearch.task"]
+                    .sudo()
+                    .search([("uid", "=", data["uid"])])
+                )
+                # _logger.warning(
+                #     [
+                #         "webhook",
+                #         data["uid"],
+                #         task,
+                #         request.env["meilisearch.task"]
+                #         .sudo()
+                #         .search([], limit=10)
+                #         .mapped("uid"),
+                #     ]
+                # )
+
                 if task:
                     if data["status"] == "succeeded":
                         task.task_succeeded()
