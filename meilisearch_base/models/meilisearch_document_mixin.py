@@ -65,12 +65,25 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     @api.depends("name")
     def _compute_index_document(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
-        records = self.filtered(self._get_index_document_filter())
-        for record in records:
+
+        # Filter all records that should be indexed
+        index_records = self.filtered(self._get_index_document_filter())
+
+        # Update Meilisearch document
+        for record in index_records:
             document = record._prepare_index_document()
             record.index_document = json.dumps(document, indent=4)
+
+        # Create update task
         if index:
-            records._update_documents(index)
+            index_records._update_documents(index)
+
+        # Get documents that are indexed and no longer match with filter
+        delete_records = (
+            self.filtered(lambda d: d.index_result == "indexed") - index_records
+        )
+        if delete_records:
+            delete_records._delete_documents()
 
     def _get_batches(self, batch_size=0):
         if not batch_size:
