@@ -25,29 +25,32 @@ ODOO_KARDEX_PRODUCT_FIXER = {
 }
 
 
-def _convert_date(date_obj):    
-        
-    formatted_date_str = date_obj.strftime('%b %e %Y %l:%M')
 
-    # workaround for not working %p conversion of datetime library used in odoo (?)
-    if date_obj.hour < 12:
-        am_pm = 'AM'
-    else:
-        am_pm = 'PM'
-
-    formatted_date_str += am_pm
-    return formatted_date_str
-
-def _fix_dictionary(fixer, dict):
-    return { fixer.get(k, k): v for k, v in dict.items() if k in fixer.keys() }
-
-def _replace_false_with_empty_string(dict):
-    return {k: '' if v is False else v for k, v in dict.items()}
 
 
 class BaseKardexMixin(models.AbstractModel):
     _name = 'base.kardex.mixin'
     _description = 'Base Kardex Mixin'
+
+
+    def _convert_date(self, date_obj):    
+        
+        formatted_date_str = date_obj.strftime('%b %e %Y %l:%M')
+
+        # workaround for not working %p conversion of datetime library used in odoo (?)
+        if date_obj.hour < 12:
+            am_pm = 'AM'
+        else:
+            am_pm = 'PM'
+
+        formatted_date_str += am_pm
+        return formatted_date_str
+
+    def _fix_dictionary(self, fixer, dict):
+        return { fixer.get(k, k): v for k, v in dict.items() if k in fixer.keys() }
+
+    def _replace_false_with_empty_string(self, dict):
+        return {k: '' if v is False else v for k, v in dict.items()}
 
     def _execute_query_on_mssql(self, query_type, query, *params):
         # Find the instance of base.external.mssql with priority=True
@@ -72,7 +75,7 @@ class BaseKardexMixin(models.AbstractModel):
     def _update_external_object(self, vals):
         # translate vals dictionary to external database scheme
         fixer = ODOO_KARDEX_PRODUCT_FIXER
-        kardex_dict = _replace_false_with_empty_string(_fix_dictionary(fixer, vals))
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
         # building list 
         kardex_list = []
         for key,value in kardex_dict.items():
@@ -94,10 +97,11 @@ class BaseKardexMixin(models.AbstractModel):
         raise ValidationError("The data contains no Kardex Article Id.")
         return False
 
+
     def _create_external_object(self, vals):
         # translate vals dictionary to external database scheme
         fixer = ODOO_KARDEX_PRODUCT_FIXER
-        kardex_dict = _replace_false_with_empty_string(_fix_dictionary(fixer, vals))
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
         # building sql query
         placeholders = ', '.join(['?'] * len(kardex_dict))
         columns = ', '.join(kardex_dict.keys())
@@ -107,6 +111,7 @@ class BaseKardexMixin(models.AbstractModel):
         self._execute_query_on_mssql('insert', sql)
 
     def _sync_external_db(self, query):
+        # import pdb; pdb.set_trace()
 
         # Execute the query using the external MSSQL instance
         records = self._execute_query_on_mssql('select', query)

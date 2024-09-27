@@ -22,6 +22,7 @@
                    <sheet>
                         <group>
                             <field name="kardex_product_id" readonly="1"/>
+                            <field name="kardex_id" readonly="1"/>
                             <field name="kardex_product_name" readonly="1"/>
                             <field name="kardex_info_1"/>
                             <field name="kardex_info_2"/>
