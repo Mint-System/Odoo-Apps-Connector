@@ -1,4 +1,5 @@
 import logging
+import re
 
 from odoo import _, api, fields, models
 from odoo.tools import pytz
@@ -12,7 +13,14 @@ from datetime import datetime
 
 # settings TODO: make it configurable
 SEND_KARDEX_PRODUCT_ON_CREATE=False
-NUMBER_OF_KARDEX_PRODUCTS_TO_GET = 20 
+NUMBER_OF_KARDEX_PRODUCTS_TO_GET = 5
+KARDEX_DATE_HANDLING = 'send' # or 'create'
+
+class ProductCategory(models.Model):
+    _name = 'product.category'
+    _inherit = ['product.category']
+
+    kardex = fields.Boolean(string='Kardex', default=False)
 
 
 class ProductTemplate(models.Model):
@@ -23,36 +31,38 @@ class ProductTemplate(models.Model):
     kardex = fields.Boolean(string='Kardex', default=False)
     kardex_id = fields.Integer(string='Kardex Id')
     kardex_product_id = fields.Integer(string='Kardex Artikel-Id')
-    kardex_product_name = fields.Char(string='Kardex Artikelbezeichnung')
-    kardex_status = fields.Integer(string="Kardex STATUS")
-    kardex_info_1 = fields.Char(string="Kardex Info1")
+    # kardex_product_name = fields.Char(string='Kardex Artikelbezeichnung')
+    kardex_status = fields.Selection(selection=[('0', 'Ready'), ('1', 'Pending'), ('2', 'Success'), ('3', 'Error')], default='0', string="Kardex STATUS")
+    # kardex_info_1 = fields.Char(string="Kardex Info1")
     kardex_info_2 = fields.Char(string="Kardex Info2")
     kardex_info_3 = fields.Char(string="Kardex Info3")
     kardex_info_4 = fields.Char(string="Kardex Info4")
-    kardex_ch_verw = fields.Char(string="Kardex ChVerw")
-    kardex_sn_verw = fields.Char(string="Kardex SnVerw")
-    kardex_search = fields.Char(string="Kardex Suchbegriff")
-    kardex_product_group = fields.Char(string="Kardex Artikelgruppe")
-    kardex_unit = fields.Char(string="Kardex Einheit")
+    kardex_tracking = fields.Selection(selection=[('none', 'None'), ('serial', 'Serial'), ('lot', 'Lot')], default='none', string="Kardex Tracking")
+    # kardex_ch_verw = fields.Boolean(string="Kardex ChVerw", compute="_compute_kardex_ch_verw", store=True)
+    # kardex_sn_verw = fields.Boolean(string="Kardex SnVerw", compute="_compute_kardex_sn_verw", store=True)
+    # kardex_search = fields.Char(string="Kardex Suchbegriff")
+    # kardex_product_group = fields.Char(string="Kardex Artikelgruppe")
+    # kardex_unit = fields.Char(string="Kardex Einheit")
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
-    kardex_is_fifo = fields.Char(string="Kardex isFIFO")
+    kardex_is_fifo = fields.Boolean(string="Kardex isFIFO", default=False)
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
 
-    def _create_notification(self, message):
-        notification_dict = {
-            "type": "ir.actions.client",
-            "tag": "display_notification",
-            "params": {
-                "title": "Kardex Message",
-                "message": message,
-                "sticky": False,
-                'next': {
-                    'type': 'ir.actions.act_window_close',
-                }
-            },
-        }
-        return notification_dict
+    # @api.depends('tracking')
+    # def _compute_kardex_ch_verw(self):
+    #     for product in self:
+    #         if product.tracking == 'lot':
+    #             product.kardex_ch_verw = True
+    #         else:
+    #             product.kardex_ch_verw = False
+
+    # @api.depends('tracking')
+    # def _compute_kardex_sn_verw(self):
+    #     for product in self:
+    #         if product.tracking == 'serial':
+    #             product.kardex_sn_verw = True
+    #         else:
+    #             product.kardex_sn_verw = False
 
 
     def send_to_kardex(self):
@@ -71,35 +81,146 @@ class ProductTemplate(models.Model):
                 raise ValidationError('Something went wrong.')
 
             else:
-                self._create_external_object(product_vals)
-                done = {'kardex_done': True }
+                new_article_id = self._get_kardex_article_id()
+                product_vals['kardex_product_id'] = new_article_id
+                #create_time, update_time = self._get_dates(product, KARDEX_DATE_HANDLING)
+                #product_vals['kardex_row_create_time'] = ''
+                #product_vals['kardex_row_update_time'] = ''
+                product_vals['kardex_ch_verw'], product_vals['kardex_sn_verw'] = self._get_sn_ch_verw(product)
+                product_vals['kardex_product_group'] = self._get_product_group(product)
+                product_vals['description'] = re.sub(r'<.*?>', '', product_vals['description']) if product_vals['description'] else ''
+                product_vals['kardex_unit'] = product.uom_id.name
+                product_vals['kardex_status'] = '1'
+
+                table = 'PPG_Artikel'
+                new_id, create_time, update_time = self._create_external_object(product_vals, table)
+                
+                done = {
+                    'kardex_done': True,
+                    'kardex_id': new_id,
+                    'kardex_product_id': new_article_id,
+                    'kardex_row_create_time': create_time,
+                    'kardex_row_update_time': update_time
+                    }
                 product.write(done)
-                message = 'Kardex Product was created'
+                message = 'Kardex Product was sent to Kardex.'
                 return self._create_notification(message)
 
+    def update_status_from_kardex(self):
+        for product in self:
+            kardex_id = product.kardex_id
+            old_status = product.kardex_status
+            sql = f"SELECT STATUS, Row_Update_Time FROM PPG_Artikel WHERE ID = {kardex_id}"
+            result = self._execute_query_on_mssql('select_one', sql)
+            _logger.info("result: %s" % (result,))
+            new_status = result['STATUS']
+            update_time = result['Row_Update_Time']
 
+            updated = False
+            
+            if new_status != old_status and update_time:
+                updated = True
+                product.write({'kardex_status': str(new_status), 'kardex_row_update_time': update_time})
+            
+            if updated:
+                message = f'Kardex Status was updated from {old_status} to {new_status}.'
+            else:
+                message = 'Kardex Status was not updated.'
+            
+                
+            return self._create_notification(message) 
+
+            # raise ValidationError('Something went wrong.')
+
+
+    @api.model
     def sync_db(self):
         top_val = NUMBER_OF_KARDEX_PRODUCTS_TO_GET
         sql_query = f"SELECT TOP {top_val} * FROM PPG_Artikel"
         self._sync_external_db(sql_query)
 
 
+    def _get_product_group(self, product):
+        group = product.categ_id.name # this is HTML object
+        return group
+
+    
+    def _get_sn_ch_verw(self, product):
+        tracking = product.product_variant_ids[0].tracking
+        if tracking == 'lot':
+            ch_verw = 1
+            sn_verw = 0
+        elif tracking == 'serial':
+            ch_verw = 0
+            sn_verw = 1
+        else:
+            ch_verw = 0
+            sn_verw = 0
+        return ch_verw, sn_verw
+
+    def _get_tracking(self, id, chverw, snverw):
+        if chverw == '0' and snverw == '0':
+            print("#### TRACKING FKT #####", chverw, snverw)
+            result = "none"
+        elif chverw == "1" and snverw == "0":
+            result = "lot"
+        elif chverw == "0" and snverw == "1":
+            result = "serial"
+        elif chverw == "1" and snverw == "1":
+            raise ValidationError(f'Kardex ID {id}: Both CH and SN have value 1. Tracking is set to none. Please correct.') 
+            result = "none"
+        return result
+
+    def _get_categ_id(self, cat):
+        parent_category = self.env['product.category'].search([('name', '=', 'Kardex')])
+        if not parent_category:
+            parent_category = self.env['product.category'].create({
+                    'name': 'Kardex',
+        })
+        category = self.env['product.category'].search([('name', '=', cat)])
+        if not category:
+            category = self.env['product.category'].create({
+                    'name': cat, 
+                    'kardex': True,
+                    'parent_id': parent_category.id
+                })
+        return category.id
+
+    def _get_unit_id(self, unit_name):
+        unit = self.env['uom.uom'].search([('name', '=', unit_name)])
+        if not unit:
+            # create category
+            cat = self.env['uom.category'].search([('name', '=', 'Kardex')])
+            if not cat:
+                cat = self.env['uom.category'].create({
+                        'name': 'Kardex',
+                })
+            unit = self.env['uom.uom'].create({
+                    'name': unit_name, 
+                    'category_id': cat.id,
+                })
+        return unit.id
+
+
     @api.model
     def _create_record_val(self, record):
         val_dict = {}
         val_dict["name"] = record.Artikelbezeichnung  
-       # val_dict['kardex_id'] = record.Id
         val_dict["kardex_product_id"] = record.Artikelid
-        val_dict["kardex_product_name"] = record.Artikelbezeichnung
-        val_dict["kardex_info_1"] = record.Info1
-        val_dict["kardex_info_2"] = record.Info2
-        val_dict["kardex_info_3"] = record.Info3
-        val_dict["kardex_info_4"] = record.Info4
-        val_dict["kardex_ch_verw"]= record.ChVerw
-        val_dict["kardex_sn_verw"] = record.SnVerw
-        val_dict["kardex_search"] = record.Suchbegriff
-        val_dict["kardex_product_group"] = record.Artikelgruppe
-        val_dict["kardex_unit"] = record.Einheit
+        val_dict["kardex_status"] = str(record.STATUS)
+        description = record.Info1.strip() if record.Info1 else ""
+        val_dict["description"] = description
+        info2 = record.Info2.strip() if record.Info2 else ""
+        val_dict["kardex_info_2"] = info2
+        info3 = record.Info3.strip() if record.Info3 else ""
+        val_dict["kardex_info_3"] = info3
+        info4 = record.Info4.strip() if record.Info4 else ""
+        val_dict["kardex_info_4"] = info4
+        val_dict["kardex_tracking"] = self._get_tracking(record.ID, record.ChVerw, record.SnVerw) 
+        print("#### TACKING #####", val_dict["kardex_tracking"])
+        val_dict["default_code"] = record.Suchbegriff
+        val_dict["categ_id"] = self._get_categ_id(record.Artikelgruppe.strip())
+        val_dict["uom_id"] = val_dict["uom_po_id"] = self._get_unit_id(record.Einheit.strip())
         val_dict["kardex_row_create_time"] = record.Row_Create_Time
         val_dict["kardex_row_update_time"] = record.Row_Update_Time
         val_dict["kardex_is_fifo"] = record.isFIFO
@@ -107,7 +228,6 @@ class ProductTemplate(models.Model):
 
     
     def _get_kardex_product_name(self, record):
-        # kardex_product_name = vals['name']
         kardex_product_name = record['name']
         return kardex_product_name
 
@@ -116,9 +236,10 @@ class ProductTemplate(models.Model):
         # max_kardex_product_id = self.env['product.template'].search([('kardex_product_id', '>', '0')], order='kardex_product_id desc', limit=1).kardex_product_id
         
         sql_query = 'SELECT Max(Artikelid) AS maximum_article_id FROM PPG_Artikel'
-        max_kardex_product_id = self._execute_query_on_mssql('select_one', sql_query)
+        res = self._execute_query_on_mssql('select_one', sql_query)
+        max_kardex_product_id = res["maximum_article_id"]
         kardex_product_id = max_kardex_product_id + 1 if max_kardex_product_id else 1
-        return kardex_product_id
+        return int(kardex_product_id)
 
     def _get_kardex_id(self):
         sql_query = "SELECT SCOPE_IDENTITY()"
@@ -127,70 +248,46 @@ class ProductTemplate(models.Model):
 
 
     def _get_kardex_status(self):
-        kardex_status = 2
+        kardex_status = '1'
         return kardex_status
         # todo: what means status exactly?
 
     def _update_record(self, vals, record):
-        
-        # vals['kardex_status'] = self._get_kardex_status()
-        # vals['kardex_product_name'] = self._get_kardex_product_name(vals)
-        
-        # if not vals['kardex_done']: 
-        #     vals['kardex_product_id'] = self._get_kardex_article_id()
-
-        # # fixing kardex date strings from record.create_date
-        # # 1. get create date in UTC
-        # create_date_utc = record.create_date
-        # # 2. get tz
-        # user_tz = pytz.timezone(self.env.context.get('tz') or self.env.user.tz)
-        # # 3. create local date
-        # create_date_local = pytz.utc.localize(create_date_utc).astimezone(user_tz)
-        # # 4. convert local date to desired kardex date string
-        # vals['kardex_row_create_time'] = vals['kardex_row_update_time'] = _convert_date(create_date_local)
-        # # 5. update record
-
-        # return vals
-
         vals["kardex_status"] = self._get_kardex_status()
-        vals["kardex_product_name"] = self._get_kardex_product_name(record)
+        # vals["kardex_product_name"] = self._get_kardex_product_name(record)
         
-        if not record['kardex_done']: 
-            vals['kardex_product_id'] = self._get_kardex_article_id()
-        
-        # fixing kardex date strings from record.create_date
-        # 1. get create date in UTC
-        create_date_utc = record.create_date
-        # 2. get tz
-        user_tz = pytz.timezone(self.env.context.get('tz') or self.env.user.tz)
-        # 3. create local date
-        create_date_local = pytz.utc.localize(create_date_utc).astimezone(user_tz)
-        # 4. convert local date to desired kardex date string
-        vals['kardex_row_create_time'] = vals['kardex_row_update_time'] = self._convert_date(create_date_local)
-        # 5. update record
+        # this should be done if product is sent to kardex
+        # if not record['kardex_done'] and not vals.get('kardex_product_id', None): 
+        #    vals['kardex_product_id'] = self._get_kardex_article_id()
 
         return vals
 
 
+    def _update_variants_tracking(self, tracking_value):
+        for product in self:
+            for variant in product.product_variant_ids:
+                variant.write({'tracking': tracking_value})
+
 
     @api.model
     def create(self, vals):
-        # we first need a record
         record = super(ProductTemplate, self).create(vals)
-        # import pdb; pdb.set_trace()
+        # handle tracking
+        if 'kardex_tracking' in vals:
+            record._update_variants_tracking(vals['kardex_tracking'])
         # fixing missing kardex values
         if vals['kardex']:
             vals = self._update_record(vals, record)
+            #vals['kardex_row_create_time'], vals['kardex_row_update_time'] = self._get_dates(record, KARDEX_DATE_HANDLING)
 
             if not (record.kardex_done or vals['kardex_done']) and SEND_KARDEX_PRODUCT_ON_CREATE:
-                _external_created = self._create_external_object(vals)
+                table = 'PPG_Artikel'
+                new_id = self._create_external_object(vals, table) # in case of creating a new record the new id is returned
                 vals['kardex_done'] = True
+                vals['kardex_id'] = new_id
            
+            _logger.info('VALS %s' % (vals,))
             record.write(vals)
-
-            # get kardex id from newly created record
-            # id_vals = {'kardex_id': self._get_kardex_id()}
-            # record.write(id_vals)
 
         return record
         # TODO:
@@ -199,16 +296,15 @@ class ProductTemplate(models.Model):
 
     @api.model
     def write(self, vals):
-        _logger.info('write called with self= %s' % (self,))
         """
         if a kardex product has been changed the kardex_done flag is set to False
         """
-        if vals:
-            for record in self:
-                if record.kardex and record.kardex_done:
-                    #not_done = {'kardex_done': False }
-                    #record.write(not_done)
-                    vals['kardex_done'] = False
+        # if vals:
+        #     for record in self:
+        #         if record.kardex and record.kardex_done:
+        #             #not_done = {'kardex_done': False }
+        #             #record.write(not_done)
+        #             vals['kardex_done'] = False
 
         return super(ProductTemplate, self).write(vals)
         

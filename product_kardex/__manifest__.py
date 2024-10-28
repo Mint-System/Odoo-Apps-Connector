@@ -13,7 +13,7 @@
         #"security/ir.model.access.csv",
         #"views/assets.xml",
         #"views/sale_order.xml"
-        "views/product_kardex_views.xml"
+        "views/product_kardex_views.xml",
     ],
     "installable": True,
     "application": False,
@@ -23,10 +23,8 @@
     "demo": ["demo/document_demo.xml"],
     "assets": {
         "web.assets_backend": [
-            "stock_kardex_connection/static/src/js/action_refresh.js",
-        ],
-        "web.assets_qweb": [
-            "stock_kardex_connection/static/src/xml/listview_refresh.xml",
+            "product_kardex/static/src/js/*.js",
+            "product_kardex/static/src/xml/*.xml",
         ],
     },
 }
