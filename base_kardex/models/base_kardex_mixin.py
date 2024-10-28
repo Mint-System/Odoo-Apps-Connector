@@ -1,6 +1,9 @@
 import logging
+from datetime import datetime
+from types import SimpleNamespace
 
 from odoo import _, api, fields, models
+from odoo.tools import pytz
 from odoo.exceptions import ValidationError
 
 
@@ -8,9 +11,9 @@ _logger = logging.getLogger(__name__)
 
 ODOO_KARDEX_PRODUCT_FIXER = {
     'kardex_product_id': 'Artikelid',
-    'kardex_product_name': 'Artikelbezeichnung',
+    'name': 'Artikelbezeichnung',
     'kardex_status': 'STATUS',
-    'kardex_info_1': 'Info1',
+    'description': 'Info1',
     'kardex_info_2': 'Info2',
     'kardex_info_3': 'Info3',
     'kardex_info_4': 'Info4',
@@ -19,9 +22,16 @@ ODOO_KARDEX_PRODUCT_FIXER = {
     'kardex_search': 'Suchbegriff',
     'kardex_product_group': 'Artikelgruppe',
     'kardex_unit': 'Einheit',
+    #'kardex_row_create_time': 'Row_Create_Time',
+    #'kardex_row_update_time': 'Row_Update_Time',
+    'kardex_is_fifo': 'isFIFO'
+}
+
+
+ODOO_KARDEX_PICKING_FIXER = {
+    'kardex_product_id': 'ArtikelID',
     'kardex_row_create_time': 'Row_Create_Time',
     'kardex_row_update_time': 'Row_Update_Time',
-    'kardex_is_fifo': 'isFIFO'
 }
 
 
@@ -31,6 +41,21 @@ ODOO_KARDEX_PRODUCT_FIXER = {
 class BaseKardexMixin(models.AbstractModel):
     _name = 'base.kardex.mixin'
     _description = 'Base Kardex Mixin'
+
+    def _create_notification(self, message):
+        notification_dict = {
+            "type": "ir.actions.client",
+            "tag": "display_notification",
+            "params": {
+                "title": "Kardex Message",
+                "message": message,
+                "sticky": False,
+                'next': {
+                    'type': 'ir.actions.act_window_close',
+                }
+            },
+        }
+        return notification_dict
 
 
     def _convert_date(self, date_obj):    
@@ -57,8 +82,8 @@ class BaseKardexMixin(models.AbstractModel):
         mssql_instance = self.env['base.external.mssql'].search([('priority', '=', True)], limit=1)
         if mssql_instance:
             # Call the execute method on the found instance
-            _logger.info("query: %s" % (query,))
             result = mssql_instance.execute(query_type, query, *params)
+            # _logger.info("result: %s" % (result,))
             return result
         else:
             raise ValidationError("No active MSSQL instance found with priority=True")
@@ -67,7 +92,7 @@ class BaseKardexMixin(models.AbstractModel):
         #if product.kardex_done:
         #    return True
         _logger.info("record._name: %s" % (record._name,))
-        sql_query = f"SELECT Artikelid, Artikelbezeichnung FROM PPG_Artikel WHERE Artikelid={record.kardex_product_id}"  
+        sql_query = f"SELECT ID, Artikelbezeichnung FROM PPG_Artikel WHERE ID={record.kardex_id}"  
         rows = self._execute_query_on_mssql('select', sql_query)
         if len(rows) > 0:
             return True
@@ -90,37 +115,63 @@ class BaseKardexMixin(models.AbstractModel):
         id = vals.get('kardex_product_id', None)
         if id:
             sql = f"UPDATE {table} SET {data} WHERE Artikelid = {id}"
-            print('sql:', sql)
             self._execute_query_on_mssql('update', sql)
             return True
         
         raise ValidationError("The data contains no Kardex Article Id.")
         return False
 
+    def _get_dates(self, record, date_handling):
+        if date_handling == 'create':
+            create_date_utc = record.create_date
+        elif date_handling == 'send':
+            create_date_utc = datetime.now()
 
-    def _create_external_object(self, vals):
+        user_tz = pytz.timezone(self.env.context.get('tz') or self.env.user.tz)
+        create_date_local = pytz.utc.localize(create_date_utc).astimezone(user_tz)
+        create_time = update_time = self._convert_date(create_date_local)
+
+        return create_time, update_time
+
+
+    def _create_external_object(self, vals, table):
         # translate vals dictionary to external database scheme
-        fixer = ODOO_KARDEX_PRODUCT_FIXER
+        if table == "PPG_Artikel":
+            fixer = ODOO_KARDEX_PRODUCT_FIXER
+        elif table == "PPG_Auftraege":
+            fixer = ODOO_KARDEX_PICKING_FIXER
         kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
         # building sql query
         placeholders = ', '.join(['?'] * len(kardex_dict))
         columns = ', '.join(kardex_dict.keys())
-        table = 'PPG_Artikel'
         sql = f"INSERT INTO {table} ({columns}) VALUES {tuple(kardex_dict.values())}"
         _logger.info('sql: %s' % (sql,))
-        self._execute_query_on_mssql('insert', sql)
+        new_id = self._execute_query_on_mssql('insert', sql)
+        # in case of inserting a record result is id of created object
+        # getting dates from external database
+        columns = 'Row_Create_Time, Row_Update_Time'
+        sql = f"SELECT {columns} FROM {table} WHERE ID = {new_id}"
+        _logger.info('sql: %s' % (sql,))
+        record = self._execute_query_on_mssql('select', sql)
+        _logger.info('record: %s' % (record,))
+        if len(record) == 1:
+            create_time = record[0]["Row_Create_Time"]
+            update_time = record[0]["Row_Update_Time"]
+        return new_id, create_time, update_time
 
     def _sync_external_db(self, query):
         # import pdb; pdb.set_trace()
 
         # Execute the query using the external MSSQL instance
         records = self._execute_query_on_mssql('select', query)
+        # _logger.info('RECORDS: %s' % (records,))
         
         if records:
             # records is a list of dictionaries/tuples with keys similar to kardex model
             for record in records:
-                _logger.info('record: %s' % (record,))
-                existing_product = self.search([('kardex_product_id', '=', record.Artikelid)], limit=1)
+                _logger.info('RECORD: %s' % (record,))
+                record = SimpleNamespace(**record)
+                existing_product = self.search([('kardex_id', '=', record.ID)], limit=1)
                 
                 val_dict = self._create_record_val(record)
                 if existing_product:
@@ -130,6 +181,8 @@ class BaseKardexMixin(models.AbstractModel):
                     # because product comes from kardex kardex and kardex_done is set to true
                     val_dict['kardex_done'] = True
                     val_dict['kardex'] = True
+                    val_dict['kardex_id'] = record.ID
+                    val_dict['kardex_product_id'] = record.Artikelid
                     self.create(val_dict)
         else:
             raise ValidationError("No Records found in external Database")
