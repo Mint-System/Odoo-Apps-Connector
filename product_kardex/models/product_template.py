@@ -90,6 +90,7 @@ class ProductTemplate(models.Model):
                 product_vals['kardex_product_group'] = self._get_product_group(product)
                 product_vals['description'] = re.sub(r'<.*?>', '', product_vals['description']) if product_vals['description'] else ''
                 product_vals['kardex_unit'] = product.uom_id.name
+                product_vals['kardex_search'] = product.default_code
                 product_vals['kardex_status'] = '1'
 
                 table = 'PPG_Artikel'
