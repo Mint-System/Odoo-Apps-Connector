@@ -6,6 +6,26 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//page[@name='extra']" position="after">
+                <page name="kardex" string="Kardex" invisible="not kardex">
+                    <form string="Kardex Daten">
+                        <header>
+                            <button name="send_to_kardex" type="object" string="An Kardex senden" invisible="kardex_done"/>
+                        </header>
+                         <sheet>
+                        <group>
+                            <field name="kardex_status" readonly="1"/>
+                            <field name="kardex_row_create_time" /> 
+                            <field name="kardex_row_update_time" />
+                            <field name="kardex_done" />
+                        </group>
+                    </sheet>
+                    </form>
+                </page>
+            </xpath>
+            <xpath expr="//field[@name='backorder_id']" position="after">
+                 <field name="kardex_done"/>
+            </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                
                     <field name="kardex"/>
@@ -15,6 +35,12 @@
             <xpath expr="//header" position="inside">
                 <button class="btn btn-primary">Kardex</button>
             </xpath>
+            <xpath expr="//page[@name='operations']//tree/field[@name='description_picking']" position="after">
+                <field name="kardex_done" string="->Kardex" optional="hide" />
+                <field name="kardex_id" string="Kardex ID" optional="hide" />
+                <field name="kardex_status" string="Kardex Status" optional="hide" />
+            </xpath>
+
             <!--
             <xpath expr="//page[@name='operations']/field/tree/field[@name='product_id']" position="replace">
                 <field name="product_id" domain="[('kardex', '=', True)]" context="{'default_detailed_type': 'product'}" required="1" readonly="(state != 'draft' and not additional) or move_lines_count &gt; 0" force_save="1"/>
