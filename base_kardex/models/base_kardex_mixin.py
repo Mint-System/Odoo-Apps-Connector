@@ -30,8 +30,11 @@ ODOO_KARDEX_PRODUCT_FIXER = {
 
 ODOO_KARDEX_PICKING_FIXER = {
     'kardex_product_id': 'ArtikelID',
-    'kardex_row_create_time': 'Row_Create_Time',
-    'kardex_row_update_time': 'Row_Update_Time',
+    #'kardex_row_create_time': 'Row_Create_Time',
+    #'kardex_row_update_time': 'Row_Update_Time',
+    'kardex_status': 'Status',
+    'kardex_unit': 'Einheit',
+    'kardex_quantity': 'Menge',
 }
 
 
