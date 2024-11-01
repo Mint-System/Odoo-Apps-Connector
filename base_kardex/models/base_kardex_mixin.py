@@ -35,6 +35,9 @@ ODOO_KARDEX_PICKING_FIXER = {
     'kardex_status': 'Status',
     'kardex_unit': 'Einheit',
     'kardex_quantity': 'Menge',
+    'kardex_doc_number': 'Belegnummer',
+    'kardex_direction': 'Richtung',
+    'kardex_search': 'Suchbegriff',
 }
 
 

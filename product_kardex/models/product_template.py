@@ -27,6 +27,8 @@ class ProductTemplate(models.Model):
     _name = 'product.template'
     _inherit = ['product.template', 'base.kardex.mixin']
     _description = 'Kardex PPG Data'
+
+    product_category_ids_domain = fields.Binary(compute="_compute_category_domain")
     
     kardex = fields.Boolean(string='Kardex', default=False)
     kardex_id = fields.Integer(string='Kardex Id')
@@ -48,23 +50,49 @@ class ProductTemplate(models.Model):
     kardex_is_fifo = fields.Boolean(string="Kardex isFIFO", default=False)
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
 
-    # @api.depends('tracking')
-    # def _compute_kardex_ch_verw(self):
-    #     for product in self:
-    #         if product.tracking == 'lot':
-    #             product.kardex_ch_verw = True
-    #         else:
-    #             product.kardex_ch_verw = False
-
-    # @api.depends('tracking')
-    # def _compute_kardex_sn_verw(self):
-    #     for product in self:
-    #         if product.tracking == 'serial':
-    #             product.kardex_sn_verw = True
-    #         else:
-    #             product.kardex_sn_verw = False
+    # @api.constrains('kardex', 'default_code')
+    # def _check_default_code_required(self):
+    #     for record in self:
+    #         if record.kardex and not record.default_code:
+    #             raise ValidationError("The 'Internal Reference' (default_code) is required when 'Kardex' is enabled.")
 
 
+    @api.depends('kardex')
+    def _compute_category_domain(self):
+        """
+        Restrict the category domain to children of 'Kardex' category if 'kardex' is set to True.
+        """
+        for product in self:
+            if product.kardex:
+                kardex_category = self.env['product.category'].search([('name', '=', 'Kardex')], limit=1)
+                _logger.info("########### KARDEX CATEGORY: %s" % (kardex_category,))
+                if kardex_category:
+                    child_category_ids = kardex_category.child_id.ids
+                    _logger.info("########### CHILD CATEGORIES: %s" % (child_category_ids,))
+                    domain = [('id', 'in', child_category_ids)]
+                else:
+                    domain = []
+            else:    
+                domain = []
+
+            product.product_category_ids_domain = domain
+
+
+
+
+    def update_to_kardex(self):
+        for product in self:
+            product_vals = product.read()[0]
+            if self._check_already_in_kardex(product):
+                product_vals['description'] = re.sub(r'<.*?>', '', product_vals['description']) if product_vals['description'] else ''
+                updated = self._update_external_object(product_vals)
+                message = 'Kardex Articel was updated.'
+                return self._create_notification(message)
+            else:
+                message = 'This Article is not known in Kardex.'
+                return self._create_notification(message) 
+
+    
     def send_to_kardex(self):
         
         for product in self:

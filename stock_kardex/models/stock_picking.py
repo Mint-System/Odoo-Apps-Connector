@@ -1,4 +1,5 @@
 import logging
+import random, string
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -28,6 +29,8 @@ class StockPicking(models.Model):
             moves = self.env['stock.move'].search([('picking_id', '=', picking.id)])
             if not moves:
                 raise ValidationError('No moves found for this picking')
+            if not self._check_quantities(moves):
+                raise ValidationError('Not enough stock to send to Kardex (check quantities)')
             check_moves_counter = 0
             check_moves_list = []
             for move in moves:
@@ -51,6 +54,9 @@ class StockPicking(models.Model):
                 picking_vals['kardex_status'] = '1'
                 picking_vals['kardex_unit'] = move.product_id.uom_id.name
                 picking_vals['kardex_quantity'] = move.quantity
+                picking_vals['kardex_doc_number'] = picking.name
+                picking_vals['kardex_direction'] = self._get_direction()
+                picking_vals['kardex_search'] = self._get_search()
                 new_id, create_time, update_time = self._create_external_object(picking_vals, table)
                 # new_id = self._create_external_object(picking_vals, table)
                 
@@ -74,6 +80,47 @@ class StockPicking(models.Model):
                 }
             picking.write(done_picking)    
             return self._create_notification(message)
+
+    def update_status_from_kardex(self):
+        message_list = []
+        for picking in self:
+            moves = self.env['stock.move'].search([('picking_id', '=', picking.id)])
+            for move in moves:
+                kardex_id = move.kardex_id
+                old_status = move.kardex_status
+                sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE ID = {kardex_id}"
+                result = self._execute_query_on_mssql('select_one', sql)
+                new_status = result['Status']
+                update_time = result['Row_Update_Time']
+
+                updated = False
+            
+                if new_status != old_status and update_time:
+                    updated = True
+                    move.write({'kardex_status': str(new_status), 'kardex_row_update_time': update_time})
+            
+                if updated:
+                    message_list.append(f'Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}.')
+                else:
+                    message_list.append(f'Kardex Status for {move.product_id.name} was not updated.')
+               
+        message = ', '.join(message_list)
+        return self._create_notification(message) 
+
+    def _get_direction(self):
+        direction = 3
+        return direction
+
+    def _get_search(self):
+        search_term = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+        return search_term
+
+    def _check_quantities(self, moves):
+        quantities_list = [move.quantity for move in moves]
+        return all(q > 0 for q in quantities_list)
+    
+
 
     @api.model
     def write(self, vals):
@@ -120,15 +167,6 @@ class StockMove(models.Model):
             obj.products_domain = domain
 
 
-    # @api.onchange('kardex')
-    # def _onchange_kardex(self):
-    #     if self.kardex:
-    #         domain = [('product_id.kardex', '=', True)]
-    #     else:
-    #         domain = []
-    #     # include only products with kardex=True if picking instance has Kardex=True
-    #     _logger.info('onchange called, kardex: %s' % (self.kardex))
-    #     return {'domain': {'move_ids': domain}}
 
     @api.model
     def create(self, vals):

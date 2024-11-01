@@ -11,6 +11,7 @@
                     <form string="Kardex Daten">
                         <header>
                             <button name="send_to_kardex" type="object" string="An Kardex senden" invisible="kardex_done"/>
+                            <button name="update_status_from_kardex" type="object" string="Update Status" invisible="not kardex_done"/>
                         </header>
                          <sheet>
                         <group>
