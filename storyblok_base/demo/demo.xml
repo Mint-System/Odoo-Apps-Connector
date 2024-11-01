@@ -1,0 +1,18 @@
+<odoo>
+
+    <record id="demo_config_storyblok_space_id" model="ir.config_parameter">
+        <field name="key">storyblok.space_id</field>
+        <field name="value">252839</field>
+    </record>
+
+    <record id="demo_config_storyblok_api_key" model="ir.config_parameter">
+        <field name="key">storyblok.api_key</field>
+        <field name="value"></field>
+    </record>
+
+    <record id="res_partner_folder_int" model="storyblok.folder">
+        <field name="active" eval="True" />
+        <field name="database_filter"></field>
+    </record>
+
+</odoo>

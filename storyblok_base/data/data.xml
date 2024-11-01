@@ -1,0 +1,22 @@
+<odoo>
+
+    <record id="config_storyblok_api_url" model="ir.config_parameter">
+        <field name="key">storyblok.api_url</field>
+        <field name="value">https://mapi.storyblok.com</field>
+    </record>
+
+    <record id="res_partner_folder_int" model="storyblok.folder">
+        <field name="name">odoo-int/res_partner</field>
+        <field name="folder_id">596452</field>
+        <field name="database_filter">odoo-int</field>
+        <field name="model_id" ref="base.model_res_partner" />
+    </record>
+
+    <record id="res_partner_folder_prod" model="storyblok.folder">
+        <field name="name">odoo-prod/res_partner</field>
+        <field name="folder_id">596456</field>
+        <field name="database_filter">odoo-main</field>
+        <field name="model_id" ref="base.model_res_partner" />
+    </record>
+
+</odoo>

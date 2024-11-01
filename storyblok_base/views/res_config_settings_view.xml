@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">storyblok_base.res_config_settings_view_form</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <div name="integration" position="inside">
+
+                <div
+                    class="col-12 col-lg-6 o_setting_box"
+                    id="storyblok_base_setting"
+                >
+                    <div class="o_setting_left_pane">
+                        <field name="module_storyblok_base" />
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <label string="storyblok" for="module_storyblok_base" />
+                        <div class="text-muted">
+                            Integrate with storyblok.
+                        </div>
+                        <div
+                            attrs="{'invisible': [('module_storyblok_base', '=', False)]}"
+                        >
+                            <div class="content-group mt16">
+                                <label
+                                    for="storyblok_api_url"
+                                    class="o_light_label"
+                                />
+                                <field name="storyblok_api_url" required="1" />
+                            </div>
+                            <div class="content-group mt16">
+                                <label
+                                    for="storyblok_space_id"
+                                    class="o_light_label"
+                                />
+                                <field name="storyblok_space_id" required="1" />
+                            </div>
+                            <div class="content-group">
+                                <label
+                                    for="storyblok_api_key"
+                                    class="o_light_label"
+                                />
+                                <field name="storyblok_api_key" required="1" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </field>
+    </record>
+</odoo>

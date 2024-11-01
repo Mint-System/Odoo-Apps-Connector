@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+</head>
+<body><a href="http://www.gnu.org/licenses/gpl-3.0-standalone.html">
+        <img alt="License: GPL-3" src="https://img.shields.io/badge/licence-GPL--3-blue.svg" />
+    </a>
+    <section id="storyblok-base">
+        <h1>Storyblok Base</h1>
+        <p>Upload files to storyblok.</p>
+        <section id="configuration">
+            <h2>Configuration</h2>
+            <ul>
+                <li>Setup Storyblok API</li>
+                <li>Add Storyblok folder and connect with API and model</li>
+            </ul>
+            <p>Once the asset field is updated, the file will be uploaded to Storyblok folder. The asset url and id are stored on the record as 'document_url' and <cite>storyblok_asset_id</cite>.</p>
+        </section>
+        <section id="usage">
+            <h2>Usage</h2>
+            <ul>
+                <li>Inherit the Storyblok asset mixin in model with asset field:</li>
+            </ul>
+            <pre data-language="python"><span class="k">class</span> <span class="nc">Partner</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="n">_name</span> <span class="o">=</span> <span class="s2">&quot;res.partner&quot;</span>
+    <span class="n">_inherit</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;res.partner&quot;</span><span class="p">,</span> <span class="s2">&quot;storyblok.asset.mixin&quot;</span><span class="p">]</span></pre>
+            <ul>
+                <li>Define an inverse method of the asset field:</li>
+            </ul>
+            <pre data-language="python"><span class="n">image_1920</span> <span class="o">=</span> <span class="n">fields</span><span class="o">.</span><span class="n">Image</span><span class="p">(</span><span class="n">inverse</span><span class="o">=</span><span class="s2">&quot;_inverse_image_1920&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">_inverse_image_1920</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">upload_asset</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image_1920</span><span class="p">)</span></pre>
+            <ul>
+                <li>To prevent upload use <cite>storyblok_update</cite> context.</li>
+            </ul>
+            <pre data-language="python"><span class="bp">self</span><span class="o">.</span><span class="n">with_context</span><span class="p">(</span><span class="n">storyblok_upload</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">({</span><span class="s2">&quot;image_1920&quot;</span><span class="p">:</span> <span class="n">filepath</span><span class="p">})</span></pre>
+            <section id="maintainer">
+                <h3>Maintainer</h3>
+            <a href="https://www.mint-system.ch">
+                    <img src="https://raw.githubusercontent.com/Mint-System/Wiki/master/assets/mint-system-logo.png" alt="" />
+                </a>
+                <p>This module is maintained by Mint System GmbH.</p>
+                <p>For support and more information, please visit <a href="https://www.mint-system.ch">our Website</a>.</p>
+            </section>
+        </section>
+    </section>
+</body>
+</html>
