@@ -111,9 +111,12 @@ class MeilisearchTask(models.Model):
         task_ids = []
         # For each index access document and get task_id
         for index_id in index_ids:
-            document_ids = self.env[index_id.model].search_read([], ["id", "task_id"])
-            ids = [r["task_id"][0] for r in document_ids]
-            task_ids.extend(list(set(ids)))
+            document_ids = self.env[index_id.model].search_read(
+                [("task_id", "!=", False)], ["id", "task_id"]
+            )
+            if document_ids:
+                ids = [r["task_id"][0] for r in document_ids]
+                task_ids.extend(list(set(ids)))
 
         # Delete tasks that are not referenced by a document
         unlink_task_ids = self.search(
