@@ -4,8 +4,8 @@
         Sozialinfo base module for Storyblok.
     """,
     "author": "Mint System GmbH, Sozialinfo, Odoo Community Association (OCA)",
-    "website": "Technical://www.mint-system.ch",
-    "category": "Services",
+    "website": "http://www.mint-system.ch",
+    "category": "Technical",
     "version": "16.0.1.0.0",
     "license": "AGPL-3",
     "depends": ["base_setup"],

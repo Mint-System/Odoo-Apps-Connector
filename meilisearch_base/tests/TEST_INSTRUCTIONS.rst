@@ -25,3 +25,15 @@ Cron job:
 - Set database for "Countries" to "odoo" and for "Job Offer" to current database name
 - Open the scheduled actions and run "Meilisearch: Check all documents"
 - Open the index list and check if the colument "Filtered" matches "Indexed"
+
+Garbage collection:
+
+- Open Meilisearch Index "Countries"
+- Click "View Documents"
+- Mark all records and run "Update Documents"
+- Then "Delete Documents"
+- Open Meilisearch Tasks
+- Check if new tasks are created
+- Open scheduled actions and run "Base: Auto-vacuum internal data"
+- Open Meilisearch Tasks
+- Check if only the deletion tasks are present

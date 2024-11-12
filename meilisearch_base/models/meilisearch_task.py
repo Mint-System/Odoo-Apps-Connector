@@ -96,9 +96,29 @@ class MeilisearchTask(models.Model):
 
     @api.autovacuum
     def _gc_meilisearch_tasks(self):
-        for task in self.search([]):
-            document = self.env[task.index_id.model].search(
-                [("task_id", "=", task.id)], limit=1
-            )
-            if not document:
-                task.unlink()
+        """Delete tasks that are not linked to any document."""
+
+        # Get all active indexes
+        index_ids = self.env["meilisearch.index"].search(
+            [
+                ("active", "=", True),
+                "|",
+                ("database_filter", "=", False),
+                ("database_filter", "=", self._cr.dbname),
+            ]
+        )
+
+        task_ids = []
+        # For each index access document and get task_id
+        for index_id in index_ids:
+            document_ids = self.env[index_id.model].search_read([], ["id", "task_id"])
+            ids = [r["task_id"][0] for r in document_ids]
+            task_ids.extend(list(set(ids)))
+
+        # Delete tasks that are not referenced by a document
+        unlink_task_ids = self.search(
+            [
+                ("id", "not in", task_ids),
+            ]
+        )
+        unlink_task_ids.unlink()

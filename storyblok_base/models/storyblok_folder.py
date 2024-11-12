@@ -20,7 +20,9 @@ class StoryblokFolder(models.Model):
     active = fields.Boolean(default=False)
     name = fields.Char(required=True)
     folder_id = fields.Integer(required=True, string="Folder ID")
-    database_filter = fields.Char(help="If set the index is only active on matching databases.")
+    database_filter = fields.Char(
+        help="If set the index is only active on matching databases."
+    )
     model_id = fields.Many2one(
         "ir.model",
         required=True,
@@ -61,7 +63,11 @@ class StoryblokFolder(models.Model):
         api_key = icp.get_param("storyblok.api_key")
 
         if not url or not space_id or not api_key:
-            _logger.error(_("Storyblok Url, Space ID and API key need to be configured in the system parameters."))
+            _logger.error(
+                _(
+                    "Storyblok Url, Space ID and API key need to be configured in the system parameters."
+                )
+            )
 
         return url, space_id, api_key
 
@@ -86,9 +92,17 @@ class StoryblokFolder(models.Model):
                 response.raise_for_status()
 
                 signed_request = response.json()
-                form = MultipartEncoder(fields={**signed_request["fields"], "file": (filename, file, "image/png")})
+                form = MultipartEncoder(
+                    fields={
+                        **signed_request["fields"],
+                        "file": (filename, file, "image/png"),
+                    }
+                )
                 response = requests.post(
-                    signed_request["post_url"], data=form, headers={"Content-Type": form.content_type}, timeout=10
+                    signed_request["post_url"],
+                    data=form,
+                    headers={"Content-Type": form.content_type},
+                    timeout=10,
                 )
 
                 if response.status_code == 204:

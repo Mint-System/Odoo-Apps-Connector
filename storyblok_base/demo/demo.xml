@@ -7,12 +7,12 @@
 
     <record id="demo_config_storyblok_api_key" model="ir.config_parameter">
         <field name="key">storyblok.api_key</field>
-        <field name="value"></field>
+        <field name="value" />
     </record>
 
     <record id="res_partner_folder_int" model="storyblok.folder">
         <field name="active" eval="True" />
-        <field name="database_filter"></field>
+        <field name="database_filter" />
     </record>
 
 </odoo>
