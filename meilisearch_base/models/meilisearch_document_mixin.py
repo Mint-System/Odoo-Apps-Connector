@@ -1,6 +1,7 @@
 import json
 import logging
 import pytz
+import datetime
 
 from odoo import api, fields, models
 
@@ -204,7 +205,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 batch.write(
                     {"index_result": "no_index", "index_response": "Index not found"}
                 )
-    def _convert_to_timestamp(dt, tz=pytz.UTC):
+    def _convert_to_timestamp(self, dt, tz=pytz.UTC):
         if not dt:
             return 0
         if isinstance(dt, datetime.date) and not isinstance(dt, datetime.datetime):
