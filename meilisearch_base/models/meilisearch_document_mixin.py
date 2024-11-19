@@ -100,23 +100,26 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     res = client.index(index.index_name).update_documents(
                         [json.loads(self.index_document) for self in batch]
                     )
-                    task_id = self.env["meilisearch.task"].create(
-                        {
-                            "name": "documentAdditionOrUpdate",
-                            "index_id": index.id,
-                            "uid": res.task_uid,
-                        }
-                    )
+                    task_id = False
+                    if index.create_task:
+                        task_id = self.env["meilisearch.task"].create(
+                            {
+                                "name": "documentAdditionOrUpdate",
+                                "index_id": index.id,
+                                "uid": res.task_uid,
+                            }
+                        )
                     # _logger.warning(["updated", task_id.uid])
                     batch.update(
                         {
                             "index_result": "queued",
                             "index_response": "Task enqueued",
                             "index_date": res.enqueued_at,
-                            "task_id": task_id.id,
+                            "task_id": task_id.id if task_id else False,
                         }
                     )
-                    self.env.cr.commit()
+                    if index.create_task:
+                        self.env.cr.commit()
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
@@ -180,23 +183,26 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     res = client.index(index.index_name).delete_documents(
                         filter=search_filter
                     )
-                    task_id = self.env["meilisearch.task"].create(
-                        {
-                            "name": "documentDeletion",
-                            "index_id": index.id,
-                            "uid": res.task_uid,
-                        }
-                    )
+                    task_id = False
+                    if index.create_task:
+                        task_id = self.env["meilisearch.task"].create(
+                            {
+                                "name": "documentDeletion",
+                                "index_id": index.id,
+                                "uid": res.task_uid,
+                            }
+                        )
                     # _logger.warning(["deleted", task_id.uid])
                     batch.update(
                         {
                             "index_result": "queued",
                             "index_response": "Task enqueued",
                             "index_date": res.enqueued_at,
-                            "task_id": task_id.id,
+                            "task_id": task_id.id if task_id else False,
                         }
                     )
-                    self.env.cr.commit()
+                    if index.create_task:
+                        self.env.cr.commit()
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:

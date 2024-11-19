@@ -36,6 +36,11 @@ class MeilisearchIndex(models.Model):
     ]
 }""",
     )
+    create_task = fields.Boolean(
+        string="Create Tasks",
+        default=True,
+        help="Create tasks to track document addition and update.",
+    )
     task_ids = fields.One2many("meilisearch.task", "index_id")
     task_count = fields.Integer(compute="_compute_task_count", store=True)
 

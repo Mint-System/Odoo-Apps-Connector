@@ -37,3 +37,12 @@ Garbage collection:
 - Open scheduled actions and run "Base: Auto-vacuum internal data"
 - Open Meilisearch Tasks
 - Check if only the deletion tasks are present
+
+Disable task creation:
+
+- Open Meilisearch Index "Countries"
+- Disable Option "Create Tasks"
+- Click "View Documents"
+- Mark all records and run "Update Documents"
+- Return to Index and click "View Tasks"
+- Check that no tasks have been created

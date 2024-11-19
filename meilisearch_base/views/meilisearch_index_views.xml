@@ -108,6 +108,7 @@
                                 name="index_settings"
                                 groups="meilisearch_base.group_index_manager"
                             />
+                            <field name="create_task" />
                         </group>
                         <group>
                             <field name="document_filtered_count" />
