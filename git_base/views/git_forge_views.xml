@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="git_forge_form_view" model="ir.ui.view">
+        <field name="name">git_base.git_forge_form_view</field>
+        <field name="model">git.forge</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" />
+                        </h1>
+                        <group>
+                            <field name="hostname" />
+                            <field name="http_url" widget="url" />
+                        </group>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="git_forge_tree_view" model="ir.ui.view">
+        <field name="name">git_base.git_forge_tree_view</field>
+        <field name="model">git.forge</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="http_url" />
+            </tree>
+        </field>
+    </record>
+
+    <record id="git_forge_search_view" model="ir.ui.view">
+        <field name="name">git_base.git_forge_search_view</field>
+        <field name="model">git.forge</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="http_url" />
+            </search>
+        </field>
+    </record>
+
+    <record id="action_git_base_view" model="ir.actions.act_window">
+        <field name="name">Forges</field>
+        <field name="res_model">git.forge</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="git_forge_search_view" />
+    </record>
+
+    <menuitem
+        id="git_base.menu_root"
+        name="Git"
+        web_icon="git_base,static/description/icon.png"
+    />
+    <menuitem id="git_base.menu_document" name="Git" parent="git_base.menu_root" />
+    <menuitem
+        id="git_base.menu_git_forge"
+        name="Forges"
+        parent="git_base.menu_document"
+        action="git_base.action_git_base_view"
+        sequence="10"
+    />
+
+</odoo>

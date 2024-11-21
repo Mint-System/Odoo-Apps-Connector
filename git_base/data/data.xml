@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="forge_github" model="git.forge">
+        <field name="name">GitHub</field>
+        <field name="hostname">github.com</field>
+    </record>
+    <record id="forge_gitlab" model="git.forge">
+        <field name="name">GitLab</field>
+        <field name="hostname">gitlab.com</field>
+    </record>
+    <record id="forge_gitea" model="git.forge">
+        <field name="name">Gitea</field>
+        <field name="hostname">gitea.com</field>
+    </record>
+    <record id="forge_codeberg" model="git.forge">
+        <field name="name">Codeberg</field>
+        <field name="hostname">codeberg.org</field>
+    </record>
+    <record id="forge_codey" model="git.forge">
+        <field name="name">Codey</field>
+        <field name="hostname">codey.ch</field>
+    </record>
+</odoo>
