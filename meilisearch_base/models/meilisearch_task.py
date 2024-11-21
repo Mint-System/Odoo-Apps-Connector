@@ -1,6 +1,7 @@
 import logging
 
 from odoo import _, api, fields, models
+from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class MeilisearchTask(models.Model):
     )
     response = fields.Text()
     index_id = fields.Many2one("meilisearch.index", required=True)
+    document_ids = fields.Char(help="Comma separated list of document ids.")
 
     def name_get(self):
         res = []
@@ -38,7 +40,9 @@ class MeilisearchTask(models.Model):
 
     def _get_document_ids(self):
         self.ensure_one()
-        document_ids = self.env[self.index_id.model].search([("task_id", "=", self.id)])
+        document_ids = self.env[self.index_id.model].browse(
+            safe_eval(self.document_ids)
+        )
         return document_ids
 
     def button_check_task(self):
@@ -63,7 +67,7 @@ class MeilisearchTask(models.Model):
                 "edit": False,
             },
             "search_view_id": [search_view_id.id, "search"],
-            "domain": [("task_id", "=", self.id)],
+            "domain": [("id", "in", safe_eval(self.document_ids))],
         }
 
     def task_succeeded(self):
@@ -96,7 +100,7 @@ class MeilisearchTask(models.Model):
 
     @api.autovacuum
     def _gc_meilisearch_tasks(self):
-        """Delete tasks that are not linked to any document."""
+        """Delete tasks from active indexes after one day."""
 
         # Get all active indexes
         index_ids = self.env["meilisearch.index"].search(
@@ -107,21 +111,10 @@ class MeilisearchTask(models.Model):
                 ("database_filter", "=", self._cr.dbname),
             ]
         )
-
-        task_ids = []
-        # For each index access document and get task_id
-        for index_id in index_ids:
-            document_ids = self.env[index_id.model].search_read(
-                [("task_id", "!=", False)], ["id", "task_id"]
-            )
-            if document_ids:
-                ids = [r["task_id"][0] for r in document_ids]
-                task_ids.extend(list(set(ids)))
-
-        # Delete tasks that are not referenced by a document
-        unlink_task_ids = self.search(
+        unlink_task_ids = self.env["meilisearch.task"].search(
             [
-                ("id", "not in", task_ids),
+                ("index_id", "in", index_ids.ids),
+                ("create_date", "<", fields.Datetime.now() - fields.Date.day),
             ]
         )
         unlink_task_ids.unlink()

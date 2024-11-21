@@ -98,7 +98,6 @@
                         <group>
                             <field name="index_result" />
                             <field name="index_date" />
-                            <field name="task_id" />
                             <field name="index_response" />
                         </group>
                     </group>

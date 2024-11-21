@@ -68,6 +68,7 @@
                                     <field name="index_id" />
                                     <field name="uid" widget="text" />
                                     <field name="response" />
+                                    <field name="document_ids" />
                                 </group>
                             </group>
                         </page>

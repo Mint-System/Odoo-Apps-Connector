@@ -1,7 +1,8 @@
+import datetime
 import json
 import logging
+
 import pytz
-import datetime
 
 from odoo import api, fields, models
 
@@ -26,7 +27,6 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         ]
     )
     index_response = fields.Text()
-    task_id = fields.Many2one("meilisearch.task")
 
     def button_view_document(self):
         return {
@@ -102,26 +102,24 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     res = client.index(index.index_name).update_documents(
                         [json.loads(self.index_document) for self in batch]
                     )
-                    task_id = False
                     if index.create_task:
-                        task_id = self.env["meilisearch.task"].create(
+                        self.env["meilisearch.task"].create(
                             {
                                 "name": "documentAdditionOrUpdate",
                                 "index_id": index.id,
                                 "uid": res.task_uid,
+                                "document_ids": [rec.id for rec in batch],
                             }
                         )
-                    # _logger.warning(["updated", task_id.uid])
                     batch.update(
                         {
                             "index_result": "queued",
                             "index_response": "Task enqueued",
                             "index_date": res.enqueued_at,
-                            "task_id": task_id.id if task_id else False,
                         }
                     )
                     if index.create_task:
-                        self.env.cr.commit()
+                        self.env.cr.commit()  # Commit changes so the task can be accessed by the webhook controller
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
@@ -185,32 +183,31 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                     res = client.index(index.index_name).delete_documents(
                         filter=search_filter
                     )
-                    task_id = False
                     if index.create_task:
-                        task_id = self.env["meilisearch.task"].create(
+                        self.env["meilisearch.task"].create(
                             {
                                 "name": "documentDeletion",
                                 "index_id": index.id,
                                 "uid": res.task_uid,
+                                "document_ids": [rec.id for rec in batch],
                             }
                         )
-                    # _logger.warning(["deleted", task_id.uid])
                     batch.update(
                         {
                             "index_result": "queued",
                             "index_response": "Task enqueued",
                             "index_date": res.enqueued_at,
-                            "task_id": task_id.id if task_id else False,
                         }
                     )
                     if index.create_task:
-                        self.env.cr.commit()
+                        self.env.cr.commit()  # Commit changes so the task can be accessed by the webhook controller
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
                 batch.write(
                     {"index_result": "no_index", "index_response": "Index not found"}
                 )
+
     def _convert_to_timestamp(self, dt, tz=pytz.UTC):
         if not dt:
             return 0
