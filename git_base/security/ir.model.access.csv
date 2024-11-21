@@ -1,3 +1,9 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_git_forge_user,access.git.forge.user,model_git_forge,base.group_user,1,0,0,0
 access_git_forge_manager,access.git.forge.manager,model_git_forge,base.group_erp_manager,1,1,1,1
+access_git_account_user,access.git.account.user,model_git_account,base.group_user,1,0,0,0
+access_git_account_manager,access.git.account.manager,model_git_account,base.group_erp_manager,1,1,1,1
+access_git_repo_user,access.git.repo.user,model_git_repo,base.group_user,1,0,0,0
+access_git_repo_manager,access.git.repo.manager,model_git_repo,base.group_erp_manager,1,1,1,1
+access_git_repo_branch_user,access.git.repo.branch.user,model_git_repo_branch,base.group_user,1,0,0,0
+access_git_repo_branch_manager,access.git.repo.branch.manager,model_git_repo_branch,base.group_erp_manager,1,1,1,1

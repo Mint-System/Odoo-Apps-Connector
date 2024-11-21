@@ -47,7 +47,7 @@
         </field>
     </record>
 
-    <record id="action_git_base_view" model="ir.actions.act_window">
+    <record id="action_git_forge_view" model="ir.actions.act_window">
         <field name="name">Forges</field>
         <field name="res_model">git.forge</field>
         <field name="view_mode">tree,form</field>
@@ -59,12 +59,12 @@
         name="Git"
         web_icon="git_base,static/description/icon.png"
     />
-    <menuitem id="git_base.menu_document" name="Git" parent="git_base.menu_root" />
+    <menuitem id="git_base.menu_git" name="Git" parent="git_base.menu_root" />
     <menuitem
         id="git_base.menu_git_forge"
         name="Forges"
-        parent="git_base.menu_document"
-        action="git_base.action_git_base_view"
+        parent="git_base.menu_git"
+        action="git_base.action_git_forge_view"
         sequence="10"
     />
 

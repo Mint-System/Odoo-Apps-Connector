@@ -14,6 +14,8 @@
         "security/ir.model.access.csv",
         "data/data.xml",
         "views/git_forge_views.xml",
+        "views/git_account_views.xml",
+        "views/git_repo_views.xml",
     ],
     "installable": True,
     "application": False,
