@@ -12,7 +12,13 @@ class GitRepo(models.Model):
     _name = "git.repo"
     _description = "Git Repo"
 
-    name = fields.Char(required=True)
+    READONLY_STATES = {
+        "draft": [("readonly", False)],
+        "initialized": [("cloned", True)],
+        "deleted": [("readonly", False)],
+    }
+
+    name = fields.Char(required=True, states=READONLY_STATES)
     http_url = fields.Char(
         string="HTTP Url", compute="_compute_http_url", readonly=True
     )
@@ -21,13 +27,15 @@ class GitRepo(models.Model):
     pull_url = fields.Char(default="")
     local_path = fields.Char(compute="_compute_local_path")
 
-    status = fields.Selection(
+    state = fields.Selection(
         selection=[
             ("draft", "Draft"),
             ("initialized", "Initialized"),
             ("cloned", "Cloned"),
+            ("deleted", "Deleted"),
         ]
     )
+
     cmd = fields.Selection(
         selection=[
             ("status", "git status"),
@@ -49,8 +57,8 @@ class GitRepo(models.Model):
 
     user_id = fields.Many2one("res.users")
     branch_ids = fields.One2many("git.repo.branch", "repo_id")
+    account_id = fields.Many2one("git.account", required=True, states=READONLY_STATES)
 
-    account_id = fields.Many2one("git.account", required=True)
     forge_id = fields.Many2one("git.forge", related="account_id.forge_id")
 
     def _compute_http_url(self):
@@ -63,9 +71,7 @@ class GitRepo(models.Model):
 
     def _compute_local_path(self):
         for rec in self:
-            rec.local_path = (
-                f"/tmp/{rec.forge_id.hostname}/{rec.account_id.name}/{rec.name}"
-            )
+            rec.local_path = f"{rec.account_id.local_path}/{rec.name}"
 
     def clone(self):
         self.ensure_one()
@@ -73,7 +79,7 @@ class GitRepo(models.Model):
         user.load_ssh_key()
         try:
             git.Repo.clone_from(self.ssh_url, self.local_path)
-            self.status = "cloned"
+            self.state = "cloned"
         except Exception as e:
             _logger.error(f"Failed to clone repository: {e}")
             self.cmd_output = f"Failed to clone repository: {e}"
@@ -84,7 +90,7 @@ class GitRepo(models.Model):
         self.ensure_one()
         try:
             subprocess.run(["git", "init", self.local_path], check=True)
-            self.status = "initialized"
+            self.state = "initialized"
         except subprocess.CalledProcessError as e:
             _logger.error(f"Failed to initialize Git repository: {e}")
             self.cmd_output = f"Failed to initialize Git repository: {e}"

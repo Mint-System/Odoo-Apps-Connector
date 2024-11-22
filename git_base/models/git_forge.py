@@ -14,7 +14,12 @@ class GitForge(models.Model):
     http_url = fields.Char(
         string="HTTP Url", compute="_compute_http_url", readonly=True
     )
+    local_path = fields.Char(compute="_compute_local_path")
 
     def _compute_http_url(self):
         for rec in self:
             rec.http_url = f"https://{rec.hostname}"
+
+    def _compute_local_path(self):
+        for rec in self:
+            rec.local_path = f"/tmp/{rec.forge_id.hostname}"
