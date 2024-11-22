@@ -10,11 +10,11 @@ class GitAccount(models.Model):
     _description = "Git Account"
 
     name = fields.Char(required=True)
-    forge_id = fields.Char("git.forge", required=True)
     http_url = fields.Char(
         string="HTTP Url", compute="_compute_http_url", required=True
     )
+    forge_id = fields.Many2one("git.forge", required=True)
 
     def _compute_http_url(self):
         for rec in self:
-            rec.http_url = f"{rec.forge_id.http_url}/{recc.name}"
+            rec.http_url = f"{rec.forge_id.http_url}/{rec.name}"

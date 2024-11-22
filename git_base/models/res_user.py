@@ -1,72 +1,36 @@
-import subprocess
-import tempfile
 import os
-from odoo import models
+import tempfile
+
+from odoo import fields, models
+
 
 class ResUsers(models.Model):
     _inherit = "res.users"
 
-    def run_git_command(self, git_command):
-        """
-        Run a Git command using the user's SSH private key and password.
-        """
-        self.ensure_one() 
-        if not self.ssh_private_key or not self.ssh_private_key_password:
-            raise ValueError("SSH private key or password is missing.")
+    ssh_private_key_password = fields.Char("SSH Private Key Password")
+    ssh_private_key = fields.Text("SSH Private Key")
 
-        # Create a temporary file for the SSH private key
-        with tempfile.NamedTemporaryFile(delete=False) as temp_key_file:
-            temp_key_file.write(self.ssh_private_key.encode('utf-8'))
-            temp_key_path = temp_key_file.name
+    def load_ssh_key(self):
+        self.ensure_one()
 
-        try:
-            # Set appropriate permissions for the key file
-            os.chmod(temp_key_path, 0o600)
+        # Write the private key to a temporary file
+        self.private_key_file = tempfile.NamedTemporaryFile(delete=False)
+        self.private_key_file.write(self.ssh_private_key.encode())
+        self.private_key_file.close()
 
-            # Use ssh-agent to add the key
-            ssh_agent = subprocess.Popen(
-                ["ssh-agent", "-s"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            ssh_agent_output, _ = ssh_agent.communicate()
-            ssh_env = dict(
-                line.split("=")
-                for line in ssh_agent_output.strip().split("\n")
-                if "=" in line
-            )
+        # Set up the SSH command with the private key
+        ssh_cmd = f"ssh -i {self.private_key_file.name}"
+        if self.ssh_private_key_password:
+            ssh_cmd += ' -o "IdentityAgent none" -o "KbdInteractiveAuthentication no" -o "PasswordAuthentication no" -o "IdentitiesOnly yes" -o "BatchMode yes"'
 
-            # Add the private key to ssh-agent
-            ssh_add = subprocess.run(
-                ["ssh-add", temp_key_path],
-                input=self.ssh_private_key_password + "\n",
-                text=True,
-                env=ssh_env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            if ssh_add.returncode != 0:
-                raise RuntimeError(f"ssh-add failed: {ssh_add.stderr}")
+        # Set the GIT_SSH environment variable to use the custom SSH command
+        os.environ["GIT_SSH_COMMAND"] = ssh_cmd
 
-            # Run the Git command with the SSH environment
-            result = subprocess.run(
-                git_command,
-                env={**os.environ, **ssh_env},
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+    def clear_ssh_key(self):
+        self.ensure_one()
 
-            # Return the output of the Git command
-            return {
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "returncode": result.returncode,
-            }
-
-        finally:
-            # Cleanup: Remove the temporary key file and kill the ssh-agent
-            os.unlink(temp_key_path)
-            subprocess.run(["ssh-agent", "-k"], env=ssh_env)
-
+        # Clean up the temporary private key file
+        if self.private_key_file:
+            os.remove(self.private_key_file.name)
+            del os.environ["GIT_SSH_COMMAND"]
+            del self.private_key_file

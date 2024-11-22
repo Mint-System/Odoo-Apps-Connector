@@ -15,12 +15,22 @@
                         <h1>
                             <field name="name" />
                         </h1>
+                        <group>
+                            <field name="account_id" />
+                            <field name="http_url" widget="url" />
+                            <field name="ssh_url" widget="url" />
+                        </group>
                     </div>
                     <notebook>
                         <page string="General Information" name="general_info">
                             <group>
                                 <group>
-                                    <field name="value" />
+                                    <field name="cmd" />
+                                    <field name="cmd_input" />
+                                    <field name="cmd_input_file" />
+                                </group>
+                                <group>
+                                    <field name="cmd_output" />
                                 </group>
                             </group>
                         </page>
@@ -36,7 +46,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="name" />
-                <field name="value" />
+                <field name="http_url" />
             </tree>
         </field>
     </record>
@@ -47,7 +57,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="name" />
-                <field name="value" />
+                <field name="http_url" />
             </search>
         </field>
     </record>
@@ -62,7 +72,7 @@
     <menuitem
         id="git_base.menu_git_repo"
         name="Repos"
-        parent="git_base.menu_git"
+        parent="git_base.menu_root"
         action="git_base.action_git_repo_view"
         sequence="10"
     />

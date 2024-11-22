@@ -57,7 +57,7 @@
     <menuitem
         id="git_base.menu_git_account"
         name="Accounts"
-        parent="git_base.menu_git"
+        parent="git_base.menu_root"
         action="git_base.action_git_account_view"
         sequence="20"
     />

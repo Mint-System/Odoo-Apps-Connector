@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="account_mint_system" model="git.account">
+        <field name="name">Mint-System</field>
+        <field name="forge_id" ref="git_base.forge_github" />
+    </record>
+
+    <record id="repo_project_mcc" model="git.repo">
+        <field name="name">Project-MCC</field>
+        <field name="status">draft</field>
+        <field name="account_id" ref="git_base.account_mint_system" />
+    </record>
+
+</odoo>

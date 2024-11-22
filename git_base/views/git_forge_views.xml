@@ -59,13 +59,12 @@
         name="Git"
         web_icon="git_base,static/description/icon.png"
     />
-    <menuitem id="git_base.menu_git" name="Git" parent="git_base.menu_root" />
     <menuitem
         id="git_base.menu_git_forge"
         name="Forges"
-        parent="git_base.menu_git"
+        parent="git_base.menu_root"
         action="git_base.action_git_forge_view"
-        sequence="10"
+        sequence="30"
     />
 
 </odoo>

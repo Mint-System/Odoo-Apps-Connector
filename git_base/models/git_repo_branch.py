@@ -10,6 +10,6 @@ class GitRepoBranch(models.Model):
     _description = "Git Repo Branch"
 
     name = fields.Char(required=True)
-    sequence = field.Int()
-    repo_id = fields.Many2one("git.repo", required=True)
+    sequence = fields.Integer()
     default = fields.Boolean(default=False)
+    repo_id = fields.Many2one("git.repo", required=True)
