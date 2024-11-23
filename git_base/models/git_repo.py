@@ -14,7 +14,8 @@ class GitRepo(models.Model):
 
     READONLY_STATES = {
         "draft": [("readonly", False)],
-        "initialized": [("cloned", True)],
+        "initialized": [("readonly", True)],
+        "cloned": [("readonly", True)],
         "deleted": [("readonly", False)],
     }
 
@@ -23,8 +24,12 @@ class GitRepo(models.Model):
         string="HTTP Url", compute="_compute_http_url", readonly=True
     )
     ssh_url = fields.Char(string="SSH Url", compute="_compute_ssh_url", readonly=True)
-    push_url = fields.Char(default="")
-    pull_url = fields.Char(default="")
+    push_url = fields.Char(
+        compute="_compute_remote_url", store=True, states=READONLY_STATES
+    )
+    pull_url = fields.Char(
+        compute="_compute_remote_url", store=True, states=READONLY_STATES
+    )
     local_path = fields.Char(compute="_compute_local_path")
 
     state = fields.Selection(
@@ -69,6 +74,11 @@ class GitRepo(models.Model):
         for rec in self:
             rec.ssh_url = f"git@{rec.forge_id.hostname}:{rec.name}/{rec.name}.git"
 
+    def _compute_remote_url(self):
+        for rec in self:
+            rec.push_url = f"{rec.ssh_url}"
+            rec.pull_url = f"{rec.ssh_url}"
+
     def _compute_local_path(self):
         for rec in self:
             rec.local_path = f"{rec.account_id.local_path}/{rec.name}"
@@ -89,26 +99,9 @@ class GitRepo(models.Model):
     def init_repository(self):
         self.ensure_one()
         try:
-            subprocess.run(["git", "init", self.local_path], check=True)
+            output = subprocess.run(["git", "init", self.local_path], check=True)
+            self.cmd_output = output.stdout
             self.state = "initialized"
         except subprocess.CalledProcessError as e:
             _logger.error(f"Failed to initialize Git repository: {e}")
             self.cmd_output = f"Failed to initialize Git repository: {e}"
-
-    def execute_command(self):
-        self.ensure_one()
-        cmd_list = self.cmd.split()
-        if self.cmd == "commit":
-            cmd_list.append(self.cmd_input)
-        try:
-            result = subprocess.run(
-                cmd_list,
-                cwd=self.local_path,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            self.cmd_output = result.stdout
-        except subprocess.CalledProcessError as e:
-            _logger.error(f"Failed to execute command {self.cmd}: {e}")
-            self.cmd_output = f"Failed to execute command {self.cmd}: {e.stderr}"

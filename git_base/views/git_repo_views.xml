@@ -22,7 +22,7 @@
                         </group>
                     </div>
                     <notebook>
-                        <page string="General Information" name="general_info">
+                        <page string="Commands" name="commands">
                             <group>
                                 <group>
                                     <field name="cmd" />
@@ -31,6 +31,31 @@
                                 </group>
                                 <group>
                                     <field name="cmd_output" />
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Branches" name="branches">
+                            <field name="branch_ids" nolabel="1">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle" />
+                                    <field name="name" />
+                                    <field name="default" />
+                                    <button name="action_fetch_branch" string="Fetch" />
+                                    <button
+                                        name="action_switch_branch"
+                                        string="Switch"
+                                    />
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Configuration" name="configuration">
+                            <group>
+                                <group groups="git_base.group_manager">
+                                    <field name="user_id" />
+                                </group>
+                                <group string="Remote Origin">
+                                    <field name="pull_url" />
+                                    <field name="push_url" />
                                 </group>
                             </group>
                         </page>

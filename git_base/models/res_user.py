@@ -7,10 +7,11 @@ from odoo import fields, models
 class ResUsers(models.Model):
     _inherit = "res.users"
 
-    ssh_private_key_password = fields.Char("SSH Private Key Password")
+    ssh_public_key = fields.Char("SSH Public Key")
     ssh_private_key = fields.Text("SSH Private Key")
+    ssh_private_key_password = fields.Char("SSH Private Key Password")
 
-    def load_ssh_key(self):
+    def _load_ssh_key(self):
         self.ensure_one()
 
         # Write the private key to a temporary file
@@ -26,7 +27,7 @@ class ResUsers(models.Model):
         # Set the GIT_SSH environment variable to use the custom SSH command
         os.environ["GIT_SSH_COMMAND"] = ssh_cmd
 
-    def clear_ssh_key(self):
+    def _clear_ssh_key(self):
         self.ensure_one()
 
         # Clean up the temporary private key file
