@@ -10,8 +10,8 @@
                 <page string="SSH" name="ssh" groups="git_base.group_manager">
                     <group>
                         <group string="Keys" name="keys">
-                            <field name="ssh_public_key"/>
-                            <field name="ssh_private_key"/>
+                            <field name="ssh_public_key" />
+                            <field name="ssh_private_key" />
                             <field name="ssh_private_key_password" password="True" />
                         </group>
                     </group>
@@ -29,8 +29,8 @@
                 <page string="SSH" name="ssh">
                     <group>
                         <group string="Keys" name="keys">
-                            <field name="ssh_public_key"/>
-                            <field name="ssh_private_key"/>
+                            <field name="ssh_public_key" />
+                            <field name="ssh_private_key" />
                             <field name="ssh_private_key_password" password="True" />
                         </group>
                     </group>

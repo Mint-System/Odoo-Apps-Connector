@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <field name="state" widget="statusbar" readonly="1" />
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -25,9 +26,28 @@
                         <page string="Commands" name="commands">
                             <group>
                                 <group>
-                                    <field name="cmd" />
-                                    <field name="cmd_input" />
-                                    <field name="cmd_input_file" />
+                                    <field name="local_path" />
+                                    <field
+                                        name="cmd"
+                                        hotkey="g"
+                                        context="{'state': state}"
+                                    />
+                                    <field
+                                        name="cmd_input"
+                                        placeholder="commit message"
+                                        attrs="{'invisible': [('cmd','!=','commit')]}"
+                                    />
+                                    <field
+                                        name="cmd_input_file"
+                                        filename="cmd_input_filename"
+                                    />
+                                    <field name="cmd_input_filename" invisible="1" />
+                                    <button
+                                        name="action_run_cmd"
+                                        string="Run Command"
+                                        class="btn btn-primary"
+                                        type="object"
+                                    />
                                 </group>
                                 <group>
                                     <field name="cmd_output" />
@@ -40,10 +60,18 @@
                                     <field name="sequence" widget="handle" />
                                     <field name="name" />
                                     <field name="default" />
-                                    <button name="action_fetch_branch" string="Fetch" />
+                                    <field name="active_branch" invisible="1" />
+                                    <button
+                                        name="action_fetch_branch"
+                                        string="Fetch"
+                                        class="btn btn-secondary"
+                                        type="object"
+                                    />
                                     <button
                                         name="action_switch_branch"
                                         string="Switch"
+                                        class="btn btn-primary"
+                                        type="object"
                                     />
                                 </tree>
                             </field>
@@ -72,6 +100,7 @@
             <tree>
                 <field name="name" />
                 <field name="http_url" />
+                <field name="state" />
             </tree>
         </field>
     </record>

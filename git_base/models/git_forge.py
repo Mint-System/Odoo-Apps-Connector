@@ -22,4 +22,4 @@ class GitForge(models.Model):
 
     def _compute_local_path(self):
         for rec in self:
-            rec.local_path = f"/tmp/{rec.forge_id.hostname}"
+            rec.local_path = f"/tmp/{rec.hostname}"
