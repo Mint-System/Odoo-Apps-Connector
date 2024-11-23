@@ -1,7 +1,7 @@
 import logging
 import os
 import re
-from subprocess import check_output
+from subprocess import check_output, run
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
@@ -104,7 +104,7 @@ class GitRepo(models.Model):
                 ) as f:
                     f.write(rec.cmd_input_file)
                     if rec.cmd_input_filename.endswith(".zip"):
-                        subprocess.run(
+                        run(
                             [
                                 "unzip",
                                 os.path.join(rec.local_path, rec.cmd_input_filename),
