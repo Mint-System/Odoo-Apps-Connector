@@ -7,3 +7,4 @@ access_git_repo_user,access.git.repo.user,model_git_repo,base.group_user,1,0,0,0
 access_git_repo_manager,access.git.repo.manager,model_git_repo,base.group_erp_manager,1,1,1,1
 access_git_repo_branch_user,access.git.repo.branch.user,model_git_repo_branch,base.group_user,1,0,0,0
 access_git_repo_branch_manager,access.git.repo.branch.manager,model_git_repo_branch,base.group_erp_manager,1,1,1,1
+access_git_repo_cmd_user,access.git.repo.cmd.user,model_git_repo_cmd,base.group_user,1,0,0,0

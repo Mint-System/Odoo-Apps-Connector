@@ -1,6 +1,7 @@
 import logging
 
 from odoo import fields, models
+from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -22,4 +23,4 @@ class GitForge(models.Model):
 
     def _compute_local_path(self):
         for rec in self:
-            rec.local_path = f"/tmp/{rec.hostname}"
+            rec.local_path = f"{config['data_dir']}/git/{rec.hostname}"

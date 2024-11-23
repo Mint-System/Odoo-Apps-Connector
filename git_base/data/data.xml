@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
+
     <record id="forge_github" model="git.forge">
         <field name="name">GitHub</field>
         <field name="hostname">github.com</field>
@@ -20,4 +21,62 @@
         <field name="name">Codey</field>
         <field name="hostname">codey.ch</field>
     </record>
+
+    <record id="cmd_status" model="git.repo.cmd">
+        <field name="name">status</field>
+        <field name="command">git status</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_log" model="git.repo.cmd">
+        <field name="name">log</field>
+        <field name="command">git log</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_clean" model="git.repo.cmd">
+        <field name="name">clean</field>
+        <field name="command">git clean -fd</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_add_all" model="git.repo.cmd">
+        <field name="name">add_all</field>
+        <field name="command">git add -A</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_add" model="git.repo.cmd">
+        <field name="name">add</field>
+        <field name="command">git add</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_unstange" model="git.repo.cmd">
+        <field name="name">unstange</field>
+        <field name="command">git restore --staged</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_commit" model="git.repo.cmd">
+        <field name="name">commit</field>
+        <field name="command">git commit -m</field>
+        <field name="states">initialized,cloned</field>
+        <field name="show_input" eval="True" />
+    </record>
+    <record id="cmd_set_url" model="git.repo.cmd">
+        <field name="name">set_url</field>
+        <field name="command">git remote set-url origin</field>
+        <field name="states">initialized,cloned</field>
+    </record>
+    <record id="cmd_init" model="git.repo.cmd">
+        <field name="name">init</field>
+        <field name="command">git init</field>
+        <field name="states">draft,deleted</field>
+    </record>
+    <record id="cmd_clone" model="git.repo.cmd">
+        <field name="name">clone</field>
+        <field name="command">git clone</field>
+        <field name="states">draft,deleted</field>
+    </record>
+    <record id="cmd_remove" model="git.repo.cmd">
+        <field name="name">remove</field>
+        <field name="command">rm -rf</field>
+        <field name="states">draft,initialized,cloned</field>
+    </record>
+
 </odoo>

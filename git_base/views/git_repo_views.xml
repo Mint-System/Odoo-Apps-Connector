@@ -28,14 +28,15 @@
                                 <group>
                                     <field name="local_path" />
                                     <field
-                                        name="cmd"
-                                        hotkey="g"
-                                        context="{'state': state}"
+                                        name="cmd_id"
+                                        data-hotkey="g"
+                                        domain="[('states', 'ilike', state)]"
                                     />
+                                    <field name="show_input" invisible="1" />
                                     <field
                                         name="cmd_input"
-                                        placeholder="commit message"
-                                        attrs="{'invisible': [('cmd','!=','commit')]}"
+                                        placeholder="command input"
+                                        attrs="{'invisible': [('show_input','=',False)]}"
                                     />
                                     <field
                                         name="cmd_input_file"

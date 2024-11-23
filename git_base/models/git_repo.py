@@ -1,45 +1,12 @@
 import logging
 import os
 import re
-import subprocess
+from subprocess import check_output
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
-
-
-class GitRepoCommand(models.AbstractModel):
-    _name = "git.repo.cmd"
-    _description = "Git Repo Command"
-
-    name = fields.Char(required=True)
-    command = fields.Char(required=True)
-
-    @api.model
-    def _search_read(self):
-        self.env.context.get("state")
-        commands = []
-        if self.state in ["initialized", "cloned"]:
-            commands += [
-                {"code": "status", "command": "git status"},
-                {"code": "log", "command": "git log"},
-                {"code": "clean", "command": "git clean -fd"},
-                {"code": "add_all", "command": "git add -A"},
-                {"code": "add", "command": "git add"},
-                {"code": "unstange", "command": "git restore --staged"},
-                {"code": "commit", "command": "git commit -m"},
-                {"code": "set_url", "command": "git remote set-url origin"},
-            ]
-        if self.state not in ["initialized", "cloned"]:
-            commands.append({"code": "init", "command": "git init"})
-
-        if self.state in ["draft", "deleted"]:
-            commands.append({"code": "clone", "command": "git clone"})
-
-        if self.state != "deleted":
-            commands.append({"code": "remove", "command": "rm -rf"})
-        return commands
 
 
 class GitRepo(models.Model):
@@ -78,7 +45,8 @@ class GitRepo(models.Model):
         readonly=True,
     )
 
-    cmd = fields.Many2one("git.repo.cmd", string="Command")
+    cmd_id = fields.Many2one("git.repo.cmd", string="Command")
+    show_input = fields.Boolean(related="cmd_id.show_input")
     cmd_input = fields.Text("Input")
     cmd_input_file = fields.Binary(
         "File Upload",
@@ -148,23 +116,27 @@ class GitRepo(models.Model):
 
     def action_run_cmd(self):
         self.ensure_one()
-        match self.cmd:
-            case "init":
-                self.init_repository()
-            case "remove":
-                self.remove_repository()
+        if self.cmd_id:
+            getattr(self, "cmd_" + self.cmd_id.name)()
+        self.cmd_id = False
 
-    def init_repository(self):
+    def cmd_init(self):
         self.ensure_local_path_exists()
-        output = subprocess.run(
-            ["git", "init", "-b", "main", self.local_path], check=True
+        output = check_output(["git", "init", "-b", "main", self.local_path])
+        self.write(
+            {
+                "cmd_output": output,
+                "state": "initialized",
+                "branch_ids": [(0, 0, {"name": "main", "repo_id": self.id})],
+            }
         )
-        self.cmd_output = output.stdout
-        self.state = "initialized"
-        self.write({"branch_ids": [(0, 0, {"name": "main", "repo_id": self.id})]})
 
-    def remove_repository(self):
-        output = subprocess.run(["rm", "-rf", self.local_path], check=True)
-        self.cmd_output = output.stdout
-        self.state = "deleted"
+    def cmd_status(self):
+        self.ensure_local_path_exists()
+        output = check_output(["git", "-C", self.local_path, "status"])
+        self.write({"cmd_output": output})
+
+    def cmd_remove(self):
+        output = check_output(["rm", "-rf", self.local_path])
+        self.write({"cmd_output": output, "state": "deleted"})
         self.branch_ids.unlink()
