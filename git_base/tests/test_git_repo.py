@@ -3,26 +3,26 @@ from odoo.tests.common import TransactionCase
 
 class TestGitRepo(TransactionCase):
     @classmethod
-    def setUpClass(self):
+    def setUpClass(cls):
         super().setUpClass()
 
-        self.forge_id = self.env["git.forge"].create(
+        cls.forge_id = cls.env["git.forge"].create(
             {
                 "name": "GitHub",
                 "hostname": "github.com",
             }
         )
-        self.account_id = self.env["git.account"].create(
+        cls.account_id = cls.env["git.account"].create(
             {
                 "name": "Mint System",
                 "http_url": "https://github.com/Mint-System",
-                "forge_id": self.forge_id.id,
+                "forge_id": cls.forge_id.id,
             }
         )
-        self.repo_id = self.env["git.repo"].create(
+        cls.repo_id = cls.env["git.repo"].create(
             {
                 "name": "Project-MCC",
-                "account_id": self.account_id.id,
+                "account_id": cls.account_id.id,
             }
         )
 

@@ -11,22 +11,22 @@ class GitRepoBranch(models.Model):
 
     name = fields.Char(required=True)
     sequence = fields.Integer()
-    default = fields.Boolean(default=False)
+    is_active = fields.Boolean("Active", compute="_compute_is_active")
     repo_id = fields.Many2one("git.repo", required=True)
-    active_branch = fields.Boolean(compute="_compute_active_branch")
 
     _sql_constraints = [
         ("name_unique", "unique(repo_id, name)", "Branch name must be unique.")
     ]
 
-    def _compute_active_branch(self):
+    def _compute_is_active(self):
         for rec in self:
-            rec.active_branch = True
-
-    def action_fetch_branch(self):
-        self.ensure_one()
-        return
+            rec.is_active = rec == self.repo_id.active_branch_id
 
     def action_switch_branch(self):
         self.ensure_one()
-        return
+        self.repo_id.cmd_switch(self.name)
+
+    def unlink(self):
+        for rec in self:
+            rec.repo_id.cmd_delete_branch(rec.name)
+        return super().unlink()

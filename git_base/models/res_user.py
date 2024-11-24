@@ -1,5 +1,6 @@
 import os
 import tempfile
+from contextlib import contextmanager
 
 from odoo import fields, models
 
@@ -11,27 +12,28 @@ class ResUsers(models.Model):
     ssh_private_key = fields.Text("SSH Private Key")
     ssh_private_key_password = fields.Char("SSH Private Key Password")
 
-    def _load_ssh_key(self):
-        self.ensure_one()
+    @contextmanager
+    def ssh_env(self):
+        """Context manager to set up the SSH environment for Git operations."""
 
-        # Write the private key to a temporary file
-        self.private_key_file = tempfile.NamedTemporaryFile(delete=False)
-        self.private_key_file.write(self.ssh_private_key.encode())
-        self.private_key_file.close()
+        private_key_file = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            private_key_file.write(self.ssh_private_key.encode("utf-8"))
+            private_key_file.close()
 
-        # Set up the SSH command with the private key
-        ssh_cmd = f"ssh -i {self.private_key_file.name}"
-        if self.ssh_private_key_password:
-            ssh_cmd += ' -o "IdentityAgent none" -o "KbdInteractiveAuthentication no" -o "PasswordAuthentication no" -o "IdentitiesOnly yes" -o "BatchMode yes"'
+            env = os.environ.copy()
+            env[
+                "GIT_SSH_COMMAND"
+            ] = f"ssh -i {private_key_file.name} -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 
-        # Set the GIT_SSH environment variable to use the custom SSH command
-        os.environ["GIT_SSH_COMMAND"] = ssh_cmd
+            if self.ssh_private_key_password:
+                env[
+                    "GIT_SSH_COMMAND"
+                ] += " -o PasswordAuthentication=yes -o IdentitiesOnly=yes"
+                env["SSH_ASKPASS"] = "/bin/echo"
+                env["SSH_PASS"] = self.ssh_private_key_password
 
-    def _clear_ssh_key(self):
-        self.ensure_one()
-
-        # Clean up the temporary private key file
-        if self.private_key_file:
-            os.remove(self.private_key_file.name)
-            del os.environ["GIT_SSH_COMMAND"]
-            del self.private_key_file
+            # Yield the environment to the calling function
+            yield env
+        finally:
+            os.remove(private_key_file.name)

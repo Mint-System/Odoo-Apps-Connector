@@ -23,10 +23,5 @@
     "auto_install": False,
     "images": ["images/screen.png"],
     "demo": ["demo/demo.xml"],
-    "external_dependencies": {
-        "binary": ["git"],
-        "python": [
-            "GitPython",
-        ],
-    },
+    "external_dependencies": {"binary": ["git"]},
 }
