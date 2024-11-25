@@ -36,6 +36,13 @@
         <field name="command">git log</field>
         <field name="states">initialized,connected</field>
     </record>
+    <record id="cmd_ls" model="git.repo.cmd">
+        <field name="sequence">2</field>
+        <field name="name">List</field>
+        <field name="code">list</field>
+        <field name="command">ls -lsh</field>
+        <field name="states">draft,initialized,connected</field>
+    </record>
     <record id="cmd_clean" model="git.repo.cmd">
         <field name="sequence">3</field>
         <field name="name">Clean</field>
@@ -57,6 +64,13 @@
         <field name="command">git restore --staged .</field>
         <field name="states">initialized,connected</field>
     </record>
+    <record id="cmd_reset_hard" model="git.repo.cmd">
+        <field name="sequence">5</field>
+        <field name="name">Reset Hard</field>
+        <field name="code">reset_hard</field>
+        <field name="command">git reset --hard</field>
+        <field name="states">initialized,connected</field>
+    </record>
     <record id="cmd_diff" model="git.repo.cmd">
         <field name="sequence">6</field>
         <field name="name">Diff</field>
@@ -64,11 +78,19 @@
         <field name="command">git diff</field>
         <field name="states">initialized,connected</field>
     </record>
+    <record id="cmd_commit" model="git.repo.cmd">
+        <field name="sequence">7</field>
+        <field name="name">Commit</field>
+        <field name="code">commit</field>
+        <field name="command">gcmsg; git commit -m</field>
+        <field name="states">initialized,connected</field>
+        <field name="show_input" eval="True" />
+    </record>
     <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="sequence">7</field>
         <field name="name">Commit All</field>
         <field name="code">commit_all</field>
-        <field name="command">gcm -a; git commit -a -m</field>
+        <field name="command">git commit -a -m</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
     </record>
@@ -76,8 +98,15 @@
         <field name="sequence">8</field>
         <field name="name">Add Remote</field>
         <field name="code">add_remote</field>
-        <field name="command">git remote add origin</field>
-        <field name="states">initialized,connected</field>
+        <field name="command">git remote add origin $SSH_URL</field>
+        <field name="states">initialized</field>
+    </record>
+    <record id="cmd_set_upstream" model="git.repo.cmd">
+        <field name="sequence">10</field>
+        <field name="name">Set Upstream</field>
+        <field name="code">set_upstream</field>
+        <field name="command">git branch --set-upstream-to=origin/$BRANCH</field>
+        <field name="states">connected</field>
     </record>
     <record id="cmd_push" model="git.repo.cmd">
         <field name="sequence">9</field>
@@ -93,18 +122,25 @@
         <field name="command">gp -f; git push -f</field>
         <field name="states">connected</field>
     </record>
+    <record id="cmd_push_upstream" model="git.repo.cmd">
+        <field name="sequence">10</field>
+        <field name="name">Push Upstream</field>
+        <field name="code">push_upstream</field>
+        <field name="command">git push --set-upstream origin $BRANCH</field>
+        <field name="states">connected</field>
+    </record>
     <record id="cmd_pull" model="git.repo.cmd">
         <field name="sequence">11</field>
         <field name="name">Pull</field>
         <field name="code">pull</field>
-        <field name="command">git pull</field>
+        <field name="command">git pull origin $BRANCH</field>
         <field name="states">connected</field>
     </record>
     <record id="cmd_switch" model="git.repo.cmd">
         <field name="sequence">12</field>
         <field name="name">Switch</field>
         <field name="code">switch</field>
-        <field name="command">git switch</field>
+        <field name="command">git switch $BRANCH</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
     </record>
@@ -112,28 +148,28 @@
         <field name="sequence">13</field>
         <field name="name">Init</field>
         <field name="code">init</field>
-        <field name="command">git init</field>
+        <field name="command">git init $LOCAL_PATH</field>
         <field name="states">draft,deleted</field>
     </record>
     <record id="cmd_clone" model="git.repo.cmd">
         <field name="sequence">14</field>
         <field name="name">Clone</field>
         <field name="code">clone</field>
-        <field name="command">git clone</field>
+        <field name="command">git clone $SSH_URL $LOCAL_PATH</field>
         <field name="states">draft,deleted</field>
     </record>
     <record id="cmd_remove" model="git.repo.cmd">
         <field name="sequence">15</field>
         <field name="name">Remove</field>
         <field name="code">remove</field>
-        <field name="command">rm -rf</field>
+        <field name="command">rm -rf $LOCAL_PATH</field>
         <field name="states">draft,initialized,connected,deleted</field>
     </record>
     <record id="cmd_delete_branch" model="git.repo.cmd">
         <field name="sequence">16</field>
         <field name="name">Delete Branch</field>
         <field name="code">delete_branch</field>
-        <field name="command">git branch -D</field>
+        <field name="command">git branch -D $BRANCH</field>
         <field name="states">initialized,connected</field>
     </record>
 </odoo>

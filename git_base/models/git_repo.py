@@ -47,13 +47,14 @@ class GitRepo(models.Model):
         default="draft",
         readonly=True,
     )
+    ref = fields.Char(readonly=True, compute="_compute_ref")
     active_branch_id = fields.Many2one("git.repo.branch", readonly=True)
 
     def _get_default_cmd_id(self):
         if self.state in ["initialized", "connected"]:
             return self.env.ref("git_base.cmd_status")
         else:
-            return False
+            return self.env.ref("git_base.cmd_init")
 
     cmd_id = fields.Many2one(
         "git.repo.cmd", string="Command", default=_get_default_cmd_id
@@ -103,6 +104,13 @@ class GitRepo(models.Model):
         for rec in self:
             rec.local_path = f"{rec.account_id.local_path}/{rec.name}"
 
+    def _compute_ref(self):
+        for rec in self:
+            if rec.active_branch_id:
+                rec.ref = rec.active_branch_id.name
+            else:
+                rec.ref = self._get_git_branch_name()
+
     def ensure_local_path_exists(self):
         self.ensure_one()
         if not os.path.exists(self.local_path):
@@ -137,8 +145,23 @@ class GitRepo(models.Model):
 
     def _get_git_branch_list(self):
         self.ensure_one()
+        if os.path.exists(f"{self.local_path}.git"):
+            return (
+                check_output(["git", "-C", self.local_path, "branch", "--list"])
+                .decode("utf-8")
+                .strip()
+            )
+        else:
+            return ""
+
+    def _get_git_branch_name(self):
+        self.ensure_one()
         if os.path.exists(self.local_path):
-            return str(check_output(["git", "-C", self.local_path, "branch", "--list"]))
+            return (
+                check_output(["git", "-C", self.local_path, "branch", "--show-current"])
+                .decode("utf-8")
+                .strip()
+            )
         else:
             return ""
 
@@ -150,20 +173,19 @@ class GitRepo(models.Model):
 
     # Git Command Methods
 
-    def cmd_init(self):
-        self.ensure_local_path_exists()
-        output = check_output(["git", "init", "-b", "main", self.local_path])
-        self.write(
-            {
-                "cmd_output": output,
-                "state": "initialized",
-                "branch_ids": [(0, 0, {"name": "main", "repo_id": self.id})],
-            }
-        )
-
     def cmd_status(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "status"])
+        self.write({"cmd_output": output})
+
+    def cmd_log(self):
+        self.ensure_one()
+        output = check_output(["git", "-C", self.local_path, "log"])
+        self.write({"cmd_output": output})
+
+    def cmd_list(self):
+        self.ensure_one()
+        output = check_output(["ls", "-lsh", self.local_path])
         self.write({"cmd_output": output})
 
     def cmd_add_all(self):
@@ -173,10 +195,14 @@ class GitRepo(models.Model):
 
     def cmd_unstage_all(self):
         self.ensure_one()
-        # output = check_output(["git", "-C", self.local_path, "restore", "--staged", "."])
         output = check_output(
-            ["git", "-C", self.local_path, "rm", "-r", "--cached", "."]
+            ["git", "-C", self.local_path, "restore", "--staged", "."]
         )
+        self.write({"cmd_output": output})
+
+    def cmd_reset_hard(self):
+        self.ensure_one()
+        output = check_output(["git", "-C", self.local_path, "reset", "--hard"])
         self.write({"cmd_output": output})
 
     def cmd_diff(self):
@@ -184,7 +210,7 @@ class GitRepo(models.Model):
         output = check_output(["git", "-C", self.local_path, "diff"])
         self.write({"cmd_output": output})
 
-    def cmd_commit_all(self):
+    def cmd_commit(self):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
@@ -196,12 +222,33 @@ class GitRepo(models.Model):
                 "commit",
                 "--author",
                 self._get_git_author(),
-                "-a",
                 "-m",
                 f'"{self.cmd_input}"',
             ]
         )
         self.write({"cmd_output": output, "cmd_input": False})
+
+    def cmd_commit_all(self):
+        self.ensure_one()
+        if not self.cmd_input:
+            raise UserError(_("Missing commit message."))
+        try:
+            output = check_output(
+                [
+                    "git",
+                    "-C",
+                    self.local_path,
+                    "commit",
+                    "--author",
+                    self._get_git_author(),
+                    "-a",
+                    "-m",
+                    f'"{self.cmd_input}"',
+                ]
+            )
+            self.write({"cmd_output": output, "cmd_input": False})
+        except Exception as e:
+            self.write({"cmd_output": e})
 
     def cmd_add_remote(self):
         self.ensure_one()
@@ -218,39 +265,81 @@ class GitRepo(models.Model):
         )
         self.write({"cmd_output": output, "state": "connected"})
 
+    def cmd_set_upstream(self):
+        self.ensure_one()
+        user = self._get_git_user()
+        with user.ssh_env() as ssh_env:
+            try:
+                output = check_output(
+                    [
+                        "git",
+                        "-C",
+                        self.local_path,
+                        "branch",
+                        f"--set-upstream-to=origin/{self.active_branch_id.name}",
+                        self.active_branch_id.name,
+                    ],
+                    env=ssh_env,
+                )
+                self.write({"cmd_output": output})
+                self.active_branch_id.write(
+                    {"upstream": f"origin/{self.active_branch_id.name}"}
+                )
+            except Exception as e:
+                self.write({"cmd_output": e})
+
     def cmd_push(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env():
-            output = check_output(
-                [
-                    "git",
-                    "-C",
-                    self.local_path,
-                    "push",
-                    "--set-upstream",
-                    "origin",
-                    self.active_branch_id.name,
-                ]
-            )
-            self.write({"cmd_output": output})
+        with user.ssh_env() as ssh_env:
+            try:
+                output = check_output(
+                    ["git", "-C", self.local_path, "push"], env=ssh_env
+                )
+                self.write({"cmd_output": output})
+            except Exception as e:
+                self.write({"cmd_output": e})
+
+    def cmd_push_upstream(self):
+        self.ensure_one()
+        user = self._get_git_user()
+        with user.ssh_env() as ssh_env:
+            try:
+                output = check_output(
+                    [
+                        "git",
+                        "-C",
+                        self.local_path,
+                        "push",
+                        "--set-upstream",
+                        "origin",
+                        self.active_branch_id.name,
+                    ],
+                    env=ssh_env,
+                )
+                self.write({"cmd_output": output})
+            except Exception as e:
+                self.write({"cmd_output": e})
 
     def cmd_pull(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env():
-            output = check_output(["git", "-C", self.local_path, "pull"])
-            self.write({"cmd_output": output})
-
-    def cmd_clone(self):
-        self.ensure_one()
-        user = self._get_git_user()
         with user.ssh_env() as ssh_env:
-            output = check_output(
-                ["git", "clone", self.ssh_url, self.local_path],
-                env=ssh_env,
-            )
-            self.write({"cmd_output": output})
+            try:
+                output = check_output(
+                    [
+                        "git",
+                        "-C",
+                        self.local_path,
+                        "pull",
+                        "origin",
+                        self.active_branch_id.name,
+                    ],
+                    env=ssh_env,
+                )
+                self.write({"cmd_output": output})
+            except Exception as e:
+                self.write({"cmd_output": e})
 
     def cmd_clean(self):
         self.ensure_one()
@@ -303,10 +392,45 @@ class GitRepo(models.Model):
 
         self.write({"cmd_output": output, "active_branch_id": branch_id})
 
-    def cmd_log(self):
+    def cmd_init(self):
+        self.ensure_local_path_exists()
+        output = check_output(["git", "init", self.local_path])
+        branch_name = self._get_git_branch_name()
+        self.write(
+            {
+                "cmd_output": output,
+                "state": "initialized",
+            }
+        )
+        self.active_branch_id = self.env["git.repo.branch"].create(
+            {"name": branch_name, "repo_id": self.id}
+        )
+
+    def cmd_clone(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "log"])
-        self.write({"cmd_output": output})
+        user = self._get_git_user()
+        with user.ssh_env() as ssh_env:
+            try:
+                output = check_output(
+                    ["git", "clone", self.ssh_url, self.local_path],
+                    env=ssh_env,
+                )
+                branch_name = self._get_git_branch_name()
+                self.write(
+                    {
+                        "cmd_output": output,
+                        "state": "connected",
+                    }
+                )
+                self.active_branch_id = self.env["git.repo.branch"].create(
+                    {
+                        "name": branch_name,
+                        "repo_id": self.id,
+                        "upstream": f"origin/{branch_name}",
+                    }
+                )
+            except Exception as e:
+                self.write({"cmd_output": e})
 
     def cmd_remove(self):
         self.ensure_one()

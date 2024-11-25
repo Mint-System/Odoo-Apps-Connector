@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <record id="git_repo_cmd_tree_view" model="ir.ui.view">
+        <field name="name">git_base.git_repo_cmd_tree_view</field>
+        <field name="model">git.repo.cmd</field>
+        <field name="arch" type="xml">
+            <tree duplicate="false">
+                <field name="name" />
+                <field name="command" />
+            </tree>
+        </field>
+    </record>
+
+</odoo>

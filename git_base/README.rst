@@ -14,9 +14,8 @@ Usage
 =====
 
 * Open "Git > Repo" and register a repository
-* Click "Sync" to clone the repo
+* Run command "Init" or "Clone"
 * Open the "Branches" tab and enter new branches
-* Run git commands
 
 Configuration
 ~~~~~~~~~~~~~

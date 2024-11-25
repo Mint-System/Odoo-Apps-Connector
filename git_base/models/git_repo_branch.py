@@ -13,6 +13,7 @@ class GitRepoBranch(models.Model):
     sequence = fields.Integer()
     is_active = fields.Boolean("Active", compute="_compute_is_active")
     repo_id = fields.Many2one("git.repo", required=True)
+    upstream = fields.Char()
 
     _sql_constraints = [
         ("name_unique", "unique(repo_id, name)", "Branch name must be unique.")
