@@ -252,24 +252,21 @@ class GitRepo(models.Model):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
-        try:
-            output = check_output(
-                [
-                    "git",
-                    "-C",
-                    self.local_path,
-                    "commit",
-                    "--author",
-                    self._get_git_author(),
-                    "-a",
-                    "-m",
-                    f'"{self.cmd_input}"',
-                ],
-                stderr=STDOUT,
-            )
-            self.write({"cmd_output": output, "cmd_input": False})
-        except Exception as e:
-            self.write({"cmd_output": e})
+        output = check_output(
+            [
+                "git",
+                "-C",
+                self.local_path,
+                "commit",
+                "--author",
+                self._get_git_author(),
+                "-a",
+                "-m",
+                f'"{self.cmd_input}"',
+            ],
+            stderr=STDOUT,
+        )
+        self.write({"cmd_output": output, "cmd_input": False})
 
     # Branch Commands
 
@@ -453,19 +450,16 @@ class GitRepo(models.Model):
 
     def cmd_ssh_test(self):
         self.ensure_one()
-        try:
-            user = self._get_git_user()
-            output = user.ssh_command(
-                [
-                    "ssh",
-                    "-i",
-                    user.ssh_private_key_filename,
-                    "-o",
-                    "StrictHostKeyChecking=no",
-                    "-T",
-                    f"git@{self.forge_id.hostname}",
-                ]
-            )
-            self.write({"cmd_output": output})
-        except Exception as e:
-            self.write({"cmd_output": e})
+        user = self._get_git_user()
+        output = user.ssh_command(
+            [
+                "ssh",
+                "-i",
+                user.ssh_private_key_filename,
+                "-o",
+                "StrictHostKeyChecking=no",
+                "-T",
+                f"git@{self.forge_id.hostname}",
+            ]
+        )
+        self.write({"cmd_output": output})
