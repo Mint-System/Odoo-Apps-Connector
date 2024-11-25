@@ -135,8 +135,9 @@ class GitRepo(models.Model):
                 rec.cmd_input_filename = False
 
     def unlink(self):
-        if not self.state == "deleted":
-            raise UserError(_("Repo can only be deleted if is in state 'Deleted'."))
+        for rec in self:
+            if not rec.state == "deleted":
+                raise UserError(_("Repo can only be deleted if is in state 'Deleted'."))
         return super().unlink()
 
     @api.model
