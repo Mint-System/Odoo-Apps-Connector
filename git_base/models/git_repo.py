@@ -448,3 +448,8 @@ class GitRepo(models.Model):
             {"cmd_output": output, "state": "deleted", "active_branch_id": False}
         )
         self.branch_ids.unlink()
+
+    def unlink(self):
+        if not self.state == "deleted":
+            raise UserError(_("Repo can only be deleted if is in state 'Deleted'."))
+        return super().unlink()

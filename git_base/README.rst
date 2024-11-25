@@ -21,7 +21,7 @@ Configuration
 ~~~~~~~~~~~~~
 
 * Open "Menu > Profile" and select the "SSH" tab
-* Add the SSH private key and optionally enter SSH key password  
+* Add the SSH private key and optionaly enter SSH key password  
 * Open "Git > Account" and add a new entry
 
 Maintainer
