@@ -200,4 +200,11 @@
         <field name="command">mkdir -p $LOCAL_PATH</field>
         <field name="states">draft,deleted</field>
     </record>
+    <record id="cmd_ssh_test" model="git.repo.cmd">
+        <field name="sequence">24</field>
+        <field name="name">SSH Test</field>
+        <field name="code">ssh_test</field>
+        <field name="command">ssh -T git@$HOSTNAME</field>
+        <field name="states">draft,initialized,connected</field>
+    </record>
 </odoo>

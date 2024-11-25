@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import zipfile
-from subprocess import check_output
+from subprocess import STDOUT, check_output
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -181,46 +181,52 @@ class GitRepo(models.Model):
 
     def cmd_status(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "status"])
+        output = check_output(["git", "-C", self.local_path, "status"], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     def cmd_log(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "log"])
+        output = check_output(["git", "-C", self.local_path, "log"], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     def cmd_list(self):
         self.ensure_one()
-        output = check_output(["ls", "-lsh", self.local_path])
+        output = check_output(["ls", "-lsh", self.local_path], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     # Stage Commands
 
     def cmd_add_all(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "add", "-A"])
+        output = check_output(
+            ["git", "-C", self.local_path, "add", "-A"], stderr=STDOUT
+        )
         self.write({"cmd_output": output})
 
     def cmd_unstage_all(self):
         self.ensure_one()
         output = check_output(
-            ["git", "-C", self.local_path, "restore", "--staged", "."]
+            ["git", "-C", self.local_path, "restore", "--staged", "."], stderr=STDOUT
         )
         self.write({"cmd_output": output})
 
     def cmd_clean(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "clean", "-fd"])
+        output = check_output(
+            ["git", "-C", self.local_path, "clean", "-fd"], stderr=STDOUT
+        )
         self.write({"cmd_output": output})
 
     def cmd_reset_hard(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "reset", "--hard"])
+        output = check_output(
+            ["git", "-C", self.local_path, "reset", "--hard"], stderr=STDOUT
+        )
         self.write({"cmd_output": output})
 
     def cmd_diff(self):
         self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "diff"])
+        output = check_output(["git", "-C", self.local_path, "diff"], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     def cmd_commit(self):
@@ -237,7 +243,8 @@ class GitRepo(models.Model):
                 self._get_git_author(),
                 "-m",
                 f'"{self.cmd_input}"',
-            ]
+            ],
+            stderr=STDOUT,
         )
         self.write({"cmd_output": output, "cmd_input": False})
 
@@ -257,7 +264,8 @@ class GitRepo(models.Model):
                     "-a",
                     "-m",
                     f'"{self.cmd_input}"',
-                ]
+                ],
+                stderr=STDOUT,
             )
             self.write({"cmd_output": output, "cmd_input": False})
         except Exception as e:
@@ -282,17 +290,18 @@ class GitRepo(models.Model):
         # Get list of branches
         git_branch_list = self._get_git_branch_list()
 
-        _logger.warning([branch_name, branch_id, git_branch_list])
-
         if branch_id and branch_name in git_branch_list:
-            output = check_output(["git", "-C", self.local_path, "switch", branch_name])
+            output = check_output(
+                ["git", "-C", self.local_path, "switch", branch_name], stderr=STDOUT
+            )
         if not branch_id:
             branch_id = self.env["git.repo.branch"].create(
                 {"name": branch_name, "repo_id": self.id}
             )
         if branch_name not in git_branch_list:
             output = check_output(
-                ["git", "-C", self.local_path, "switch", "-c", branch_name]
+                ["git", "-C", self.local_path, "switch", "-c", branch_name],
+                stderr=STDOUT,
             )
 
         self.write({"cmd_output": output, "active_branch_id": branch_id})
@@ -313,7 +322,8 @@ class GitRepo(models.Model):
 
         if branch_name in git_branch_list:
             output = check_output(
-                ["git", "-C", self.local_path, "branch", "-D", branch_name]
+                ["git", "-C", self.local_path, "branch", "-D", branch_name],
+                stderr=STDOUT,
             )
             self.write({"cmd_output": output})
 
@@ -330,7 +340,8 @@ class GitRepo(models.Model):
                 "add",
                 "origin",
                 self.ssh_url,
-            ]
+            ],
+            stderr=STDOUT,
         )
         self.write({"cmd_output": output, "state": "connected"})
 
@@ -349,6 +360,7 @@ class GitRepo(models.Model):
                         self.active_branch_id.name,
                     ],
                     env=ssh_env,
+                    stderr=STDOUT,
                 )
                 self.write({"cmd_output": output})
                 self.active_branch_id.write(
@@ -372,6 +384,7 @@ class GitRepo(models.Model):
                         self.active_branch_id.name,
                     ],
                     env=ssh_env,
+                    stderr=STDOUT,
                 )
                 self.write({"cmd_output": output})
             except Exception as e:
@@ -383,7 +396,7 @@ class GitRepo(models.Model):
         with user.ssh_env() as ssh_env:
             try:
                 output = check_output(
-                    ["git", "-C", self.local_path, "push"], env=ssh_env
+                    ["git", "-C", self.local_path, "push"], env=ssh_env, stderr=STDOUT
                 )
                 self.write({"cmd_output": output})
             except Exception as e:
@@ -405,6 +418,7 @@ class GitRepo(models.Model):
                         self.active_branch_id.name,
                     ],
                     env=ssh_env,
+                    stderr=STDOUT,
                 )
                 self.write({"cmd_output": output})
                 self.active_branch_id.write(
@@ -417,7 +431,7 @@ class GitRepo(models.Model):
 
     def cmd_init(self):
         self.ensure_local_path_exists()
-        output = check_output(["git", "init", self.local_path])
+        output = check_output(["git", "init", self.local_path], stderr=STDOUT)
         branch_name = self._get_git_branch_name()
         self.write(
             {
@@ -437,6 +451,7 @@ class GitRepo(models.Model):
                 output = check_output(
                     ["git", "clone", self.ssh_url, self.local_path],
                     env=ssh_env,
+                    stderr=STDOUT,
                 )
                 branch_name = self._get_git_branch_name()
                 self.write(
@@ -457,7 +472,7 @@ class GitRepo(models.Model):
 
     def cmd_remove(self):
         self.ensure_one()
-        output = check_output(["rm", "-rf", self.local_path])
+        output = check_output(["rm", "-rf", self.local_path], stderr=STDOUT)
         self.write(
             {"cmd_output": output, "state": "deleted", "active_branch_id": False}
         )
@@ -465,5 +480,14 @@ class GitRepo(models.Model):
 
     def cmd_mkdir(self):
         self.ensure_one()
-        output = check_output(["mkdir", "-p", self.local_path])
+        output = check_output(["mkdir", "-p", self.local_path], stderr=STDOUT)
         self.write({"cmd_output": output})
+
+    def cmd_ssh_test(self):
+        self.ensure_one()
+        try:
+            user = self._get_git_user()
+            output = user.ssh_test(self.forge_id.hostname)
+            self.write({"cmd_output": output})
+        except Exception as e:
+            self.write({"cmd_output": e})

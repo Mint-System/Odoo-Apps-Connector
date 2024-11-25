@@ -2,6 +2,7 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
+from subprocess import STDOUT, check_output
 
 from odoo import fields, models
 
@@ -23,6 +24,7 @@ class ResUsers(models.Model):
             private_key_file = tempfile.NamedTemporaryFile(delete=False)
             try:
                 private_key_file.write(self.ssh_private_key.encode("utf-8"))
+                private_key_file.close()
 
                 # Set the SSH environment variables
                 env = os.environ.copy()
@@ -42,3 +44,31 @@ class ResUsers(models.Model):
             env["GIT_ASKPASS"] = ""
             env["GIT_ASKPASS_STDIN"] = ""
             yield env
+
+    def ssh_test(self, hostname):
+        if self.ssh_private_key:
+            with tempfile.NamedTemporaryFile(delete=False) as private_key_file:
+                try:
+                    # Write the private key to the temporary file
+                    private_key_file.write(self.ssh_private_key.encode("utf-8"))
+                    private_key_file.close()
+
+                    output = check_output(
+                        [
+                            "ssh",
+                            "-i",
+                            private_key_file.name,
+                            "-o",
+                            "StrictHostKeyChecking=no",
+                            "-T",
+                            f"git@{hostname}",
+                        ],
+                        stderr=STDOUT,
+                    )
+                    return output.decode("utf-8")
+                except Exception as e:
+                    return str(e)
+                finally:
+                    os.remove(private_key_file.name)
+        else:
+            return "Missing SSH private key."
