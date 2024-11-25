@@ -10,19 +10,4 @@
         <field name="account_id" ref="git_base.account_mint_system" />
     </record>
 
-        <record id="base.user_admin" model="res.users">
-            <field
-            name="ssh_public_key"
-        >ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHx3tv+Mx+hKOIYoRJv5XLmkrSH/QcAHF2qh199+fuJ/ admin@yourcompany.example.com</field>
-            <field name="ssh_private_key">-----BEGIN OPENSSH PRIVATE KEY-----
-b3BlbnNzaC1rZXktdjEAAAAACmFlczI1Ni1jdHIAAAAGYmNyeXB0AAAAGAAAABACCHSeDC
-N+yee2YDkzPP7rAAAAEAAAAAEAAAAzAAAAC3NzaC1lZDI1NTE5AAAAIHx3tv+Mx+hKOIYo
-RJv5XLmkrSH/QcAHF2qh199+fuJ/AAAAoBcC9y1sXasRhw/4ayT/HLRHf+SbdacVwnA3du
-3OXalWHUUkrtAmKAL5atuAWm0jtGhC+Cn/BJd7+qNz52SZAgcr6DeCtN5xf2UueY/qbLBS
-XR9vXe+LPf+g5PbkXJWFN+c8oHfTu3+EkEqVx45CrwnqBNW4ZmhdA5UL+3whxxWpMon1Fb
-i7MUXwirpPZ+w590qqHCaTJT3qTnHc3o5royg=
------END OPENSSH PRIVATE KEY-----</field>
-            <field name="ssh_private_key_password">admin</field>
-        </record>
-
 </odoo>

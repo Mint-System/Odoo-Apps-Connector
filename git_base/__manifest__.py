@@ -24,5 +24,5 @@
     "auto_install": False,
     "images": ["images/screen.png"],
     "demo": ["demo/demo.xml"],
-    "external_dependencies": {"binary": ["git", "ssh"]},
+    "external_dependencies": {"binary": ["git", "ssh", "sshpass"]},
 }

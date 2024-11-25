@@ -348,84 +348,60 @@ class GitRepo(models.Model):
     def cmd_set_upstream(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env() as ssh_env:
-            try:
-                output = check_output(
-                    [
-                        "git",
-                        "-C",
-                        self.local_path,
-                        "branch",
-                        f"--set-upstream-to=origin/{self.active_branch_id.name}",
-                        self.active_branch_id.name,
-                    ],
-                    env=ssh_env,
-                    stderr=STDOUT,
-                )
-                self.write({"cmd_output": output})
-                self.active_branch_id.write(
-                    {"upstream": f"origin/{self.active_branch_id.name}"}
-                )
-            except Exception as e:
-                self.write({"cmd_output": e})
+        output = user.ssh_command(
+            [
+                "git",
+                "-C",
+                self.local_path,
+                "branch",
+                f"--set-upstream-to=origin/{self.active_branch_id.name}",
+                self.active_branch_id.name,
+            ]
+        )
+        self.write({"cmd_output": output})
+        self.active_branch_id.write(
+            {"upstream": f"origin/{self.active_branch_id.name}"}
+        )
 
     def cmd_pull(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env() as ssh_env:
-            try:
-                output = check_output(
-                    [
-                        "git",
-                        "-C",
-                        self.local_path,
-                        "pull",
-                        "origin",
-                        self.active_branch_id.name,
-                    ],
-                    env=ssh_env,
-                    stderr=STDOUT,
-                )
-                self.write({"cmd_output": output})
-            except Exception as e:
-                self.write({"cmd_output": e})
+        output = user.ssh_command(
+            [
+                "git",
+                "-C",
+                self.local_path,
+                "pull",
+                "origin",
+                self.active_branch_id.name,
+            ]
+        )
+        self.write({"cmd_output": output})
 
     def cmd_push(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env() as ssh_env:
-            try:
-                output = check_output(
-                    ["git", "-C", self.local_path, "push"], env=ssh_env, stderr=STDOUT
-                )
-                self.write({"cmd_output": output})
-            except Exception as e:
-                self.write({"cmd_output": e})
+        output = user.ssh_command(["git", "-C", self.local_path, "push"])
+        self.write({"cmd_output": output})
 
     def cmd_push_upstream(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env() as ssh_env:
-            try:
-                output = check_output(
-                    [
-                        "git",
-                        "-C",
-                        self.local_path,
-                        "push",
-                        "--set-upstream",
-                        "origin",
-                        self.active_branch_id.name,
-                    ],
-                    env=ssh_env,
-                    stderr=STDOUT,
-                )
-                self.write({"cmd_output": output})
-                self.active_branch_id.write(
-                    {"upstream": f"origin/{self.active_branch_id.name}"}
-                )
-            except Exception as e:
-                self.write({"cmd_output": e})
+        output = user.ssh_command(
+            [
+                "git",
+                "-C",
+                self.local_path,
+                "push",
+                "--set-upstream",
+                "origin",
+                self.active_branch_id.name,
+            ]
+        )
+        self.write({"cmd_output": output})
+        self.active_branch_id.write(
+            {"upstream": f"origin/{self.active_branch_id.name}"}
+        )
 
     # Repo Commands
 
@@ -446,29 +422,21 @@ class GitRepo(models.Model):
     def cmd_clone(self):
         self.ensure_one()
         user = self._get_git_user()
-        with user.ssh_env() as ssh_env:
-            try:
-                output = check_output(
-                    ["git", "clone", self.ssh_url, self.local_path],
-                    env=ssh_env,
-                    stderr=STDOUT,
-                )
-                branch_name = self._get_git_branch_name()
-                self.write(
-                    {
-                        "cmd_output": output,
-                        "state": "connected",
-                    }
-                )
-                self.active_branch_id = self.env["git.repo.branch"].create(
-                    {
-                        "name": branch_name,
-                        "repo_id": self.id,
-                        "upstream": f"origin/{branch_name}",
-                    }
-                )
-            except Exception as e:
-                self.write({"cmd_output": e})
+        output = user.ssh_command(["git", "clone", self.ssh_url, self.local_path])
+        branch_name = self._get_git_branch_name()
+        self.write(
+            {
+                "cmd_output": output,
+                "state": "connected",
+            }
+        )
+        self.active_branch_id = self.env["git.repo.branch"].create(
+            {
+                "name": branch_name,
+                "repo_id": self.id,
+                "upstream": f"origin/{branch_name}",
+            }
+        )
 
     def cmd_remove(self):
         self.ensure_one()
@@ -487,7 +455,17 @@ class GitRepo(models.Model):
         self.ensure_one()
         try:
             user = self._get_git_user()
-            output = user.ssh_test(self.forge_id.hostname)
+            output = user.ssh_command(
+                [
+                    "ssh",
+                    "-i",
+                    user.ssh_private_key_filename,
+                    "-o",
+                    "StrictHostKeyChecking=no",
+                    "-T",
+                    f"git@{self.forge_id.hostname}",
+                ]
+            )
             self.write({"cmd_output": output})
         except Exception as e:
             self.write({"cmd_output": e})

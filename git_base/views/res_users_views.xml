@@ -11,7 +11,10 @@
                     <group>
                         <group string="Keys" name="keys">
                             <field name="ssh_public_key" />
-                            <field name="ssh_private_key" />
+                            <field
+                                name="ssh_private_key_file"
+                                filename="ssh_private_key.txt"
+                            />
                             <field name="ssh_private_key_password" password="True" />
                         </group>
                     </group>
@@ -30,7 +33,10 @@
                     <group>
                         <group string="Keys" name="keys">
                             <field name="ssh_public_key" />
-                            <field name="ssh_private_key" />
+                            <field
+                                name="ssh_private_key_file"
+                                filename="ssh_private_key.txt"
+                            />
                             <field name="ssh_private_key_password" password="True" />
                         </group>
                     </group>
