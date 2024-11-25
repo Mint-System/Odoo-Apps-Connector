@@ -43,7 +43,7 @@
         <field name="name">List</field>
         <field name="code">list</field>
         <field name="command">ls -lsh</field>
-        <field name="states">draft,initialized,connected</field>
+        <field name="states">initialized,connected</field>
     </record>
 
     <!-- Stage Commands -->
@@ -192,5 +192,12 @@
         <field name="code">remove</field>
         <field name="command">rm -rf $LOCAL_PATH</field>
         <field name="states">draft,initialized,connected,deleted</field>
+    </record>
+    <record id="cmd_mkdir" model="git.repo.cmd">
+        <field name="sequence">23</field>
+        <field name="name">Mkdir</field>
+        <field name="code">mkdir</field>
+        <field name="command">mkdir -p $LOCAL_PATH</field>
+        <field name="states">draft,deleted</field>
     </record>
 </odoo>

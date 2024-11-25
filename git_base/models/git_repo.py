@@ -134,6 +134,11 @@ class GitRepo(models.Model):
                 rec.cmd_input_file = False
                 rec.cmd_input_filename = False
 
+    def unlink(self):
+        if not self.state == "deleted":
+            raise UserError(_("Repo can only be deleted if is in state 'Deleted'."))
+        return super().unlink()
+
     @api.model
     def _get_git_user(self):
         return self.user_id or self.env.user
@@ -171,7 +176,7 @@ class GitRepo(models.Model):
             getattr(self, "cmd_" + self.cmd_id.code)()
         self.cmd_id = self._get_default_cmd_id()
 
-    # Git Command Methods
+    # Status Commands
 
     def cmd_status(self):
         self.ensure_one()
@@ -188,6 +193,8 @@ class GitRepo(models.Model):
         output = check_output(["ls", "-lsh", self.local_path])
         self.write({"cmd_output": output})
 
+    # Stage Commands
+
     def cmd_add_all(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "add", "-A"])
@@ -198,6 +205,11 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "restore", "--staged", "."]
         )
+        self.write({"cmd_output": output})
+
+    def cmd_clean(self):
+        self.ensure_one()
+        output = check_output(["git", "-C", self.local_path, "clean", "-fd"])
         self.write({"cmd_output": output})
 
     def cmd_reset_hard(self):
@@ -250,6 +262,62 @@ class GitRepo(models.Model):
         except Exception as e:
             self.write({"cmd_output": e})
 
+    # Branch Commands
+
+    def cmd_branch_list(self):
+        self.ensure_one()
+        self.write({"cmd_output": self._get_git_branch_list()})
+
+    def cmd_switch(self, branch_name=None):
+        self.ensure_one()
+        if not branch_name:
+            branch_name = self.cmd_input
+        if not branch_name:
+            raise UserError(_("Missing branch name."))
+
+        # Get branch record
+        branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
+
+        # Get list of branches
+        git_branch_list = self._get_git_branch_list()
+
+        _logger.warning([branch_name, branch_id, git_branch_list])
+
+        if branch_id and branch_name in git_branch_list:
+            output = check_output(["git", "-C", self.local_path, "switch", branch_name])
+        if not branch_id:
+            branch_id = self.env["git.repo.branch"].create(
+                {"name": branch_name, "repo_id": self.id}
+            )
+        if branch_name not in git_branch_list:
+            output = check_output(
+                ["git", "-C", self.local_path, "switch", "-c", branch_name]
+            )
+
+        self.write({"cmd_output": output, "active_branch_id": branch_id})
+
+    def cmd_delete_branch(self, branch_name):
+        self.ensure_one()
+        if not branch_name:
+            branch_name = self.cmd_input
+        if not branch_name:
+            raise UserError(_("Missing branch name."))
+
+        branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
+
+        if self.active_branch_id == branch_id:
+            raise UserError(_("Cannot remove active branch."))
+
+        git_branch_list = self._get_git_branch_list()
+
+        if branch_name in git_branch_list:
+            output = check_output(
+                ["git", "-C", self.local_path, "branch", "-D", branch_name]
+            )
+            self.write({"cmd_output": output})
+
+    # Remote Commands
+
     def cmd_add_remote(self):
         self.ensure_one()
         output = check_output(
@@ -285,6 +353,26 @@ class GitRepo(models.Model):
                 self.active_branch_id.write(
                     {"upstream": f"origin/{self.active_branch_id.name}"}
                 )
+            except Exception as e:
+                self.write({"cmd_output": e})
+
+    def cmd_pull(self):
+        self.ensure_one()
+        user = self._get_git_user()
+        with user.ssh_env() as ssh_env:
+            try:
+                output = check_output(
+                    [
+                        "git",
+                        "-C",
+                        self.local_path,
+                        "pull",
+                        "origin",
+                        self.active_branch_id.name,
+                    ],
+                    env=ssh_env,
+                )
+                self.write({"cmd_output": output})
             except Exception as e:
                 self.write({"cmd_output": e})
 
@@ -324,82 +412,7 @@ class GitRepo(models.Model):
             except Exception as e:
                 self.write({"cmd_output": e})
 
-    def cmd_pull(self):
-        self.ensure_one()
-        user = self._get_git_user()
-        with user.ssh_env() as ssh_env:
-            try:
-                output = check_output(
-                    [
-                        "git",
-                        "-C",
-                        self.local_path,
-                        "pull",
-                        "origin",
-                        self.active_branch_id.name,
-                    ],
-                    env=ssh_env,
-                )
-                self.write({"cmd_output": output})
-            except Exception as e:
-                self.write({"cmd_output": e})
-
-    def cmd_clean(self):
-        self.ensure_one()
-        output = check_output(["git", "-C", self.local_path, "clean", "-fd"])
-        self.write({"cmd_output": output})
-
-    def cmd_delete_branch(self, branch_name):
-        self.ensure_one()
-        if not branch_name:
-            branch_name = self.cmd_input
-        if not branch_name:
-            raise UserError(_("Missing branch name."))
-
-        branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
-
-        if self.active_branch_id == branch_id:
-            raise UserError(_("Cannot remove active branch."))
-
-        git_branch_list = self._get_git_branch_list()
-
-        if branch_name in git_branch_list:
-            output = check_output(
-                ["git", "-C", self.local_path, "branch", "-D", branch_name]
-            )
-            self.write({"cmd_output": output})
-
-    def cmd_branch_list(self):
-        self.ensure_one()
-        self.write({"cmd_output": self._get_git_branch_list()})
-
-    def cmd_switch(self, branch_name=None):
-        self.ensure_one()
-        if not branch_name:
-            branch_name = self.cmd_input
-        if not branch_name:
-            raise UserError(_("Missing branch name."))
-
-        # Get branch record
-        branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
-
-        # Get list of branches
-        git_branch_list = self._get_git_branch_list()
-
-        _logger.warning([branch_name, branch_id, git_branch_list])
-
-        if branch_id and branch_name in git_branch_list:
-            output = check_output(["git", "-C", self.local_path, "switch", branch_name])
-        if not branch_id:
-            branch_id = self.env["git.repo.branch"].create(
-                {"name": branch_name, "repo_id": self.id}
-            )
-        if branch_name not in git_branch_list:
-            output = check_output(
-                ["git", "-C", self.local_path, "switch", "-c", branch_name]
-            )
-
-        self.write({"cmd_output": output, "active_branch_id": branch_id})
+    # Repo Commands
 
     def cmd_init(self):
         self.ensure_local_path_exists()
@@ -449,7 +462,7 @@ class GitRepo(models.Model):
         )
         self.branch_ids.unlink()
 
-    def unlink(self):
-        if not self.state == "deleted":
-            raise UserError(_("Repo can only be deleted if is in state 'Deleted'."))
-        return super().unlink()
+    def cmd_mkdir(self):
+        self.ensure_one()
+        output = check_output(["mkdir", "-p", self.local_path])
+        self.write({"cmd_output": output})
