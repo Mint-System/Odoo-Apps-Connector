@@ -145,7 +145,7 @@ class GitRepo(models.Model):
 
     def _get_git_branch_list(self):
         self.ensure_one()
-        if os.path.exists(f"{self.local_path}.git"):
+        if os.path.exists(f"{self.local_path}"):
             return (
                 check_output(["git", "-C", self.local_path, "branch", "--list"])
                 .decode("utf-8")
@@ -318,6 +318,9 @@ class GitRepo(models.Model):
                     env=ssh_env,
                 )
                 self.write({"cmd_output": output})
+                self.active_branch_id.write(
+                    {"upstream": f"origin/{self.active_branch_id.name}"}
+                )
             except Exception as e:
                 self.write({"cmd_output": e})
 
@@ -366,6 +369,10 @@ class GitRepo(models.Model):
             )
             self.write({"cmd_output": output})
 
+    def cmd_branch_list(self):
+        self.ensure_one()
+        self.write({"cmd_output": self._get_git_branch_list()})
+
     def cmd_switch(self, branch_name=None):
         self.ensure_one()
         if not branch_name:
@@ -378,6 +385,8 @@ class GitRepo(models.Model):
 
         # Get list of branches
         git_branch_list = self._get_git_branch_list()
+
+        _logger.warning([branch_name, branch_id, git_branch_list])
 
         if branch_id and branch_name in git_branch_list:
             output = check_output(["git", "-C", self.local_path, "switch", branch_name])
