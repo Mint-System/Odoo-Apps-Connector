@@ -184,7 +184,7 @@ class GitRepo(models.Model):
         output = check_output(["git", "-C", self.local_path, "diff"])
         self.write({"cmd_output": output})
 
-    def cmd_commit(self):
+    def cmd_commit_all(self):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
@@ -196,6 +196,7 @@ class GitRepo(models.Model):
                 "commit",
                 "--author",
                 self._get_git_author(),
+                "-a",
                 "-m",
                 f'"{self.cmd_input}"',
             ]

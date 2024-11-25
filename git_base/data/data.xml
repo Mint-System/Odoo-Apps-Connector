@@ -64,11 +64,11 @@
         <field name="command">git diff</field>
         <field name="states">initialized,connected</field>
     </record>
-    <record id="cmd_commit" model="git.repo.cmd">
+    <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="sequence">7</field>
-        <field name="name">Commit</field>
-        <field name="code">commit</field>
-        <field name="command">gcm; git commit -m</field>
+        <field name="name">Commit All</field>
+        <field name="code">commit_all</field>
+        <field name="command">gcm -a; git commit -a -m</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
     </record>
