@@ -170,7 +170,7 @@
         <field name="states">connected</field>
     </record>
 
-    <!-- Repo Commans -->
+    <!-- Repo Commands -->
 
     <record id="cmd_init" model="git.repo.cmd">
         <field name="sequence">20</field>
