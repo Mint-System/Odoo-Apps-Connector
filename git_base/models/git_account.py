@@ -10,9 +10,7 @@ class GitAccount(models.Model):
     _description = "Git Account"
 
     name = fields.Char(required=True)
-    http_url = fields.Char(
-        string="HTTP Url", compute="_compute_http_url", required=True
-    )
+    http_url = fields.Char(string="HTTP Url", compute="_compute_http_url")
     forge_id = fields.Many2one("git.forge", required=True)
     local_path = fields.Char(compute="_compute_local_path")
 
