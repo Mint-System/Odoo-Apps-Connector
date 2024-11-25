@@ -162,7 +162,7 @@ class GitRepo(models.Model):
 
     def _get_git_branch_name(self):
         self.ensure_one()
-        if os.path.exists(self.local_path):
+        if os.path.exists(f"{self.local_path}/.git"):
             return (
                 check_output(["git", "-C", self.local_path, "branch", "--show-current"])
                 .decode("utf-8")
