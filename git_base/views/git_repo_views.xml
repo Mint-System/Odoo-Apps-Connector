@@ -81,7 +81,7 @@
                                 <group string="User Keys" name="user_keys">
                                     <field name="user_id" />
                                 </group>
-                                <group string="Deployment Keys" name="user_keys">
+                                <group string="Deploy Keys" name="deploy_keys">
                                     <label for="action_generate_deploy_keys" />
                                     <button
                                         name="action_generate_deploy_keys"
