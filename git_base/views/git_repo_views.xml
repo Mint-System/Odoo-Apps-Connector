@@ -78,8 +78,26 @@
                         </page>
                         <page string="Configuration" name="configuration">
                             <group>
-                                <group groups="git_base.group_manager">
+                                <group string="User Keys" name="user_keys">
                                     <field name="user_id" />
+                                </group>
+                                <group string="Deployment Keys" name="user_keys">
+                                    <label for="action_generate_deploy_keys" />
+                                    <button
+                                        name="action_generate_deploy_keys"
+                                        string="Generate Deploy Keys"
+                                        class="btn btn-primary"
+                                        type="object"
+                                    />
+                                    <field name="ssh_public_key" />
+                                    <field
+                                        name="ssh_private_key_file"
+                                        filename="ssh_private_key.txt"
+                                    />
+                                    <field
+                                        name="ssh_private_key_password"
+                                        password="True"
+                                    />
                                 </group>
                                 <group string="Remote Origin">
                                     <field name="pull_url" />

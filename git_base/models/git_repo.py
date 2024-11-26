@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import zipfile
-from subprocess import STDOUT, check_output
+from subprocess import STDOUT, check_output, run
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -23,18 +23,14 @@ class GitRepo(models.Model):
         "deleted": [("readonly", False)],
     }
 
+    # Repo fields
+
     name = fields.Char(required=True, states=READONLY_STATES)
     http_url = fields.Char(
         string="HTTP Url", compute="_compute_http_url", readonly=True
     )
     ssh_url = fields.Char(
         string="SSH Url", compute="_compute_ssh_url", store=True, readonly=True
-    )
-    push_url = fields.Char(
-        compute="_compute_remote_url", store=True, states=READONLY_STATES
-    )
-    pull_url = fields.Char(
-        compute="_compute_remote_url", store=True, states=READONLY_STATES
     )
     local_path = fields.Char(compute="_compute_local_path")
     state = fields.Selection(
@@ -49,6 +45,39 @@ class GitRepo(models.Model):
     )
     ref = fields.Char(readonly=True, compute="_compute_ref")
     active_branch_id = fields.Many2one("git.repo.branch", readonly=True)
+
+    def _compute_http_url(self):
+        for rec in self:
+            rec.http_url = f"{rec.account_id.http_url}/{rec.name}"
+
+    @api.depends("forge_id", "account_id", "name")
+    def _compute_ssh_url(self):
+        for rec in self:
+            rec.ssh_url = (
+                f"git@{rec.forge_id.hostname}:{rec.account_id.name}/{rec.name}.git"
+            )
+
+    @api.constrains("ssh_url")
+    def _validate_ssh_url(self):
+        for rec in self:
+            if rec.ssh_url and not re.match(
+                r"((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?",
+                rec.ssh_url,
+            ):
+                raise ValidationError(f"Invalid SSH url: {rec.ssh_url}.")
+
+    def _compute_local_path(self):
+        for rec in self:
+            rec.local_path = f"{rec.account_id.local_path}/{rec.name}"
+
+    def _compute_ref(self):
+        for rec in self:
+            if rec.active_branch_id:
+                rec.ref = rec.active_branch_id.name
+            else:
+                rec.ref = self._get_git_branch_name()
+
+    # Command fields
 
     def _get_default_cmd_id(self):
         if self.state in ["initialized", "connected"]:
@@ -69,53 +98,6 @@ class GitRepo(models.Model):
     cmd_input_filename = fields.Char("Filename")
     cmd_output = fields.Text("Output", readonly=True)
 
-    user_id = fields.Many2one("res.users")
-    branch_ids = fields.One2many("git.repo.branch", "repo_id")
-    account_id = fields.Many2one("git.account", required=True, states=READONLY_STATES)
-    forge_id = fields.Many2one("git.forge", related="account_id.forge_id")
-
-    @api.constrains("ssh_url")
-    def _validate_ssh_url(self):
-        for rec in self:
-            if rec.ssh_url and not re.match(
-                r"((git|ssh|http(s)?)|(git@[\w\.]+))(:(//)?)([\w\.@\:/\-~]+)(\.git)(/)?",
-                rec.ssh_url,
-            ):
-                raise ValidationError(f"Invalid SSH url: {rec.ssh_url}.")
-
-    def _compute_http_url(self):
-        for rec in self:
-            rec.http_url = f"{rec.account_id.http_url}/{rec.name}"
-
-    @api.depends("forge_id", "account_id", "name")
-    def _compute_ssh_url(self):
-        for rec in self:
-            rec.ssh_url = (
-                f"git@{rec.forge_id.hostname}:{rec.account_id.name}/{rec.name}.git"
-            )
-
-    @api.depends("ssh_url")
-    def _compute_remote_url(self):
-        for rec in self:
-            rec.push_url = f"{rec.ssh_url}"
-            rec.pull_url = f"{rec.ssh_url}"
-
-    def _compute_local_path(self):
-        for rec in self:
-            rec.local_path = f"{rec.account_id.local_path}/{rec.name}"
-
-    def _compute_ref(self):
-        for rec in self:
-            if rec.active_branch_id:
-                rec.ref = rec.active_branch_id.name
-            else:
-                rec.ref = self._get_git_branch_name()
-
-    def ensure_local_path_exists(self):
-        self.ensure_one()
-        if not os.path.exists(self.local_path):
-            os.makedirs(self.local_path)
-
     def _inverse_cmd_input_file(self):
         """Store file in local path. If file is zip then extract it."""
         for rec in self:
@@ -134,17 +116,61 @@ class GitRepo(models.Model):
                 rec.cmd_input_file = False
                 rec.cmd_input_filename = False
 
+    # Branch fields
+
+    branch_ids = fields.One2many("git.repo.branch", "repo_id")
+    account_id = fields.Many2one("git.account", required=True, states=READONLY_STATES)
+    forge_id = fields.Many2one("git.forge", related="account_id.forge_id")
+
+    # Configuration fields
+
+    push_url = fields.Char(
+        compute="_compute_remote_url", store=True, states=READONLY_STATES
+    )
+    pull_url = fields.Char(
+        compute="_compute_remote_url", store=True, states=READONLY_STATES
+    )
+    user_id = fields.Many2one("res.users")
+    ssh_public_key = fields.Char("SSH Public Key")
+    ssh_private_key_file = fields.Binary("SSH Private Key")
+    ssh_private_key_filename = fields.Char(
+        "SSH Private Key Filename", compute="_compute_ssh_private_key_filename"
+    )
+    ssh_private_key_password = fields.Char("SSH Private Key Password")
+
+    def _compute_ssh_private_key_filename(self):
+        for user in self:
+            user.ssh_private_key_filename = f"/tmp/user_private_key_{self.id}"
+
+    @api.depends("ssh_url")
+    def _compute_remote_url(self):
+        for rec in self:
+            rec.push_url = f"{rec.ssh_url}"
+            rec.pull_url = f"{rec.ssh_url}"
+
+    # Model methods
+
+    def ensure_local_path_exists(self):
+        self.ensure_one()
+        if not os.path.exists(self.local_path):
+            os.makedirs(self.local_path)
+
     def unlink(self):
         for rec in self:
             if not rec.state == "deleted":
                 raise UserError(_("Repo can only be deleted if is in state 'Deleted'."))
         return super().unlink()
 
-    @api.model
     def _get_git_user(self):
         return self.user_id or self.env.user
 
-    @api.model
+    def _get_keychain(self):
+        # Return keychain in order: deploy > user > personal
+        if self.ssh_private_key_file:
+            return self
+        else:
+            return self._get_git_user()
+
     def _get_git_author(self):
         user = self._get_git_user()
         return f'"{user.name} <{user.email}>"'
@@ -176,6 +202,69 @@ class GitRepo(models.Model):
         if self.cmd_id:
             getattr(self, "cmd_" + self.cmd_id.code)()
         self.cmd_id = self._get_default_cmd_id()
+
+    def action_generate_deploy_keys(self):
+        self.ensure_one()
+        ssh_keygen_command = [
+            "ssh-keygen",
+            "-t",
+            "ed25519",
+            "-C",
+            f"{self.account_id.name}-{self.name}@{self.forge_id.hostname}",
+            "-f",
+            f"{self.ssh_private_key_filename}",
+            "-N",
+            self.ssh_private_key_password or "",
+        ]
+        run(ssh_keygen_command)
+
+        # Store public key
+        with open(f"{self.ssh_private_key_filename}.pub", "r") as file:
+            self.write({"ssh_public_key": file.read()})
+
+        # Store private key
+        with open(f"{self.ssh_private_key_filename}", "rb") as file:
+            self.write({"ssh_private_key_file": base64.b64encode(file.read())})
+
+        os.remove(f"{self.ssh_private_key_filename}.pub")
+        os.remove(f"{self.ssh_private_key_filename}")
+
+    def run_ssh_command(self, git_command):
+        """Context manager to set up the SSH environment for Git operations."""
+
+        keychain = self._get_keychain()
+        if keychain.ssh_private_key_file:
+            try:
+                with open(keychain.ssh_private_key_filename, "wb") as file:
+                    file.write(base64.b64decode(keychain.ssh_private_key_file))
+                os.chmod(keychain.ssh_private_key_filename, 0o600)
+
+                # To run the git command with the private key, these commands need to be run:
+                # Load ssh agent env vars: eval "$(ssh-agent -s)"
+                # Add key to ssh agent: ssh-add /tmp/ssh_private_key_2
+                # Don't check host key: export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+
+                output = check_output(["ssh-agent", "-s"], text=True)
+                for line in output.splitlines():
+                    if "=" in line:
+                        key, value = line.split(";")[0].split("=")
+                        os.environ[key] = value
+
+                ssh_add_command = [
+                    "ssh-add",
+                    self.ssh_private_key_filename,
+                ]
+                output = check_output(ssh_add_command, stderr=STDOUT, timeout=5)
+
+                os.environ["GIT_SSH_COMMAND"] = "ssh -o StrictHostKeyChecking=no"
+                output += check_output(git_command, stderr=STDOUT, timeout=5)
+                return output
+
+            except Exception as e:
+                return e.output if e.output else e
+            finally:
+                os.remove(keychain.ssh_private_key_filename)
+        return "Missing SSH private key."
 
     # Status Commands
 
@@ -344,8 +433,7 @@ class GitRepo(models.Model):
 
     def cmd_set_upstream(self):
         self.ensure_one()
-        user = self._get_git_user()
-        output = user.ssh_command(
+        output = self.run_ssh_command(
             [
                 "git",
                 "-C",
@@ -362,8 +450,7 @@ class GitRepo(models.Model):
 
     def cmd_pull(self):
         self.ensure_one()
-        user = self._get_git_user()
-        output = user.ssh_command(
+        output = self.run_ssh_command(
             [
                 "git",
                 "-C",
@@ -377,14 +464,12 @@ class GitRepo(models.Model):
 
     def cmd_push(self):
         self.ensure_one()
-        user = self._get_git_user()
-        output = user.ssh_command(["git", "-C", self.local_path, "push"])
+        output = self.run_ssh_command(["git", "-C", self.local_path, "push"])
         self.write({"cmd_output": output})
 
     def cmd_push_upstream(self):
         self.ensure_one()
-        user = self._get_git_user()
-        output = user.ssh_command(
+        output = self.run_ssh_command(
             [
                 "git",
                 "-C",
@@ -418,8 +503,7 @@ class GitRepo(models.Model):
 
     def cmd_clone(self):
         self.ensure_one()
-        user = self._get_git_user()
-        output = user.ssh_command(["git", "clone", self.ssh_url, self.local_path])
+        output = self.run_ssh_command(["git", "clone", self.ssh_url, self.local_path])
         branch_name = self._get_git_branch_name()
         self.write(
             {
@@ -450,12 +534,12 @@ class GitRepo(models.Model):
 
     def cmd_ssh_test(self):
         self.ensure_one()
-        user = self._get_git_user()
-        output = user.ssh_command(
+        keychain = self._get_keychain()
+        output = self.run_ssh_command(
             [
                 "ssh",
                 "-i",
-                user.ssh_private_key_filename,
+                keychain.ssh_private_key_filename,
                 "-o",
                 "StrictHostKeyChecking=no",
                 "-T",
