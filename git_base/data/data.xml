@@ -102,7 +102,7 @@
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
         <field name="clear_input" eval="True" />
-        <field name="next_command_id" ref="git_base.cmd_push" />
+        <!-- <field name="next_command_id" ref="git_base.cmd_push" /> -->
     </record>
     <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="sequence">10</field>
@@ -113,7 +113,7 @@
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
         <field name="clear_input" eval="True" />
-        <field name="next_command_id" ref="git_base.cmd_push" />
+        <!-- <field name="next_command_id" ref="git_base.cmd_push" /> -->
     </record>
 
     <!-- Branch Commands -->
