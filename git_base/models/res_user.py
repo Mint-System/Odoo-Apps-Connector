@@ -31,34 +31,29 @@ class ResUsers(models.Model):
                     file.write(base64.b64decode(self.ssh_private_key_file))
                 os.chmod(self.ssh_private_key_filename, 0o600)
 
-                sshpass_command = []
-                if self.ssh_private_key_password:
-                    sshpass_command = [
-                        f"SSHPASS={self.ssh_private_key_password}",
-                        "sshpass",
-                        "-e",
-                    ]
-                command = [
+                # To run the git command with the private key, these commands need to be run:
+                # Load ssh agent env vars: eval "$(ssh-agent -s)"
+                # Add key to ssh agent: ssh-add /tmp/ssh_private_key_2
+                # Don't check host key: export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+
+                output = check_output(["ssh-agent", "-s"], text=True)
+                for line in output.splitlines():
+                    if "=" in line:
+                        key, value = line.split(";")[0].split("=")
+                        os.environ[key] = value
+
+                ssh_add_command = [
                     "ssh-add",
                     self.ssh_private_key_filename,
-                ] + sshpass_command
-                # _logger.warning(" ".join(command))
-                output = check_output(command, stderr=STDOUT, timeout=5)
+                ]
+                output = check_output(ssh_add_command, stderr=STDOUT, timeout=5)
 
-                sshpass_command = []
-                if self.ssh_private_key_password:
-                    sshpass_command = [
-                        f"SSHPASS={self.ssh_private_key_password}",
-                        "sshpass",
-                        "-e",
-                    ]
-                command = sshpass_command + git_command
-                # _logger.warning(" ".join(command))
+                os.environ["GIT_SSH_COMMAND"] = "ssh -o StrictHostKeyChecking=no"
                 output += check_output(git_command, stderr=STDOUT, timeout=5)
                 return output
 
             except Exception as e:
-                return e.output
+                return e.output if e.output else e
             finally:
                 os.remove(self.ssh_private_key_filename)
 
