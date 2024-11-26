@@ -82,12 +82,16 @@
                                     <field name="user_id" />
                                 </group>
                                 <group string="Deploy Keys" name="deploy_keys">
-                                    <label for="action_generate_deploy_keys" />
+                                    <label
+                                        for="action_generate_deploy_keys"
+                                        attrs="{'invisible': ['|', ('ssh_public_key', '!=', False), ('ssh_private_key_file', '!=', False)]}"
+                                    />
                                     <button
                                         name="action_generate_deploy_keys"
                                         string="Generate Deploy Keys"
                                         class="btn btn-primary"
                                         type="object"
+                                        attrs="{'invisible': ['|', ('ssh_public_key', '!=', False), ('ssh_private_key_file', '!=', False)]}"
                                     />
                                     <field name="ssh_public_key" />
                                     <field
