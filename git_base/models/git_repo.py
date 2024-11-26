@@ -183,7 +183,7 @@ class GitRepo(models.Model):
 
     def _get_git_author(self):
         user = self._get_git_user()
-        return f'"{user.name} <{user.email}>"'
+        return f"{user.name} <{user.email}>"
 
     def _get_git_branch_list(self):
         self.ensure_one()
@@ -346,6 +346,9 @@ class GitRepo(models.Model):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
+        user = self._get_git_user()
+        os.environ["GIT_COMMITTER_NAME"] = user.name
+        os.environ["GIT_COMMITTER_EMAIL"] = user.email
         git_command = [
             "git",
             "-C",
@@ -354,16 +357,19 @@ class GitRepo(models.Model):
             "--author",
             self._get_git_author(),
             "-m",
-            f'"{self.cmd_input}"',
+            self.cmd_input,
             "--no-gpg-sign",
         ]
-        output = check_output(git_command, stderr=STDOUT)
+        output = self.run_ssh_command(git_command)
         self.write({"cmd_output": output})
 
     def cmd_commit_all(self):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
+        user = self._get_git_user()
+        os.environ["GIT_COMMITTER_NAME"] = user.name
+        os.environ["GIT_COMMITTER_EMAIL"] = user.email
         git_command = [
             "git",
             "-C",
@@ -373,7 +379,7 @@ class GitRepo(models.Model):
             self._get_git_author(),
             "-a",
             "-m",
-            f'"{self.cmd_input}"',
+            self.cmd_input,
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
