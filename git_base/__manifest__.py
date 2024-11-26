@@ -25,4 +25,5 @@
     "images": ["images/screen.png"],
     "demo": ["demo/demo.xml"],
     "external_dependencies": {"bin": ["git", "ssh", "ssh-keygen", "openssl"]},
+    "assets": {"web.assets_backend": ["git_base/static/src/css/style.css"]},
 }

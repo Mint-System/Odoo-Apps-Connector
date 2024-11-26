@@ -35,6 +35,7 @@
                                     <field
                                         name="cmd_id"
                                         default_focus="1"
+                                        class="terminal-screen"
                                         domain="[('states', 'ilike', state)]"
                                     />
                                     <field name="cmd_help" class="text-mute" />
@@ -53,7 +54,7 @@
                                     />
                                 </group>
                                 <group string="Output" name="output">
-                                    <field name="cmd_output" />
+                                    <field name="cmd_output" class="terminal-screen" />
                                 </group>
                                 <group string="Upload" name="upload">
                                     <field

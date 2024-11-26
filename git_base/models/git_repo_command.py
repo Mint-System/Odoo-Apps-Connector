@@ -17,7 +17,7 @@ class GitRepoCommand(models.Model):
     help = fields.Char(required=True)
     states = fields.Char(required=True)
     show_input = fields.Boolean(default=False)
-    clear_input = fields.Boolean(default=False)
+    clear_input = fields.Boolean(default=True)
     next_command_id = fields.Many2one("git.repo.cmd")
 
     def name_get(self):
