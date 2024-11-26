@@ -58,7 +58,6 @@
         <field name="name">Add All</field>
         <field name="code">add_all</field>
         <field name="command">gaa / git add -A</field>
-        <field name="code">add_all</field>
         <field name="help">Add all files to staging area.</field>
         <field name="states">initialized,connected</field>
     </record>

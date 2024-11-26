@@ -304,7 +304,7 @@ class GitRepo(models.Model):
         list_path = self.local_path
         if self.cmd_input:
             list_path = os.path.join(self.local_path, self.cmd_input)
-        output = check_output(["ls", "-lsh", list_path], stderr=STDOUT)
+        output = check_output(["ls", "-a", list_path], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     # Stage Commands
