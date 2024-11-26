@@ -122,7 +122,7 @@ class GitRepo(models.Model):
                     with open(
                         os.path.join(upload_path, rec.cmd_input_filename), "wb"
                     ) as file:
-                        file.write(rec.cmd_input_file)
+                        file.write(base64.decodebytes(rec.cmd_input_file))
                 rec.cmd_input_file = False
                 rec.cmd_input_filename = False
 
