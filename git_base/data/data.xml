@@ -40,13 +40,14 @@
         <field name="help">Show git log.</field>
         <field name="states">initialized,connected</field>
     </record>
-    <record id="cmd_ls" model="git.repo.cmd">
+    <record id="cmd_list" model="git.repo.cmd">
         <field name="sequence">3</field>
         <field name="name">List</field>
         <field name="code">list</field>
         <field name="command">ls -lsh</field>
         <field name="help">List files in local path joined with input.</field>
         <field name="show_input" eval="True" />
+        <field name="clear_input" eval="True" />
         <field name="states">initialized,connected</field>
     </record>
 
@@ -57,7 +58,7 @@
         <field name="name">Add All</field>
         <field name="code">add_all</field>
         <field name="command">gaa / git add -A</field>
-        <field name="code">status</field>
+        <field name="code">add_all</field>
         <field name="help">Add all files to staging area.</field>
         <field name="states">initialized,connected</field>
     </record>
@@ -101,6 +102,8 @@
         <field name="help">Commit staged files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
+        <field name="clear_input" eval="True" />
+        <field name="next_command_id" ref="git_base.cmd_push" />
     </record>
     <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="sequence">10</field>
@@ -110,6 +113,8 @@
         <field name="help">Stage and commit all files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
+        <field name="clear_input" eval="True" />
+        <field name="next_command_id" ref="git_base.cmd_push" />
     </record>
 
     <!-- Branch Commands -->
@@ -130,6 +135,7 @@
         <field name="help">Switch branch and create if branch does not exist.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
+        <field name="clear_input" eval="True" />
     </record>
     <record id="cmd_delete_branch" model="git.repo.cmd">
         <field name="sequence">13</field>
@@ -214,8 +220,11 @@
         <field name="name">Remove</field>
         <field name="code">remove</field>
         <field name="command">rm -rf $LOCAL_PATH</field>
-        <field name="help">Remove local path.</field>
+        <field name="help">Remove file or directory joined with input.</field>
         <field name="states">draft,initialized,connected,deleted</field>
+        <field name="show_input" eval="True" />
+        <field name="clear_input" eval="True" />
+        <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
     <record id="cmd_mkdir" model="git.repo.cmd">
         <field name="sequence">23</field>
@@ -225,6 +234,7 @@
         <field name="help">Create directory local path joined with input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
+        <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
     <record id="cmd_ssh_test" model="git.repo.cmd">
         <field name="sequence">24</field>

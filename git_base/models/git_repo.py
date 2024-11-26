@@ -109,7 +109,7 @@ class GitRepo(models.Model):
                 upload_path = rec.local_path
                 if rec.cmd_input_folder_path:
                     upload_path = os.path.join(upload_path, rec.cmd_input_folder_path)
-                
+
                 if not os.path.exists(upload_path):
                     raise UserError(_("Upload path does not exist."))
 
@@ -211,10 +211,14 @@ class GitRepo(models.Model):
         """Run selected command reset defaults."""
         self.ensure_one()
         if self.cmd_id:
+            _logger.info("Running git command: cmd_%s", self.cmd_id.code)
             getattr(self, "cmd_" + self.cmd_id.code)()
-            if self.cmd_id.show_input:
-                self.write({"cmd_input": False})
-        self.cmd_id = self._get_default_cmd_id()
+            if self.cmd_id.next_command_id:
+                self.cmd_id = self.cmd_id.next_command_id
+            else:
+                self.cmd_id = self._get_default_cmd_id()
+            if self.cmd_id.clear_input:
+                self.cmd_input = False
 
     def action_generate_deploy_keys(self):
         self.ensure_one()
@@ -279,8 +283,8 @@ class GitRepo(models.Model):
 
             except Exception as e:
                 return e.output if getattr(e, "output", False) else e
-            # finally:
-            #     os.remove(keychain.ssh_private_key_filename)
+            finally:
+                os.remove(keychain.ssh_private_key_filename)
         return "Missing SSH private key."
 
     # Status Commands
@@ -298,8 +302,8 @@ class GitRepo(models.Model):
     def cmd_list(self):
         self.ensure_one()
         list_path = self.local_path
-        if self.cmd_input_folder_path:
-            list_path = os.path.join(list_path, self.cmd_input_folder_path)
+        if self.cmd_input:
+            list_path = os.path.join(self.local_path, self.cmd_input)
         output = check_output(["ls", "-lsh", list_path], stderr=STDOUT)
         self.write({"cmd_output": output})
 
@@ -308,7 +312,7 @@ class GitRepo(models.Model):
     def cmd_add_all(self):
         self.ensure_one()
         output = check_output(
-            ["git", "-C", self.local_path, "add", "-A"], stderr=STDOUT
+            ["git", "-C", self.local_path, "add", "--all"], stderr=STDOUT
         )
         self.write({"cmd_output": output})
 
@@ -539,11 +543,15 @@ class GitRepo(models.Model):
 
     def cmd_remove(self):
         self.ensure_one()
-        output = check_output(["rm", "-rf", self.local_path], stderr=STDOUT)
-        self.write(
-            {"cmd_output": output, "state": "deleted", "active_branch_id": False}
-        )
-        self.branch_ids.unlink()
+        remove_path = self.local_path
+        if self.cmd_input:
+            remove_path = os.path.join(self.local_path, self.cmd_input)
+        output = check_output(["rm", "-rf", remove_path], stderr=STDOUT)
+        if self.local_path == remove_path:
+            self.write(
+                {"cmd_output": output, "state": "deleted", "active_branch_id": False}
+            )
+            self.branch_ids.unlink()
 
     def cmd_mkdir(self):
         self.ensure_one()
