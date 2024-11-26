@@ -88,6 +88,7 @@ class GitRepo(models.Model):
     cmd_id = fields.Many2one(
         "git.repo.cmd", string="Command", default=_get_default_cmd_id
     )
+    cmd_help = fields.Char(related="cmd_id.help")
     show_input = fields.Boolean(related="cmd_id.show_input")
     cmd_input = fields.Text("Input")
     cmd_input_file = fields.Binary(
@@ -96,6 +97,7 @@ class GitRepo(models.Model):
         help="Upload file to local path. Zip file will be extracted.",
     )
     cmd_input_filename = fields.Char("Filename")
+    cmd_input_folder_path = fields.Char("Upload Path", default="./")
     cmd_output = fields.Text("Output", readonly=True)
 
     def _inverse_cmd_input_file(self):
@@ -103,14 +105,22 @@ class GitRepo(models.Model):
         for rec in self:
             if rec.cmd_input_file:
                 rec.ensure_local_path_exists()
+
+                upload_path = rec.local_path
+                if rec.cmd_input_folder_path:
+                    upload_path = os.path.join(upload_path, rec.cmd_input_folder_path)
+                
+                if not os.path.exists(upload_path):
+                    raise UserError(_("Upload path does not exist."))
+
                 if rec.cmd_input_filename.endswith(".zip"):
                     with zipfile.ZipFile(
                         io.BytesIO(base64.decodebytes(rec.cmd_input_file))
                     ) as zip_file:
-                        zip_file.extractall(rec.local_path)
+                        zip_file.extractall(upload_path)
                 else:
                     with open(
-                        os.path.join(rec.local_path, rec.cmd_input_filename), "wb"
+                        os.path.join(upload_path, rec.cmd_input_filename), "wb"
                     ) as file:
                         file.write(rec.cmd_input_file)
                 rec.cmd_input_file = False
@@ -198,9 +208,12 @@ class GitRepo(models.Model):
             return ""
 
     def action_run_cmd(self):
+        """Run selected command reset defaults."""
         self.ensure_one()
         if self.cmd_id:
             getattr(self, "cmd_" + self.cmd_id.code)()
+            if self.cmd_id.show_input:
+                self.write({"cmd_input": False})
         self.cmd_id = self._get_default_cmd_id()
 
     def action_generate_deploy_keys(self):
@@ -284,7 +297,10 @@ class GitRepo(models.Model):
 
     def cmd_list(self):
         self.ensure_one()
-        output = check_output(["ls", "-lsh", self.local_path], stderr=STDOUT)
+        list_path = self.local_path
+        if self.cmd_input_folder_path:
+            list_path = os.path.join(list_path, self.cmd_input_folder_path)
+        output = check_output(["ls", "-lsh", list_path], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     # Stage Commands
@@ -338,7 +354,7 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
-        self.write({"cmd_output": output, "cmd_input": False})
+        self.write({"cmd_output": output})
 
     def cmd_commit_all(self):
         self.ensure_one()
@@ -357,7 +373,7 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
-        self.write({"cmd_output": output, "cmd_input": False})
+        self.write({"cmd_output": output})
 
     # Branch Commands
 
@@ -531,7 +547,10 @@ class GitRepo(models.Model):
 
     def cmd_mkdir(self):
         self.ensure_one()
-        output = check_output(["mkdir", "-p", self.local_path], stderr=STDOUT)
+        mkdir_path = self.local_path
+        if self.cmd_input:
+            mkdir_path = os.path.join(self.local_path, self.cmd_input)
+        output = check_output(["mkdir", "-p", mkdir_path], stderr=STDOUT)
         self.write({"cmd_output": output})
 
     def cmd_ssh_test(self):

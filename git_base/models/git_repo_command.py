@@ -14,6 +14,7 @@ class GitRepoCommand(models.Model):
     name = fields.Char(required=True)
     code = fields.Char(required=True)
     command = fields.Char(required=True)
+    help = fields.Char(required=True)
     states = fields.Char(required=True)
     show_input = fields.Boolean(default=False)
 

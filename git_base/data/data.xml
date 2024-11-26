@@ -29,6 +29,7 @@
         <field name="name">Status</field>
         <field name="code">status</field>
         <field name="command">gst; git status</field>
+        <field name="help">Show git status of the repo.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_log" model="git.repo.cmd">
@@ -36,6 +37,7 @@
         <field name="name">Log</field>
         <field name="code">log</field>
         <field name="command">git log</field>
+        <field name="help">Show git log.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_ls" model="git.repo.cmd">
@@ -43,6 +45,8 @@
         <field name="name">List</field>
         <field name="code">list</field>
         <field name="command">ls -lsh</field>
+        <field name="help">List files in local path joined with input.</field>
+        <field name="show_input" eval="True" />
         <field name="states">initialized,connected</field>
     </record>
 
@@ -53,6 +57,8 @@
         <field name="name">Add All</field>
         <field name="code">add_all</field>
         <field name="command">gaa / git add -A</field>
+        <field name="code">status</field>
+        <field name="help">Add all files to staging area.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_unstage_all" model="git.repo.cmd">
@@ -60,6 +66,7 @@
         <field name="name">Unstage All</field>
         <field name="code">unstage_all</field>
         <field name="command">git restore --staged .</field>
+        <field name="help">Remove all files from staging area.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_clean" model="git.repo.cmd">
@@ -67,12 +74,14 @@
         <field name="name">Clean</field>
         <field name="code">clean</field>
         <field name="command">git clean -fd</field>
+        <field name="help">Delete files in the working area.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_reset_hard" model="git.repo.cmd">
         <field name="sequence">7</field>
         <field name="name">Reset Hard</field>
         <field name="code">reset_hard</field>
+        <field name="help">Clear staging and working area.</field>
         <field name="command">git reset --hard</field>
         <field name="states">initialized,connected</field>
     </record>
@@ -81,6 +90,7 @@
         <field name="name">Diff</field>
         <field name="code">diff</field>
         <field name="command">git diff</field>
+        <field name="help">Show output of git diff.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_commit" model="git.repo.cmd">
@@ -88,6 +98,7 @@
         <field name="name">Commit</field>
         <field name="code">commit</field>
         <field name="command">gcmsg; git commit -m</field>
+        <field name="help">Commit staged files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
     </record>
@@ -96,6 +107,7 @@
         <field name="name">Commit All</field>
         <field name="code">commit_all</field>
         <field name="command">git commit -a -m</field>
+        <field name="help">Stage and commit all files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
     </record>
@@ -107,6 +119,7 @@
         <field name="name">Branch List</field>
         <field name="code">branch_list</field>
         <field name="command">git branch --list</field>
+        <field name="help">List local branches of the repo.</field>
         <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_switch" model="git.repo.cmd">
@@ -114,6 +127,7 @@
         <field name="name">Switch</field>
         <field name="code">switch</field>
         <field name="command">git switch $BRANCH</field>
+        <field name="help">Switch branch and create if branch does not exist.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
     </record>
@@ -122,6 +136,7 @@
         <field name="name">Delete Branch</field>
         <field name="code">delete_branch</field>
         <field name="command">git branch -D $BRANCH</field>
+        <field name="help">Delete branch if it is not active.</field>
         <field name="states">initialized,connected</field>
     </record>
 
@@ -132,6 +147,7 @@
         <field name="name">Add Remote</field>
         <field name="code">add_remote</field>
         <field name="command">git remote add origin $SSH_URL</field>
+        <field name="help">Add git remote origin.</field>
         <field name="states">initialized</field>
     </record>
     <record id="cmd_set_upstream" model="git.repo.cmd">
@@ -139,6 +155,7 @@
         <field name="name">Set Upstream</field>
         <field name="code">set_upstream</field>
         <field name="command">git branch --set-upstream-to=origin/$BRANCH</field>
+        <field name="help">Set upstream for active branch.</field>
         <field name="states">connected</field>
     </record>
     <record id="cmd_pull" model="git.repo.cmd">
@@ -146,6 +163,7 @@
         <field name="name">Pull</field>
         <field name="code">pull</field>
         <field name="command">git pull origin $BRANCH</field>
+        <field name="help">Pull branch from origin.</field>
         <field name="states">connected</field>
     </record>
     <record id="cmd_push" model="git.repo.cmd">
@@ -153,6 +171,7 @@
         <field name="name">Push</field>
         <field name="code">push</field>
         <field name="command">gp; git push</field>
+        <field name="help">Push branch to remote.</field>
         <field name="states">connected</field>
     </record>
     <record id="cmd_push_force" model="git.repo.cmd">
@@ -160,6 +179,7 @@
         <field name="name">Push Force</field>
         <field name="code">push_force</field>
         <field name="command">gp -f; git push -f</field>
+        <field name="help">Force push branch to remote.</field>
         <field name="states">connected</field>
     </record>
     <record id="cmd_push_upstream" model="git.repo.cmd">
@@ -167,6 +187,7 @@
         <field name="name">Push Upstream</field>
         <field name="code">push_upstream</field>
         <field name="command">git push --set-upstream origin $BRANCH</field>
+        <field name="help">Push with new upstream branch.</field>
         <field name="states">connected</field>
     </record>
 
@@ -177,6 +198,7 @@
         <field name="name">Init</field>
         <field name="code">init</field>
         <field name="command">git init $LOCAL_PATH</field>
+        <field name="help">Initalize git repo in local path.</field>
         <field name="states">draft,deleted</field>
     </record>
     <record id="cmd_clone" model="git.repo.cmd">
@@ -184,6 +206,7 @@
         <field name="name">Clone</field>
         <field name="code">clone</field>
         <field name="command">git clone $SSH_URL $LOCAL_PATH</field>
+        <field name="help">Clone git repo to local path.</field>
         <field name="states">draft,deleted</field>
     </record>
     <record id="cmd_remove" model="git.repo.cmd">
@@ -191,6 +214,7 @@
         <field name="name">Remove</field>
         <field name="code">remove</field>
         <field name="command">rm -rf $LOCAL_PATH</field>
+        <field name="help">Remove local path.</field>
         <field name="states">draft,initialized,connected,deleted</field>
     </record>
     <record id="cmd_mkdir" model="git.repo.cmd">
@@ -198,13 +222,16 @@
         <field name="name">Mkdir</field>
         <field name="code">mkdir</field>
         <field name="command">mkdir -p $LOCAL_PATH</field>
-        <field name="states">draft,deleted</field>
+        <field name="help">Create directory local path joined with input.</field>
+        <field name="states">initialized,connected</field>
+        <field name="show_input" eval="True" />
     </record>
     <record id="cmd_ssh_test" model="git.repo.cmd">
         <field name="sequence">24</field>
         <field name="name">SSH Test</field>
         <field name="code">ssh_test</field>
         <field name="command">ssh -T git@$HOSTNAME</field>
+        <field name="help">Test the ssh remote connection.</field>
         <field name="states">draft,initialized,connected</field>
     </record>
 </odoo>

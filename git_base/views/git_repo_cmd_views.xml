@@ -8,6 +8,7 @@
             <tree duplicate="false">
                 <field name="name" />
                 <field name="command" />
+                <field name="help" />
             </tree>
         </field>
     </record>

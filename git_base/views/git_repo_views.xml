@@ -27,9 +27,9 @@
                         </group>
                     </div>
                     <notebook>
-                        <page string="Commands" name="commands">
+                        <page string="Command" name="command">
                             <group>
-                                <group>
+                                <group string="Input" name="input">
                                     <field name="local_path" />
                                     <field name="active_branch_id" />
                                     <field
@@ -37,17 +37,14 @@
                                         default_focus="1"
                                         domain="[('states', 'ilike', state)]"
                                     />
+                                    <field name="cmd_help" class="text-mute" />
                                     <field name="show_input" invisible="1" />
                                     <field
                                         name="cmd_input"
                                         placeholder="command input"
                                         attrs="{'invisible': [('show_input','=',False)]}"
                                     />
-                                    <field
-                                        name="cmd_input_file"
-                                        filename="cmd_input_filename"
-                                    />
-                                    <field name="cmd_input_filename" invisible="1" />
+                                     <label for="action_run_cmd" />
                                     <button
                                         name="action_run_cmd"
                                         string="Run Command"
@@ -55,8 +52,16 @@
                                         type="object"
                                     />
                                 </group>
-                                <group>
+                                <group string="Output" name="output">
                                     <field name="cmd_output" />
+                                </group>
+                                <group string="Upload" name="upload">
+                                    <field
+                                        name="cmd_input_file"
+                                        filename="cmd_input_filename"
+                                    />
+                                    <field name="cmd_input_folder_path" />
+                                    <field name="cmd_input_filename" invisible="1" />
                                 </group>
                             </group>
                         </page>
