@@ -4,7 +4,6 @@ import os
 from subprocess import STDOUT, check_output
 
 from odoo import fields, models
-from odoo.tools import config
 
 _logger = logging.getLogger(__name__)
 
@@ -20,19 +19,12 @@ class ResUsers(models.Model):
 
     def _compute_ssh_private_key_filename(self):
         for user in self:
-            user.ssh_private_key_filename = (
-                f"{config['data_dir']}/ssh/ssh_private_key_{self.id}"
-            )
-
-    def ensure_local_path_exists(self):
-        self.ensure_one()
-        if not os.path.exists(f"{config['data_dir']}/ssh/"):
-            os.makedirs(f"{config['data_dir']}/ssh/")
+            user.ssh_private_key_filename = f"/tmp/ssh_private_key_{self.id}"
 
     def ssh_command(self, git_command):
         """Context manager to set up the SSH environment for Git operations."""
+        self.ensure_one()
 
-        self.ensure_local_path_exists()
         if self.ssh_private_key_file:
             try:
                 with open(self.ssh_private_key_filename, "wb") as file:

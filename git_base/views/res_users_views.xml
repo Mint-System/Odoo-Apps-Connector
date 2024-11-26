@@ -30,7 +30,7 @@
             <xpath expr="//page[@name='preferences_page']" position="after">
                 <page string="SSH" name="ssh">
                     <group>
-                        <group string="Keys" name="keys">
+                        <group string="Private Key" name="private_key">
                             <field
                                 name="ssh_private_key_file"
                                 filename="ssh_private_key.txt"
