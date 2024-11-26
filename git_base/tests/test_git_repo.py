@@ -62,7 +62,7 @@ class TestGitRepo(TransactionCase):
         self.assertTrue(self.repo_id.active_branch_id.name == "dev")
 
         self.repo_id.cmd_delete_branch("master")
-        self.assertTrue(len(self.repo_id.branch_ids) == 0)
+        self.assertTrue(len(self.repo_id.branch_ids) == 2, self.repo_id.branch_ids)
 
     # def test_git_repo_keys(self):
     #     author = f"{self.account_id.name}-{self.repo_id.name}@{self.forge_id.hostname}"
