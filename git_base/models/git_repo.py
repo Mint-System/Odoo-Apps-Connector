@@ -241,8 +241,8 @@ class GitRepo(models.Model):
 
                 # To run the git command with the private key, these commands need to be run:
                 # Load ssh agent env vars: eval "$(ssh-agent -s)"
-                # Add key to ssh agent: ssh-add /tmp/ssh_private_key_2
-                # Don't check host key: export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+                # Add key to ssh agent: ssh-add /tmp/user_private_key_$ID
+                # Don't check host key and pass key file: GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i /tmp/user_private_key_$ID"
 
                 output = check_output(["ssh-agent", "-s"], text=True)
                 for line in output.splitlines():
@@ -254,16 +254,20 @@ class GitRepo(models.Model):
                     "ssh-add",
                     self.ssh_private_key_filename,
                 ]
+                # _logger.warning(" ".join(ssh_add_command))
                 output = check_output(ssh_add_command, stderr=STDOUT, timeout=5)
 
-                os.environ["GIT_SSH_COMMAND"] = "ssh -o StrictHostKeyChecking=no"
+                os.environ[
+                    "GIT_SSH_COMMAND"
+                ] = f"ssh -o StrictHostKeyChecking=no -i {self.ssh_private_key_filename}"
+                # _logger.warning(" ".join(git_command))
                 output += check_output(git_command, stderr=STDOUT, timeout=5)
                 return output
 
             except Exception as e:
-                return e.output if e.output else e
-            finally:
-                os.remove(keychain.ssh_private_key_filename)
+                return e.output if getattr(e, "output", False) else e
+            # finally:
+            #     os.remove(keychain.ssh_private_key_filename)
         return "Missing SSH private key."
 
     # Status Commands
@@ -322,39 +326,37 @@ class GitRepo(models.Model):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
-        output = check_output(
-            [
-                "git",
-                "-C",
-                self.local_path,
-                "commit",
-                "--author",
-                self._get_git_author(),
-                "-m",
-                f'"{self.cmd_input}"',
-            ],
-            stderr=STDOUT,
-        )
+        git_command = [
+            "git",
+            "-C",
+            self.local_path,
+            "commit",
+            "--author",
+            self._get_git_author(),
+            "-m",
+            f'"{self.cmd_input}"',
+            "--no-gpg-sign",
+        ]
+        output = check_output(git_command, stderr=STDOUT)
         self.write({"cmd_output": output, "cmd_input": False})
 
     def cmd_commit_all(self):
         self.ensure_one()
         if not self.cmd_input:
             raise UserError(_("Missing commit message."))
-        output = check_output(
-            [
-                "git",
-                "-C",
-                self.local_path,
-                "commit",
-                "--author",
-                self._get_git_author(),
-                "-a",
-                "-m",
-                f'"{self.cmd_input}"',
-            ],
-            stderr=STDOUT,
-        )
+        git_command = [
+            "git",
+            "-C",
+            self.local_path,
+            "commit",
+            "--author",
+            self._get_git_author(),
+            "-a",
+            "-m",
+            f'"{self.cmd_input}"',
+            "--no-gpg-sign",
+        ]
+        output = check_output(git_command, stderr=STDOUT)
         self.write({"cmd_output": output, "cmd_input": False})
 
     # Branch Commands
