@@ -44,7 +44,7 @@
         <field name="sequence">3</field>
         <field name="name">List</field>
         <field name="code">list</field>
-        <field name="command">ls -lsh</field>
+        <field name="command">ls -a</field>
         <field name="help">List files in local path joined with input.</field>
         <field name="show_input" eval="True" />
         <field name="clear_input" eval="True" />
