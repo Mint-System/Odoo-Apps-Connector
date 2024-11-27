@@ -46,7 +46,7 @@
         <field name="code">list</field>
         <field name="command">ls -a</field>
         <field name="help">List files in local path joined with input.</field>
-        <field name="show_input" eval="True" />
+        <field name="has_input" eval="True" />
         <field name="states">initialized,connected</field>
     </record>
 
@@ -101,7 +101,7 @@
         >git commit --author $AUTHOR -m $MESSAGE --no-gpg-sign</field>
         <field name="help">Commit staged files with message as input.</field>
         <field name="states">initialized,connected</field>
-        <field name="show_input" eval="True" />
+        <field name="has_input" eval="True" />
     </record>
     <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="sequence">10</field>
@@ -112,7 +112,7 @@
         >git commit --author $AUTHOR -a -m $MESSAGE --no-gpg-sign</field>
         <field name="help">Stage and commit all files with message as input.</field>
         <field name="states">initialized,connected</field>
-        <field name="show_input" eval="True" />
+        <field name="has_input" eval="True" />
     </record>
 
     <!-- Branch Commands -->
@@ -132,7 +132,7 @@
         <field name="command">git switch $BRANCH</field>
         <field name="help">Switch branch and create if branch does not exist.</field>
         <field name="states">initialized,connected</field>
-        <field name="show_input" eval="True" />
+        <field name="has_input" eval="True" />
     </record>
     <record id="cmd_delete_branch" model="git.repo.cmd">
         <field name="sequence">13</field>
@@ -219,7 +219,7 @@
         <field name="command">rm -rf $DIR</field>
         <field name="help">Remove file or directory joined with input.</field>
         <field name="states">draft,initialized,connected,deleted</field>
-        <field name="show_input" eval="True" />
+        <field name="has_input" eval="True" />
         <field name="clear_input" eval="False" />
         <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
@@ -230,7 +230,7 @@
         <field name="command">mkdir -p $DIR</field>
         <field name="help">Create directory local path joined with input.</field>
         <field name="states">initialized,connected</field>
-        <field name="show_input" eval="True" />
+        <field name="has_input" eval="True" />
         <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
     <record id="cmd_ssh_test" model="git.repo.cmd">

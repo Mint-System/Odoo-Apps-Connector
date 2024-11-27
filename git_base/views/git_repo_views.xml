@@ -39,11 +39,11 @@
                                         domain="[('states', 'ilike', state)]"
                                     />
                                     <field name="cmd_help" class="text-mute" />
-                                    <field name="show_input" invisible="1" />
+                                    <field name="has_input" invisible="1" />
                                     <field
                                         name="cmd_input"
                                         placeholder="command input"
-                                        attrs="{'invisible': [('show_input','=',False)]}"
+                                        attrs="{'invisible': [('has_input','=',False)]}"
                                     />
                                      <label for="action_run_cmd" />
                                     <button

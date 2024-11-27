@@ -51,8 +51,7 @@ class TestGitRepo(TransactionCase):
         self.repo_id.cmd_status()
         self.assertTrue("new file:   test.txt" in self.repo_id.cmd_output)
 
-        self.repo_id.write({"cmd_input": "Test commit"})
-        self.repo_id.cmd_commit()
+        self.repo_id.cmd_commit("Test commit")
         self.repo_id.cmd_log()
         self.assertTrue(
             "Test commit" in self.repo_id.cmd_output, self.repo_id.cmd_output
@@ -65,8 +64,7 @@ class TestGitRepo(TransactionCase):
         self.repo_id.cmd_delete_branch("master")
         self.assertTrue(len(self.repo_id.branch_ids) == 2, self.repo_id.branch_ids)
 
-        self.repo_id.write({"cmd_input": "new_folder"})
-        self.repo_id.cmd_mkdir()
+        self.repo_id.cmd_mkdir("new_folder")
         self.repo_id.cmd_list()
         self.assertTrue(
             "new_folder" in self.repo_id.cmd_output, self.repo_id.cmd_output

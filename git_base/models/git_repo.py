@@ -89,7 +89,7 @@ class GitRepo(models.Model):
         "git.repo.cmd", string="Command", default=_get_default_cmd_id
     )
     cmd_help = fields.Char(related="cmd_id.help")
-    show_input = fields.Boolean(related="cmd_id.show_input")
+    has_input = fields.Boolean(related="cmd_id.has_input")
     cmd_input = fields.Text("Input")
     cmd_input_file = fields.Binary(
         "File Upload",
@@ -237,7 +237,10 @@ class GitRepo(models.Model):
         self.ensure_one()
         if self.cmd_id:
             _logger.info("Running git command: cmd_%s", self.cmd_id.code)
-            getattr(self, "cmd_" + self.cmd_id.code)()
+            if self.cmd_id.has_input:
+                getattr(self, "cmd_" + self.cmd_id.code)(self.cmd_input)
+            else:
+                getattr(self, "cmd_" + self.cmd_id.code)()
 
     def action_generate_deploy_keys(self):
         self.ensure_one()
@@ -317,11 +320,11 @@ class GitRepo(models.Model):
         output = check_output(["git", "-C", self.local_path, "log"], stderr=STDOUT)
         self._set_output(output)
 
-    def cmd_list(self):
+    def cmd_list(self, subfolder=False):
         self.ensure_one()
         list_path = self.local_path
-        if self.cmd_input:
-            list_path = os.path.join(self.local_path, self.cmd_input)
+        if subfolder:
+            list_path = os.path.join(self.local_path, subfolder)
         output = check_output(["ls", "-a", list_path], stderr=STDOUT)
         self._set_output(output)
 
@@ -360,9 +363,9 @@ class GitRepo(models.Model):
         output = check_output(["git", "-C", self.local_path, "diff"], stderr=STDOUT)
         self._set_output(output)
 
-    def cmd_commit(self):
+    def cmd_commit(self, message):
         self.ensure_one()
-        if not self.cmd_input:
+        if not message:
             raise UserError(_("Missing commit message."))
         user = self._get_git_user()
         os.environ["GIT_COMMITTER_NAME"] = user.name
@@ -375,15 +378,15 @@ class GitRepo(models.Model):
             "--author",
             self._get_git_author(),
             "-m",
-            self.cmd_input,
+            message,
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
         self._set_output(output)
 
-    def cmd_commit_all(self):
+    def cmd_commit_all(self, message):
         self.ensure_one()
-        if not self.cmd_input:
+        if not message:
             raise UserError(_("Missing commit message."))
         user = self._get_git_user()
         os.environ["GIT_COMMITTER_NAME"] = user.name
@@ -397,7 +400,7 @@ class GitRepo(models.Model):
             self._get_git_author(),
             "-a",
             "-m",
-            self.cmd_input,
+            message,
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
@@ -410,10 +413,8 @@ class GitRepo(models.Model):
         branch_list = "\n".join(self._get_git_branch_list())
         self.write({"cmd_output": branch_list})
 
-    def cmd_switch(self, branch_name=None):
+    def cmd_switch(self, branch_name):
         self.ensure_one()
-        if not branch_name:
-            branch_name = self.cmd_input
         if not branch_name:
             raise UserError(_("Missing branch name."))
 
@@ -441,8 +442,6 @@ class GitRepo(models.Model):
 
     def cmd_delete_branch(self, branch_name):
         self.ensure_one()
-        if not branch_name:
-            branch_name = self.cmd_input
         if not branch_name:
             raise UserError(_("Missing branch name."))
 
@@ -571,22 +570,22 @@ class GitRepo(models.Model):
         )
         self._set_output(output)
 
-    def cmd_remove(self):
+    def cmd_remove(self, subfolder=False):
         self.ensure_one()
         remove_path = self.local_path
-        if self.cmd_input:
-            remove_path = os.path.join(self.local_path, self.cmd_input)
+        if subfolder:
+            remove_path = os.path.join(self.local_path, subfolder)
         output = check_output(["rm", "-rf", remove_path], stderr=STDOUT)
         if self.local_path == remove_path:
             self.write({"state": "deleted", "active_branch_id": False})
             self.branch_ids.unlink()
             self._set_output(output)
 
-    def cmd_mkdir(self):
+    def cmd_mkdir(self, subfolder=False):
         self.ensure_one()
         mkdir_path = self.local_path
-        if self.cmd_input:
-            mkdir_path = os.path.join(self.local_path, self.cmd_input)
+        if subfolder:
+            mkdir_path = os.path.join(self.local_path, subfolder)
         output = check_output(["mkdir", "-p", mkdir_path], stderr=STDOUT)
         self._set_output(output)
 
