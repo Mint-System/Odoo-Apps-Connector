@@ -28,7 +28,7 @@
         <field name="sequence">1</field>
         <field name="name">Status</field>
         <field name="code">status</field>
-        <field name="command">gst; git status</field>
+        <field name="command">git status</field>
         <field name="help">Show git status of the repo.</field>
         <field name="states">initialized,connected</field>
     </record>
@@ -56,7 +56,7 @@
         <field name="sequence">4</field>
         <field name="name">Add All</field>
         <field name="code">add_all</field>
-        <field name="command">gaa / git add -A</field>
+        <field name="command">git add --all</field>
         <field name="help">Add all files to staging area.</field>
         <field name="states">initialized,connected</field>
     </record>
@@ -96,7 +96,9 @@
         <field name="sequence">9</field>
         <field name="name">Commit</field>
         <field name="code">commit</field>
-        <field name="command">gcmsg; git commit -m</field>
+        <field
+            name="command"
+        >git commit --author $AUTHOR -m $MESSAGE --no-gpg-sign</field>
         <field name="help">Commit staged files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
@@ -105,7 +107,9 @@
         <field name="sequence">10</field>
         <field name="name">Commit All</field>
         <field name="code">commit_all</field>
-        <field name="command">git commit -a -m</field>
+        <field
+            name="command"
+        >git commit --author $AUTHOR -a -m $MESSAGE --no-gpg-sign</field>
         <field name="help">Stage and commit all files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />
@@ -169,7 +173,7 @@
         <field name="sequence">17</field>
         <field name="name">Push</field>
         <field name="code">push</field>
-        <field name="command">gp; git push</field>
+        <field name="command">git push</field>
         <field name="help">Push branch to remote.</field>
         <field name="states">connected</field>
     </record>
@@ -177,7 +181,7 @@
         <field name="sequence">18</field>
         <field name="name">Push Force</field>
         <field name="code">push_force</field>
-        <field name="command">gp -f; git push -f</field>
+        <field name="command">git push -f</field>
         <field name="help">Force push branch to remote.</field>
         <field name="states">connected</field>
     </record>
@@ -196,7 +200,7 @@
         <field name="sequence">20</field>
         <field name="name">Init</field>
         <field name="code">init</field>
-        <field name="command">git init $LOCAL_PATH</field>
+        <field name="command">git init $DIR</field>
         <field name="help">Initalize git repo in local path.</field>
         <field name="states">draft,deleted</field>
     </record>
@@ -204,7 +208,7 @@
         <field name="sequence">21</field>
         <field name="name">Clone</field>
         <field name="code">clone</field>
-        <field name="command">git clone $SSH_URL $LOCAL_PATH</field>
+        <field name="command">git clone $SSH_URL $DIR</field>
         <field name="help">Clone git repo to local path.</field>
         <field name="states">draft,deleted</field>
     </record>
@@ -212,7 +216,7 @@
         <field name="sequence">22</field>
         <field name="name">Remove</field>
         <field name="code">remove</field>
-        <field name="command">rm -rf $LOCAL_PATH</field>
+        <field name="command">rm -rf $DIR</field>
         <field name="help">Remove file or directory joined with input.</field>
         <field name="states">draft,initialized,connected,deleted</field>
         <field name="show_input" eval="True" />
@@ -223,7 +227,7 @@
         <field name="sequence">23</field>
         <field name="name">Mkdir</field>
         <field name="code">mkdir</field>
-        <field name="command">mkdir -p $LOCAL_PATH</field>
+        <field name="command">mkdir -p $DIR</field>
         <field name="help">Create directory local path joined with input.</field>
         <field name="states">initialized,connected</field>
         <field name="show_input" eval="True" />

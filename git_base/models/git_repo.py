@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import zipfile
-from subprocess import STDOUT, check_output, run
+from subprocess import STDOUT, CalledProcessError, check_output, run
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -203,8 +203,9 @@ class GitRepo(models.Model):
             return (
                 check_output(["git", "-C", self.local_path, "branch", "--list"])
                 .decode("utf-8")
-                .strip()
-            )
+                .replace("* ", "")  # Active branch is marked with *
+                .strip()  # Remove newlines
+            ).split("\n")
         else:
             return ""
 
@@ -219,18 +220,24 @@ class GitRepo(models.Model):
         else:
             return ""
 
+    def _set_output(self, output):
+        """
+        Reset input fields and set output.
+        """
+        if self.cmd_id.next_command_id:
+            self.cmd_id = self.cmd_id.next_command_id
+        else:
+            self.cmd_id = self._get_default_cmd_id()
+        if self.cmd_id.clear_input:
+            self.cmd_input = False
+        self.write({"cmd_output": output})
+
     def action_run_cmd(self):
         """Run selected command reset defaults."""
         self.ensure_one()
         if self.cmd_id:
             _logger.info("Running git command: cmd_%s", self.cmd_id.code)
             getattr(self, "cmd_" + self.cmd_id.code)()
-            if self.cmd_id.next_command_id:
-                self.cmd_id = self.cmd_id.next_command_id
-            else:
-                self.cmd_id = self._get_default_cmd_id()
-            if self.cmd_id.clear_input:
-                self.cmd_input = False
 
     def action_generate_deploy_keys(self):
         self.ensure_one()
@@ -292,9 +299,8 @@ class GitRepo(models.Model):
                 # _logger.warning(" ".join(git_command))
                 output += check_output(git_command, stderr=STDOUT, timeout=5)
                 return output
-
-            except Exception as e:
-                return e.output if getattr(e, "output", False) else e
+            except CalledProcessError as e:
+                raise Exception(e.output)
             finally:
                 os.remove(keychain.ssh_private_key_filename)
         return "Missing SSH private key."
@@ -304,12 +310,12 @@ class GitRepo(models.Model):
     def cmd_status(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "status"], stderr=STDOUT)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_log(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "log"], stderr=STDOUT)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_list(self):
         self.ensure_one()
@@ -317,7 +323,7 @@ class GitRepo(models.Model):
         if self.cmd_input:
             list_path = os.path.join(self.local_path, self.cmd_input)
         output = check_output(["ls", "-a", list_path], stderr=STDOUT)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     # Stage Commands
 
@@ -326,33 +332,33 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "add", "--all"], stderr=STDOUT
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_unstage_all(self):
         self.ensure_one()
         output = check_output(
             ["git", "-C", self.local_path, "restore", "--staged", "."], stderr=STDOUT
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_clean(self):
         self.ensure_one()
         output = check_output(
             ["git", "-C", self.local_path, "clean", "-fd"], stderr=STDOUT
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_reset_hard(self):
         self.ensure_one()
         output = check_output(
             ["git", "-C", self.local_path, "reset", "--hard"], stderr=STDOUT
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_diff(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "diff"], stderr=STDOUT)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_commit(self):
         self.ensure_one()
@@ -373,7 +379,7 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = self.run_ssh_command(git_command)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_commit_all(self):
         self.ensure_one()
@@ -395,13 +401,14 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     # Branch Commands
 
     def cmd_branch_list(self):
         self.ensure_one()
-        self.write({"cmd_output": self._get_git_branch_list()})
+        branch_list = "\n".join(self._get_git_branch_list())
+        self.write({"cmd_output": branch_list})
 
     def cmd_switch(self, branch_name=None):
         self.ensure_one()
@@ -429,8 +436,8 @@ class GitRepo(models.Model):
                 ["git", "-C", self.local_path, "switch", "-c", branch_name],
                 stderr=STDOUT,
             )
-
-        self.write({"cmd_output": output, "active_branch_id": branch_id})
+        self.write({"active_branch_id": branch_id})
+        self._set_output(output)
 
     def cmd_delete_branch(self, branch_name):
         self.ensure_one()
@@ -439,19 +446,21 @@ class GitRepo(models.Model):
         if not branch_name:
             raise UserError(_("Missing branch name."))
 
+        # Get branch record
         branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
 
+        # Check if branch is not active
         if self.active_branch_id == branch_id:
             raise UserError(_("Cannot remove active branch."))
 
+        # If branch exists in git, delete
         git_branch_list = self._get_git_branch_list()
-
         if branch_name in git_branch_list:
             output = check_output(
                 ["git", "-C", self.local_path, "branch", "-D", branch_name],
                 stderr=STDOUT,
             )
-            self.write({"cmd_output": output})
+            self._set_output(output)
 
     # Remote Commands
 
@@ -469,7 +478,8 @@ class GitRepo(models.Model):
             ],
             stderr=STDOUT,
         )
-        self.write({"cmd_output": output, "state": "connected"})
+        self.write({"state": "connected"})
+        self._set_output(output)
 
     def cmd_set_upstream(self):
         self.ensure_one()
@@ -483,7 +493,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
@@ -500,12 +510,12 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_push(self):
         self.ensure_one()
         output = self.run_ssh_command(["git", "-C", self.local_path, "push"])
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_push_upstream(self):
         self.ensure_one()
@@ -520,7 +530,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
@@ -533,13 +543,13 @@ class GitRepo(models.Model):
         branch_name = self._get_git_branch_name()
         self.write(
             {
-                "cmd_output": output,
                 "state": "initialized",
             }
         )
         self.active_branch_id = self.env["git.repo.branch"].create(
             {"name": branch_name, "repo_id": self.id}
         )
+        self._set_output(output)
 
     def cmd_clone(self):
         self.ensure_one()
@@ -547,7 +557,6 @@ class GitRepo(models.Model):
         branch_name = self._get_git_branch_name()
         self.write(
             {
-                "cmd_output": output,
                 "state": "connected",
             }
         )
@@ -558,6 +567,7 @@ class GitRepo(models.Model):
                 "upstream": f"origin/{branch_name}",
             }
         )
+        self._set_output(output)
 
     def cmd_remove(self):
         self.ensure_one()
@@ -566,10 +576,9 @@ class GitRepo(models.Model):
             remove_path = os.path.join(self.local_path, self.cmd_input)
         output = check_output(["rm", "-rf", remove_path], stderr=STDOUT)
         if self.local_path == remove_path:
-            self.write(
-                {"cmd_output": output, "state": "deleted", "active_branch_id": False}
-            )
+            self.write({"state": "deleted", "active_branch_id": False})
             self.branch_ids.unlink()
+            self._set_output(output)
 
     def cmd_mkdir(self):
         self.ensure_one()
@@ -577,7 +586,7 @@ class GitRepo(models.Model):
         if self.cmd_input:
             mkdir_path = os.path.join(self.local_path, self.cmd_input)
         output = check_output(["mkdir", "-p", mkdir_path], stderr=STDOUT)
-        self.write({"cmd_output": output})
+        self._set_output(output)
 
     def cmd_ssh_test(self):
         self.ensure_one()
@@ -593,4 +602,4 @@ class GitRepo(models.Model):
                 f"git@{self.forge_id.hostname}",
             ]
         )
-        self.write({"cmd_output": output})
+        self._set_output(output)
