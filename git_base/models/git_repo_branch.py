@@ -11,6 +11,7 @@ class GitRepoBranch(models.Model):
 
     name = fields.Char(required=True)
     sequence = fields.Integer()
+    environment_id = fields.Many2one("server.config.environment")
     is_active = fields.Boolean("Active", compute="_compute_is_active")
     repo_id = fields.Many2one("git.repo", required=True)
     upstream = fields.Char(readonly=True)

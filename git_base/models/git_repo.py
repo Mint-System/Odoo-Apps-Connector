@@ -160,6 +160,18 @@ class GitRepo(models.Model):
 
     # Model methods
 
+    @api.model
+    def switch_to_environment_branch(self):
+        environment_id = self.env["server.config.environment"].get_active_environment()
+        branch_id = self.branch_ids.filtered(
+            lambda b: b.environment_id == environment_id
+        )
+        if not branch_id:
+            raise UserError(
+                _("No branch found for environment: %s") % environment_id.name
+            )
+        self.cmd_switch(branch_id.name)
+
     def ensure_local_path_exists(self):
         self.ensure_one()
         if not os.path.exists(self.local_path):

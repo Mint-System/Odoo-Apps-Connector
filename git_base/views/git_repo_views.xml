@@ -71,6 +71,7 @@
                                 <tree editable="bottom">
                                     <field name="sequence" widget="handle" />
                                     <field name="name" />
+                                    <field name="environment_id" />
                                     <field name="is_active" />
                                     <field name="upstream" />
                                     <button
