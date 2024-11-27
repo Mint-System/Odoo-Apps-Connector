@@ -378,7 +378,7 @@ class GitRepo(models.Model):
             self.cmd_input,
             "--no-gpg-sign",
         ]
-        output = self.run_ssh_command(git_command)
+        output = check_output(git_command, stderr=STDOUT)
         self._set_output(output)
 
     def cmd_commit_all(self):
@@ -500,6 +500,8 @@ class GitRepo(models.Model):
 
     def cmd_pull(self):
         self.ensure_one()
+        if not self.active_branch_id.upstream:
+            raise UserError(_("Cannot pull, missing upstream branch."))
         output = self.run_ssh_command(
             [
                 "git",

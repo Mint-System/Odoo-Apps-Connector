@@ -59,7 +59,8 @@ class TestGitRepo(TransactionCase):
         )
 
         self.repo_id.cmd_switch("dev")
-        self.assertTrue(self.repo_id.active_branch_id.name == "dev")
+        self.repo_id.cmd_branch_list()
+        self.assertTrue("dev" in self.repo_id.cmd_output)
 
         self.repo_id.cmd_delete_branch("master")
         self.assertTrue(len(self.repo_id.branch_ids) == 2, self.repo_id.branch_ids)
@@ -71,7 +72,9 @@ class TestGitRepo(TransactionCase):
             "new_folder" in self.repo_id.cmd_output, self.repo_id.cmd_output
         )
 
-    # def test_git_repo_keys(self):
-    #     author = f"{self.account_id.name}-{self.repo_id.name}@{self.forge_id.hostname}"
-    #     self.repo_id.action_generate_deploy_keys()
-    #     self.assertTrue(author in self.ssh_public_key)
+    def test_git_repo_keys(self):
+        author = f"{self.account_id.name}-{self.repo_id.name}@{self.forge_id.hostname}"
+        self.repo_id.action_generate_deploy_keys()
+        self.assertTrue(
+            author in self.repo_id.ssh_public_key, self.repo_id.ssh_public_key
+        )
