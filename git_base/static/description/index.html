@@ -600,63 +600,31 @@ a { text-decoration: none; }
 
 
 <a class="reference external image-reference" href="http://www.gnu.org/licenses/gpl-3.0-standalone.html"><img alt="License: GPL-3" src="https://img.shields.io/badge/licence-GPL--3-blue.svg" /></a>
-<div class="section" id="meilisearch-base">
-<h1>Meilisearch Base</h1>
-<p>Sets up meilisearch indexes and provides a document mixin.</p>
-<p>For a detailed documentation have a look at <a class="reference external" href="https://www.odoo-wiki.org/meilisearch-base.html">https://www.odoo-wiki.org/meilisearch-base.html</a></p>
-<div class="section" id="configuration">
-<h2>Configuration</h2>
-<ul class="simple">
-<li><p>Inherit the Meilisearch document mixin for the model:</p></li>
-</ul>
-<pre class="code python literal-block"><code><span class="keyword">class</span> <span class="name class">Country</span><span class="punctuation">(</span><span class="name">models</span><span class="operator">.</span><span class="name">Model</span><span class="punctuation">):</span><span class="whitespace">
-</span>    <span class="name">_name</span> <span class="operator">=</span> <span class="literal string double">&quot;res.country&quot;</span><span class="whitespace">
-</span>    <span class="name">_inherit</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string double">&quot;res.country&quot;</span><span class="punctuation">,</span> <span class="literal string double">&quot;meilisearch.document.mixin&quot;</span><span class="punctuation">]</span></code></pre>
-<ul class="simple">
-<li><p>Modify the document schema:</p></li>
-</ul>
-<pre class="code python literal-block"><code><span class="keyword">def</span> <span class="name function">_prepare_index_document</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
-</span>    <span class="name">document</span> <span class="operator">=</span> <span class="name builtin">super</span><span class="punctuation">()</span><span class="operator">.</span><span class="name">_prepare_index_document</span><span class="punctuation">()</span><span class="whitespace">
-</span>    <span class="name">document</span><span class="punctuation">[</span><span class="literal string single">'code'</span><span class="punctuation">]</span> <span class="operator">=</span> <span class="name builtin pseudo">self</span><span class="operator">.</span><span class="name">code</span><span class="whitespace">
-</span>    <span class="name">document</span><span class="punctuation">[</span><span class="literal string single">'currency_name'</span><span class="punctuation">]</span> <span class="operator">=</span> <span class="name builtin pseudo">self</span><span class="operator">.</span><span class="name">currency_id</span><span class="operator">.</span><span class="name">name</span><span class="whitespace">
-</span>    <span class="keyword">return</span> <span class="name">document</span><span class="whitespace">
-
-</span><span class="name decorator">&#64;api</span><span class="operator">.</span><span class="name">depends</span><span class="punctuation">(</span><span class="literal string double">&quot;code&quot;</span><span class="punctuation">,</span> <span class="literal string double">&quot;currency_id.name&quot;</span><span class="punctuation">)</span><span class="whitespace">
-</span><span class="keyword">def</span> <span class="name function">_compute_index_document</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
-</span>    <span class="keyword">return</span> <span class="name builtin">super</span><span class="punctuation">()</span><span class="operator">.</span><span class="name">_compute_index_document</span><span class="punctuation">()</span></code></pre>
-<ul class="simple">
-<li><p>Modify the document filter:</p></li>
-</ul>
-<pre class="code python literal-block"><code><span class="keyword">def</span> <span class="name function">_get_index_document_filter</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
-</span>    <span class="keyword">return</span> <span class="keyword">lambda</span> <span class="name">r</span><span class="punctuation">:</span> <span class="name">r</span><span class="operator">.</span><span class="name">code</span> <span class="operator">!=</span> <span class="literal string double">&quot;CH&quot;</span></code></pre>
-<ul class="simple">
-<li><p>Hook into meilisearch tasks:</p></li>
-</ul>
-<pre class="code python literal-block"><code><span class="keyword">class</span> <span class="name class">MeilisearchTask</span><span class="punctuation">(</span><span class="name">models</span><span class="operator">.</span><span class="name">Model</span><span class="punctuation">):</span><span class="whitespace">
-</span>    <span class="name">_inherit</span> <span class="operator">=</span> <span class="punctuation">[</span><span class="literal string double">&quot;meilisearch.task&quot;</span><span class="punctuation">]</span><span class="whitespace">
-
-</span>    <span class="keyword">def</span> <span class="name function">task_succeeded</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
-</span>        <span class="name">_logger</span><span class="operator">.</span><span class="name">warning</span><span class="punctuation">(</span><span class="literal string double">&quot;Succeeded documents: </span><span class="literal string interpol">%s</span><span class="literal string double">&quot;</span> <span class="operator">%</span> <span class="name builtin pseudo">self</span><span class="operator">.</span><span class="name">_get_document_ids</span><span class="punctuation">())</span><span class="whitespace">
-</span>        <span class="keyword">return</span> <span class="name builtin">super</span><span class="punctuation">()</span><span class="operator">.</span><span class="name">task_succeeded</span><span class="punctuation">()</span><span class="whitespace">
-
-</span>    <span class="keyword">def</span> <span class="name function">task_failed</span><span class="punctuation">(</span><span class="name builtin pseudo">self</span><span class="punctuation">):</span><span class="whitespace">
-</span>        <span class="name">_logger</span><span class="operator">.</span><span class="name">error</span><span class="punctuation">(</span><span class="literal string double">&quot;Failed documents: </span><span class="literal string interpol">%s</span><span class="literal string double">&quot;</span> <span class="operator">%</span> <span class="name builtin pseudo">self</span><span class="operator">.</span><span class="name">_get_document_ids</span><span class="punctuation">())</span><span class="whitespace">
-</span>        <span class="keyword">return</span> <span class="name builtin">super</span><span class="punctuation">()</span><span class="operator">.</span><span class="name">task_failed</span><span class="punctuation">()</span></code></pre>
+<div class="section" id="git-base">
+<h1>Git Base</h1>
+<p>Manage git repositories with Odoo.</p>
+<p>For a detailed documentation have a look at <a class="reference external" href="https://www.odoo-wiki.org/git-base.html">https://www.odoo-wiki.org/git-base.html</a></p>
 <div class="section" id="usage">
-<h3>Usage</h3>
+<h2>Usage</h2>
 <ul class="simple">
-<li><p>Open &quot;Settings &gt; Integration&quot; and set Meiliesarch API url and key</p></li>
-<li><p>Add user to the &quot;Meilisearch Index Manager&quot; group</p></li>
-<li><p>Create entries in &quot;Settings &gt; Technical &gt; Meilisearch Indexes&quot;</p></li>
-<li><p>Use Odoo url <cite>/meilisearch/task-webhook</cite> path for the Meilisearch task webhook</p></li>
+<li><p>Open &quot;Git &gt; Repo&quot; and register a repository</p></li>
+<li><p>Run command &quot;Init&quot; or &quot;Clone&quot;</p></li>
+<li><p>Open the &quot;Branches&quot; tab and enter new branches</p></li>
 </ul>
-</div>
+<div class="section" id="configuration">
+<h3>Configuration</h3>
+<ul class="simple">
+<li><p>Open &quot;Menu &gt; Profile&quot; and select the &quot;SSH&quot; tab</p></li>
+<li><p>Add the SSH private key and optionally enter the SSH key password</p></li>
+<li><p>Open &quot;Git &gt; Account&quot; and add a new entry</p></li>
+</ul>
 </div>
 <div class="section" id="maintainer">
-<h2>Maintainer</h2>
+<h3>Maintainer</h3>
 <a class="reference external image-reference" href="https://www.mint-system.ch"><img alt="https://raw.githubusercontent.com/Mint-System/Wiki/master/assets/mint-system-logo.png" src="https://raw.githubusercontent.com/Mint-System/Wiki/master/assets/mint-system-logo.png" /></a>
 <p>This module is maintained by Mint System GmbH.</p>
 <p>For support and more information, please visit <a class="reference external" href="https://www.mint-system.ch">our Website</a>.</p>
+</div>
 </div>
 </div>
 </div>
