@@ -98,7 +98,7 @@
         <field name="code">commit</field>
         <field
             name="command"
-        >git commit --author $AUTHOR -m $MESSAGE --no-gpg-sign</field>
+        >git commit --author $AUTHOR --message $MESSAGE --no-gpg-sign</field>
         <field name="help">Commit staged files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="has_input" eval="True" />
@@ -109,7 +109,7 @@
         <field name="code">commit_all</field>
         <field
             name="command"
-        >git commit --author $AUTHOR -a -m $MESSAGE --no-gpg-sign</field>
+        >git commit --author $AUTHOR --all --message $MESSAGE --no-gpg-sign</field>
         <field name="help">Stage and commit all files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="has_input" eval="True" />
@@ -181,7 +181,7 @@
         <field name="sequence">18</field>
         <field name="name">Push Force</field>
         <field name="code">push_force</field>
-        <field name="command">git push -f</field>
+        <field name="command">git push --force</field>
         <field name="help">Force push branch to remote.</field>
         <field name="states">connected</field>
     </record>

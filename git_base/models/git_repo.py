@@ -204,6 +204,7 @@ class GitRepo(models.Model):
                 check_output(["git", "-C", self.local_path, "branch", "--list"])
                 .decode("utf-8")
                 .replace("* ", "")  # Active branch is marked with *
+                .replace("  ", "")
                 .strip()  # Remove newlines
             ).split("\n")
         else:
@@ -516,6 +517,11 @@ class GitRepo(models.Model):
     def cmd_push(self):
         self.ensure_one()
         output = self.run_ssh_command(["git", "-C", self.local_path, "push"])
+        self._set_output(output)
+
+    def cmd_push_force(self):
+        self.ensure_one()
+        output = self.run_ssh_command(["git", "-C", self.local_path, "push", "--force"])
         self._set_output(output)
 
     def cmd_push_upstream(self):
