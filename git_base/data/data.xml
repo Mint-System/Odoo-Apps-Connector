@@ -102,6 +102,8 @@
         <field name="help">Commit staged files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="has_input" eval="True" />
+        <field name="clear_input" eval="True" />
+        <field name="tracking" eval="True" />
     </record>
     <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="sequence">10</field>
@@ -113,6 +115,8 @@
         <field name="help">Stage and commit all files with message as input.</field>
         <field name="states">initialized,connected</field>
         <field name="has_input" eval="True" />
+        <field name="clear_input" eval="True" />
+        <field name="tracking" eval="True" />
     </record>
 
     <!-- Branch Commands -->
@@ -184,6 +188,7 @@
         <field name="command">git push --force</field>
         <field name="help">Force push branch to remote.</field>
         <field name="states">connected</field>
+        <field name="tracking" eval="True" />
     </record>
     <record id="cmd_push_upstream" model="git.repo.cmd">
         <field name="sequence">19</field>
@@ -192,6 +197,7 @@
         <field name="command">git push --set-upstream origin $BRANCH</field>
         <field name="help">Push with new upstream branch.</field>
         <field name="states">connected</field>
+        <field name="tracking" eval="True" />
     </record>
 
     <!-- Repo Commands -->
@@ -203,6 +209,7 @@
         <field name="command">git init $DIR</field>
         <field name="help">Initalize git repo in local path.</field>
         <field name="states">draft,deleted</field>
+        <field name="tracking" eval="True" />
     </record>
     <record id="cmd_clone" model="git.repo.cmd">
         <field name="sequence">21</field>
@@ -211,6 +218,7 @@
         <field name="command">git clone $SSH_URL $DIR</field>
         <field name="help">Clone git repo to local path.</field>
         <field name="states">draft,deleted</field>
+        <field name="tracking" eval="True" />
     </record>
     <record id="cmd_remove" model="git.repo.cmd">
         <field name="sequence">22</field>
@@ -220,8 +228,7 @@
         <field name="help">Remove file or directory joined with input.</field>
         <field name="states">draft,initialized,connected,deleted</field>
         <field name="has_input" eval="True" />
-        <field name="clear_input" eval="False" />
-        <field name="next_command_id" ref="git_base.cmd_list" />
+        <field name="tracking" eval="True" />
     </record>
     <record id="cmd_mkdir" model="git.repo.cmd">
         <field name="sequence">23</field>
@@ -231,7 +238,6 @@
         <field name="help">Create directory local path joined with input.</field>
         <field name="states">initialized,connected</field>
         <field name="has_input" eval="True" />
-        <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
     <record id="cmd_ssh_test" model="git.repo.cmd">
         <field name="sequence">24</field>
@@ -241,4 +247,12 @@
         <field name="help">Test the ssh remote connection.</field>
         <field name="states">draft,initialized,connected</field>
     </record>
+
+    <record id="cmd_remove" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_list" />
+    </record>
+    <record id="cmd_mkdir" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_list" />
+    </record>
+
 </odoo>
