@@ -149,8 +149,16 @@
 
     <!-- Remote Commands -->
 
-    <record id="cmd_add_remote" model="git.repo.cmd">
+    <record id="cmd_remote_branch_list" model="git.repo.cmd">
         <field name="sequence">14</field>
+        <field name="name">Remote Branch List</field>
+        <field name="code">remote_branch_list</field>
+        <field name="command">git branch -r --list</field>
+        <field name="help">List remote branches of the repo.</field>
+        <field name="states">connected</field>
+    </record>
+    <record id="cmd_add_remote" model="git.repo.cmd">
+        <field name="sequence">15</field>
         <field name="name">Add Remote</field>
         <field name="code">add_remote</field>
         <field name="command">git remote add origin $SSH_URL</field>
@@ -158,7 +166,7 @@
         <field name="states">initialized</field>
     </record>
     <record id="cmd_set_upstream" model="git.repo.cmd">
-        <field name="sequence">15</field>
+        <field name="sequence">16</field>
         <field name="name">Set Upstream</field>
         <field name="code">set_upstream</field>
         <field name="command">git branch --set-upstream-to=origin/$BRANCH</field>
@@ -166,7 +174,7 @@
         <field name="states">connected</field>
     </record>
     <record id="cmd_pull" model="git.repo.cmd">
-        <field name="sequence">16</field>
+        <field name="sequence">17</field>
         <field name="name">Pull</field>
         <field name="code">pull</field>
         <field name="command">git pull origin $BRANCH</field>
@@ -174,7 +182,7 @@
         <field name="states">connected</field>
     </record>
     <record id="cmd_push" model="git.repo.cmd">
-        <field name="sequence">17</field>
+        <field name="sequence">18</field>
         <field name="name">Push</field>
         <field name="code">push</field>
         <field name="command">git push</field>
@@ -182,7 +190,7 @@
         <field name="states">connected</field>
     </record>
     <record id="cmd_push_force" model="git.repo.cmd">
-        <field name="sequence">18</field>
+        <field name="sequence">19</field>
         <field name="name">Push Force</field>
         <field name="code">push_force</field>
         <field name="command">git push --force</field>
@@ -191,7 +199,7 @@
         <field name="tracking" eval="True" />
     </record>
     <record id="cmd_push_upstream" model="git.repo.cmd">
-        <field name="sequence">19</field>
+        <field name="sequence">20</field>
         <field name="name">Push Upstream</field>
         <field name="code">push_upstream</field>
         <field name="command">git push --set-upstream origin $BRANCH</field>
@@ -203,7 +211,7 @@
     <!-- Repo Commands -->
 
     <record id="cmd_init" model="git.repo.cmd">
-        <field name="sequence">20</field>
+        <field name="sequence">21</field>
         <field name="name">Init</field>
         <field name="code">init</field>
         <field name="command">git init $DIR</field>
@@ -212,26 +220,38 @@
         <field name="tracking" eval="True" />
     </record>
     <record id="cmd_clone" model="git.repo.cmd">
-        <field name="sequence">21</field>
+        <field name="sequence">22</field>
         <field name="name">Clone</field>
         <field name="code">clone</field>
         <field name="command">git clone $SSH_URL $DIR</field>
+        <field name="timeout">60</field>
         <field name="help">Clone git repo to local path.</field>
         <field name="states">draft,deleted</field>
         <field name="tracking" eval="True" />
     </record>
+    <record id="cmd_clone_all_branches" model="git.repo.cmd">
+        <field name="sequence">23</field>
+        <field name="name">Clone All Branches</field>
+        <field name="code">clone_all_branches</field>
+        <field name="command">git clone $SSH_URL $DIR; git switch origin/$BRANCH</field>
+        <field name="timeout">60</field>
+        <field
+            name="help"
+        >Clone git repo to local path and add all remote branches.</field>
+        <field name="states">draft,deleted</field>
+        <field name="tracking" eval="True" />
+    </record>
     <record id="cmd_remove" model="git.repo.cmd">
-        <field name="sequence">22</field>
+        <field name="sequence">24</field>
         <field name="name">Remove</field>
         <field name="code">remove</field>
         <field name="command">rm -rf $DIR</field>
         <field name="help">Remove file or directory joined with input.</field>
         <field name="states">draft,initialized,connected,deleted</field>
-        <field name="has_input" eval="True" />
         <field name="tracking" eval="True" />
     </record>
     <record id="cmd_mkdir" model="git.repo.cmd">
-        <field name="sequence">23</field>
+        <field name="sequence">25</field>
         <field name="name">Mkdir</field>
         <field name="code">mkdir</field>
         <field name="command">mkdir -p $DIR</field>
@@ -240,7 +260,7 @@
         <field name="has_input" eval="True" />
     </record>
     <record id="cmd_ssh_test" model="git.repo.cmd">
-        <field name="sequence">24</field>
+        <field name="sequence">26</field>
         <field name="name">SSH Test</field>
         <field name="code">ssh_test</field>
         <field name="command">ssh -T git@$HOSTNAME</field>
@@ -254,5 +274,13 @@
     <record id="cmd_mkdir" model="git.repo.cmd">
         <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
-
+    <record id="cmd_remove" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_init" />
+    </record>
+    <record id="cmd_clone" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_status" />
+    </record>
+    <record id="cmd_clone_all_branches" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_status" />
+    </record>
 </odoo>

@@ -14,6 +14,7 @@ class GitRepoCommand(models.Model):
     name = fields.Char(required=True)
     code = fields.Char(required=True)
     command = fields.Char(required=True)
+    timeout = fields.Integer(default=10)
     help = fields.Char(required=True)
     states = fields.Char(required=True)
     has_input = fields.Boolean(default=False)
@@ -38,3 +39,7 @@ class GitRepoCommand(models.Model):
         return self._search(
             expression.AND([domain, args]), limit=limit, access_rights_uid=name_get_uid
         )
+
+    @api.model
+    def get_by_code(self, code):
+        return self.search([("code", "=", code)], limit=1)
