@@ -19,7 +19,7 @@ class StockPicking(models.Model):
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
-    kardex_status = fields.Selection(selection=[('0', 'Ready'), ('1', 'Pending'), ('2', 'Success'), ('3', 'Error')], default='0', string="Kardex STATUS")
+    kardex_status = fields.Selection(selection=[('0', 'Ready'), ('1', 'Pending'), ('2', 'Success'), ('3', 'Error PPG'), ('9', 'Error ERP')], default='0', string="Kardex STATUS")
 
     def send_to_kardex(self):
         
@@ -35,7 +35,7 @@ class StockPicking(models.Model):
             check_moves_list = []
             for move in moves:
                 print(f"Product: {move.product_id.name}")
-                if not move.product_id.kardex_done:
+                if move.product_id.kardex and not move.product_id.kardex_done:
                     check_moves_counter += 1
                     check_moves_list.append(move.product_id.name)
 
@@ -47,7 +47,7 @@ class StockPicking(models.Model):
             for move in moves:
                 table = 'PPG_Auftraege'
                 # add ID of products zo picking vals
-                picking_vals['kardex_product_id'] = move.product_id.kardex_id
+                picking_vals['kardex_product_id'] = move.product_id.kardex_product_id
                 #create_time, update_time = self._get_dates(move, PICKING_DATE_HANDLING)
                 #picking_vals['kardex_row_create_time'] = create_time
                 #picking_vals['kardex_row_update_time'] = update_time
@@ -56,22 +56,21 @@ class StockPicking(models.Model):
                 picking_vals['kardex_quantity'] = move.quantity
                 picking_vals['kardex_doc_number'] = picking.name
                 picking_vals['kardex_direction'] = self._get_direction()
-                picking_vals['kardex_search'] = self._get_search()
-                new_id, create_time, update_time = self._create_external_object(picking_vals, table)
-                # new_id = self._create_external_object(picking_vals, table)
-                
-                _logger.info('new_id: %s' % (new_id,))
+                picking_vals['kardex_search'] = move.product_id.default_code
+                if move.product_id.kardex:
+                    new_id, create_time, update_time = self._create_external_object(picking_vals, table)                
+                    _logger.info('new_id: %s' % (new_id,))
 
                 
-                done_move = {
-                    'kardex_done': True,
-                    'kardex_id': new_id,
-                    'kardex_status': '1',
-                    'kardex_row_create_time': create_time,
-                    'kardex_row_update_time': update_time
-                    }
-                move.write(done_move)
-                message = 'Kardex Picking was sent to Kardex.'
+                    done_move = {
+                        'kardex_done': True,
+                        'kardex_id': new_id,
+                        'kardex_status': '1',
+                        'kardex_row_create_time': create_time,
+                        'kardex_row_update_time': update_time
+                        }
+                    move.write(done_move)
+            message = 'Kardex Picking was sent to Kardex.'
 
             done_picking = {
                     'kardex_done': True,
