@@ -238,27 +238,26 @@ class GitRepo(models.Model):
         else:
             return ""
 
-    def _reset_cmd_state(self, output):
-        """
-        Reset input fields and set output.
-        """
-        if self.cmd_id.next_command_id and (
-            self.state in self.cmd_id.next_command_id.states
-        ):
-            self.cmd_id = self.cmd_id.next_command_id
-        if self.cmd_id.clear_input:
-            self.cmd_input = False
-        self.write({"cmd_output": output})
-
     def action_run_cmd(self):
-        """Run selected command reset defaults."""
+        """
+        Run selected command write output.
+        Then reset input fields.
+        """
         self.ensure_one()
         if self.cmd_id:
             _logger.info("Running git command: cmd_%s", self.cmd_id.code)
             if self.cmd_id.has_input:
-                getattr(self, "cmd_" + self.cmd_id.code)(self.cmd_input)
+                output = getattr(self, "cmd_" + self.cmd_id.code)(self.cmd_input)
             else:
-                getattr(self, "cmd_" + self.cmd_id.code)()
+                output = getattr(self, "cmd_" + self.cmd_id.code)()
+            self.write({"cmd_output": output})
+
+            if self.cmd_id.next_command_id and (
+                self.state in self.cmd_id.next_command_id.states
+            ):
+                self.cmd_id = self.cmd_id.next_command_id
+            if self.cmd_id.clear_input:
+                self.cmd_input = False
 
     def action_generate_deploy_keys(self):
         self.ensure_one()
@@ -331,12 +330,12 @@ class GitRepo(models.Model):
     def cmd_status(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "status"], stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_log(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "log"], stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_list(self, subfolder=False):
         self.ensure_one()
@@ -344,7 +343,7 @@ class GitRepo(models.Model):
         if subfolder:
             list_path = os.path.join(self.local_path, subfolder)
         output = check_output(["ls", "-a", list_path], stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     # Stage Commands
 
@@ -353,33 +352,33 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "add", "--all"], stderr=STDOUT
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_unstage_all(self):
         self.ensure_one()
         output = check_output(
             ["git", "-C", self.local_path, "restore", "--staged", "."], stderr=STDOUT
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_clean(self):
         self.ensure_one()
         output = check_output(
             ["git", "-C", self.local_path, "clean", "-fd"], stderr=STDOUT
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_reset_hard(self):
         self.ensure_one()
         output = check_output(
             ["git", "-C", self.local_path, "reset", "--hard"], stderr=STDOUT
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_diff(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "diff"], stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_commit(self, message):
         self.ensure_one()
@@ -400,7 +399,7 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_commit_all(self, message):
         self.ensure_one()
@@ -422,7 +421,7 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     # Branch Commands
 
@@ -461,7 +460,7 @@ class GitRepo(models.Model):
                 stderr=STDOUT,
             )
         self.write({"active_branch_id": branch_id})
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_delete_branch(self, branch_name):
         self.ensure_one()
@@ -482,7 +481,7 @@ class GitRepo(models.Model):
                 ["git", "-C", self.local_path, "branch", "-D", branch_name],
                 stderr=STDOUT,
             )
-            self._reset_cmd_state(output)
+            return output
 
     # Remote Commands
 
@@ -501,7 +500,7 @@ class GitRepo(models.Model):
             stderr=STDOUT,
         )
         self.write({"state": "connected"})
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_set_upstream(self):
         self.ensure_one()
@@ -515,7 +514,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ],
         )
-        self._reset_cmd_state(output)
+        return output
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
@@ -532,17 +531,17 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_push(self):
         self.ensure_one()
         output = self.run_ssh_command(["git", "-C", self.local_path, "push"])
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_push_force(self):
         self.ensure_one()
         output = self.run_ssh_command(["git", "-C", self.local_path, "push", "--force"])
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_push_upstream(self):
         self.ensure_one()
@@ -557,7 +556,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        self._reset_cmd_state(output)
+        return output
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
@@ -576,7 +575,7 @@ class GitRepo(models.Model):
         self.active_branch_id = self.env["git.repo.branch"].create(
             {"name": branch_name, "repo_id": self.id}
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_clone(self):
         self.ensure_one()
@@ -604,7 +603,7 @@ class GitRepo(models.Model):
         self.active_branch_id = self.branch_ids.filtered(
             lambda b: b.name == self._get_git_current_branch_name()
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_clone_all_branches(self):
         self.ensure_one()
@@ -629,7 +628,7 @@ class GitRepo(models.Model):
         self.active_branch_id = self.branch_ids.filtered(
             lambda b: b.name == self._get_git_current_branch_name()
         )
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_remove(self, subfolder=False):
         self.ensure_one()
@@ -640,7 +639,7 @@ class GitRepo(models.Model):
         if self.local_path == remove_path:
             self.write({"state": "deleted", "active_branch_id": False})
             self.branch_ids.unlink()
-            self._reset_cmd_state(output)
+            return output
 
     def cmd_mkdir(self, subfolder=False):
         self.ensure_one()
@@ -648,7 +647,7 @@ class GitRepo(models.Model):
         if subfolder:
             mkdir_path = os.path.join(self.local_path, subfolder)
         output = check_output(["mkdir", "-p", mkdir_path], stderr=STDOUT)
-        self._reset_cmd_state(output)
+        return output
 
     def cmd_ssh_test(self):
         self.ensure_one()
@@ -664,4 +663,11 @@ class GitRepo(models.Model):
                 f"git@{self.forge_id.hostname}",
             ]
         )
-        self._reset_cmd_state(output)
+        return output
+
+    def cmd_rebase_abort(self, subfolder=False):
+        self.ensure_one()
+        output = self.run_ssh_command(
+            ["git", "-C", self.local_path, "rebase", "--abort"]
+        )
+        return output
