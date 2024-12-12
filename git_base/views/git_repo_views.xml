@@ -85,7 +85,10 @@
                         </page>
                         <page string="Configuration" name="configuration">
                             <group>
-                                <group string="User Keys" name="user_keys">
+                                <group string="Repo User" name="repo_user">
+                                    <field name="active_keychain" />
+                                </group>
+                                <group string="Repo User" name="repo_user">
                                     <field name="user_id" />
                                 </group>
                                 <group string="Deploy Keys" name="deploy_keys">

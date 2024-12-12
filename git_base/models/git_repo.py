@@ -147,16 +147,24 @@ class GitRepo(models.Model):
         "SSH Private Key Filename", compute="_compute_ssh_private_key_filename"
     )
     ssh_private_key_password = fields.Char("SSH Private Key Password")
+    active_keychain = fields.Char("Active Keychain", compute="_compute_active_keychain")
 
     def _compute_ssh_private_key_filename(self):
         for user in self:
-            user.ssh_private_key_filename = f"/tmp/user_private_key_{self.id}"
+            user.ssh_private_key_filename = f"/tmp/repo_private_key_{self.id}"
 
     @api.depends("ssh_url")
     def _compute_remote_url(self):
         for rec in self:
             rec.push_url = f"{rec.ssh_url}"
             rec.pull_url = f"{rec.ssh_url}"
+
+    def _compute_active_keychain(self):
+        for rec in self:
+            keychain = self._get_keychain()
+            rec.active_keychain = (
+                f"{str(keychain).replace(',','')}: {keychain.ssh_private_key_filename}"
+            )
 
     # Model methods
 
@@ -187,11 +195,15 @@ class GitRepo(models.Model):
         return self.user_id or self.env.user
 
     def _get_keychain(self):
-        # Return keychain in order: deploy > user > personal
+        # Return keychain in order: deploy > user > personal > company
         if self.ssh_private_key_file:
             return self
-        else:
-            return self._get_git_user()
+        elif self.user_id and self.user_id.ssh_private_key_file:
+            return self.user_id
+        elif self.env.user.ssh_private_key_file:
+            return self.env.user
+        elif self.env.company.ssh_private_key_file:
+            return self.env.company
 
     def _get_git_author(self):
         user = self._get_git_user()
@@ -308,14 +320,14 @@ class GitRepo(models.Model):
 
                 ssh_add_command = [
                     "ssh-add",
-                    self.ssh_private_key_filename,
+                    keychain.ssh_private_key_filename,
                 ]
                 # _logger.warning(" ".join(ssh_add_command))
                 output = check_output(ssh_add_command, stderr=STDOUT)
 
                 os.environ[
                     "GIT_SSH_COMMAND"
-                ] = f"ssh -o StrictHostKeyChecking=no -i {self.ssh_private_key_filename}"
+                ] = f"ssh -o StrictHostKeyChecking=no -i {keychain.ssh_private_key_filename}"
                 # _logger.warning(" ".join(git_command))
                 output += check_output(git_command, stderr=STDOUT, timeout=timeout)
                 return output

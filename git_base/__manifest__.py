@@ -18,6 +18,7 @@
         "views/git_repo_views.xml",
         "views/git_repo_cmd_views.xml",
         "views/res_users_views.xml",
+        "views/res_config_settings_view.xml",
     ],
     "installable": True,
     "application": False,
