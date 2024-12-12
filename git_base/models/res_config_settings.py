@@ -13,5 +13,7 @@ class ResConfigSettings(models.TransientModel):
         "SSH Public Key", config_parameter="git.ssh_public_key"
     )
     ssh_private_key = fields.Char(
-        "SSH Private Key", config_parameter="git.ssh_private_key"
+        "SSH Private Key",
+        config_parameter="git.ssh_private_key",
+        help="Must be base64 encoded.",
     )

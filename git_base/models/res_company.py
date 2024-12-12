@@ -1,4 +1,3 @@
-import base64
 import logging
 
 from odoo import fields, models
@@ -24,9 +23,7 @@ class Company(models.Model):
             icp = self.env["ir.config_parameter"].sudo()
             ssh_private_key = icp.get_param("git.ssh_private_key")
             if ssh_private_key:
-                company.ssh_private_key_file = base64.b64encode(
-                    (ssh_private_key + "\n").encode()
-                )
+                company.ssh_private_key_file = ssh_private_key
 
     def _compute_ssh_private_key_filename(self):
         for company in self:
