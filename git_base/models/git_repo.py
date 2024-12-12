@@ -483,6 +483,22 @@ class GitRepo(models.Model):
             )
             return output
 
+    def cmd_rebase(self, branch_name):
+        self.ensure_one()
+        if not branch_name:
+            raise UserError(_("Missing branch name."))
+        output = self.run_ssh_command(
+            ["git", "-C", self.local_path, "rebase", branch_name]
+        )
+        return output
+
+    def cmd_rebase_abort(self):
+        self.ensure_one()
+        output = self.run_ssh_command(
+            ["git", "-C", self.local_path, "rebase", "--abort"]
+        )
+        return output
+
     # Remote Commands
 
     def cmd_add_remote(self):
@@ -518,6 +534,20 @@ class GitRepo(models.Model):
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
+
+    def cmd_fetch(self):
+        self.ensure_one()
+        output = self.run_ssh_command(
+            [
+                "git",
+                "-C",
+                self.local_path,
+                "fetch",
+                "origin",
+                self.active_branch_id.name,
+            ]
+        )
+        return output
 
     def cmd_pull(self):
         self.ensure_one()
@@ -662,12 +692,5 @@ class GitRepo(models.Model):
                 "-T",
                 f"git@{self.forge_id.hostname}",
             ]
-        )
-        return output
-
-    def cmd_rebase_abort(self, subfolder=False):
-        self.ensure_one()
-        output = self.run_ssh_command(
-            ["git", "-C", self.local_path, "rebase", "--abort"]
         )
         return output
