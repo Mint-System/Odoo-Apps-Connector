@@ -62,6 +62,16 @@ class MeilisearchIndex(models.Model):
     document_no_index_count = fields.Integer(
         string="Documents No Index", compute="_compute_document_count", store=True
     )
+    meilisearch_index_url = fields.Char(
+        compute="_compute_meilisearch_index_url",
+    )
+
+    def _compute_meilisearch_index_url(self):
+        for index in self:
+            url = (
+                self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url")
+            )
+            index.meilisearch_index_url = url
 
     def _compute_task_count(self):
         for index in self:
@@ -206,6 +216,14 @@ class MeilisearchIndex(models.Model):
 
     def button_update_document_count(self):
         return self._compute_document_count()
+
+    def button_open_meilisearch_index_url(self):
+        self.ensure_one()
+        return {
+            "type": "ir.actions.act_url",
+            "target": "_blank",
+            "url": self.meilisearch_index_url,
+        }
 
     def check_all_documents(self):
         documents = self._get_all_documents()

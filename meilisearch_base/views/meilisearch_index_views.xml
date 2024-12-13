@@ -92,6 +92,12 @@
                             string="Index Documents"
                             icon="fa-file"
                         />
+                        <button
+                            name="button_open_meilisearch_index_url"
+                            type="object"
+                            string="Open Meilisearch Url"
+                            icon="fa-globe"
+                        />
                     </div>
                     <div class="oe_title">
                         <h1>
