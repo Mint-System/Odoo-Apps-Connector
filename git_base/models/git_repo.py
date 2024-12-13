@@ -15,6 +15,7 @@ _logger = logging.getLogger(__name__)
 class GitRepo(models.Model):
     _name = "git.repo"
     _description = "Git Repo"
+    _inherit = ["mail.thread", "mail.activity.mixin"]
 
     READONLY_STATES = {
         "draft": [("readonly", False)],
@@ -164,6 +165,8 @@ class GitRepo(models.Model):
             keychain = self._get_keychain()
             rec.active_keychain = (
                 f"{str(keychain).replace(',','')}: {keychain.ssh_private_key_filename}"
+                if keychain
+                else ""
             )
 
     # Model methods
@@ -249,6 +252,16 @@ class GitRepo(models.Model):
             )
         else:
             return ""
+
+    def cmd_message_post(self, input=False):
+        """
+        If current command is tracked, create chatter post.
+        """
+        if self.cmd_id.tracking:
+            message = f'Executed git command "{self.cmd_id.name}"'
+            if input:
+                message += f" with input: {input}"
+            self.message_post(body=message)
 
     def action_run_cmd(self):
         """
@@ -342,11 +355,13 @@ class GitRepo(models.Model):
     def cmd_status(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "status"], stderr=STDOUT)
+        self.cmd_message_post()
         return output
 
     def cmd_log(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "log"], stderr=STDOUT)
+        self.cmd_message_post()
         return output
 
     def cmd_list(self, subfolder=False):
@@ -354,7 +369,11 @@ class GitRepo(models.Model):
         list_path = self.local_path
         if subfolder:
             list_path = os.path.join(self.local_path, subfolder)
-        output = check_output(["ls", "-a", list_path], stderr=STDOUT)
+        if os.path.exists(list_path):
+            output = check_output(["ls", "-a", list_path], stderr=STDOUT)
+        else:
+            output = _("Folder does not exist.")
+        self.cmd_message_post(subfolder)
         return output
 
     # Stage Commands
@@ -364,6 +383,7 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "add", "--all"], stderr=STDOUT
         )
+        self.cmd_message_post()
         return output
 
     def cmd_unstage_all(self):
@@ -371,6 +391,7 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "restore", "--staged", "."], stderr=STDOUT
         )
+        self.cmd_message_post()
         return output
 
     def cmd_clean(self):
@@ -378,6 +399,7 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "clean", "-fd"], stderr=STDOUT
         )
+        self.cmd_message_post()
         return output
 
     def cmd_reset_hard(self):
@@ -385,11 +407,13 @@ class GitRepo(models.Model):
         output = check_output(
             ["git", "-C", self.local_path, "reset", "--hard"], stderr=STDOUT
         )
+        self.cmd_message_post()
         return output
 
     def cmd_diff(self):
         self.ensure_one()
         output = check_output(["git", "-C", self.local_path, "diff"], stderr=STDOUT)
+        self.cmd_message_post()
         return output
 
     def cmd_commit(self, message):
@@ -411,6 +435,7 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
+        self.cmd_message_post(message)
         return output
 
     def cmd_commit_all(self, message):
@@ -433,19 +458,22 @@ class GitRepo(models.Model):
             "--no-gpg-sign",
         ]
         output = check_output(git_command, stderr=STDOUT)
+        self.cmd_message_post(message)
         return output
 
     # Branch Commands
 
     def cmd_branch_list(self):
         self.ensure_one()
-        branch_list = "\n".join(self._get_git_branch_list())
-        self.write({"cmd_output": branch_list})
+        output = "\n".join(self._get_git_branch_list())
+        self.cmd_message_post()
+        return output
 
     def cmd_remote_branch_list(self):
         self.ensure_one()
-        remote_branch_listbranch_list = "\n".join(self._get_git_remote_branch_list())
-        self.write({"cmd_output": remote_branch_listbranch_list})
+        output = "\n".join(self._get_git_remote_branch_list())
+        self.cmd_message_post()
+        return output
 
     def cmd_switch(self, branch_name):
         self.ensure_one()
@@ -472,6 +500,7 @@ class GitRepo(models.Model):
                 stderr=STDOUT,
             )
         self.write({"active_branch_id": branch_id})
+        self.cmd_message_post(branch_name)
         return output
 
     def cmd_delete_branch(self, branch_name):
@@ -493,6 +522,7 @@ class GitRepo(models.Model):
                 ["git", "-C", self.local_path, "branch", "-D", branch_name],
                 stderr=STDOUT,
             )
+            self.cmd_message_post(branch_name)
             return output
 
     def cmd_rebase(self, branch_name):
@@ -502,6 +532,7 @@ class GitRepo(models.Model):
         output = self.run_ssh_command(
             ["git", "-C", self.local_path, "rebase", branch_name]
         )
+        self.cmd_message_post(branch_name)
         return output
 
     def cmd_rebase_abort(self):
@@ -509,6 +540,7 @@ class GitRepo(models.Model):
         output = self.run_ssh_command(
             ["git", "-C", self.local_path, "rebase", "--abort"]
         )
+        self.cmd_message_post()
         return output
 
     # Remote Commands
@@ -528,6 +560,7 @@ class GitRepo(models.Model):
             stderr=STDOUT,
         )
         self.write({"state": "connected"})
+        self.cmd_message_post()
         return output
 
     def cmd_set_upstream(self):
@@ -542,10 +575,11 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ],
         )
-        return output
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
+        self.cmd_message_post()
+        return output
 
     def cmd_fetch(self):
         self.ensure_one()
@@ -559,6 +593,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
+        self.cmd_message_post()
         return output
 
     def cmd_pull(self):
@@ -573,16 +608,19 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
+        self.cmd_message_post()
         return output
 
     def cmd_push(self):
         self.ensure_one()
         output = self.run_ssh_command(["git", "-C", self.local_path, "push"])
+        self.cmd_message_post()
         return output
 
     def cmd_push_force(self):
         self.ensure_one()
         output = self.run_ssh_command(["git", "-C", self.local_path, "push", "--force"])
+        self.cmd_message_post()
         return output
 
     def cmd_push_upstream(self):
@@ -598,10 +636,11 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        return output
         self.active_branch_id.write(
             {"upstream": f"origin/{self.active_branch_id.name}"}
         )
+        self.cmd_message_post()
+        return output
 
     # Repo Commands
 
@@ -614,9 +653,14 @@ class GitRepo(models.Model):
                 "state": "initialized",
             }
         )
-        self.active_branch_id = self.env["git.repo.branch"].create(
-            {"name": branch_name, "repo_id": self.id}
-        )
+        branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)[:1]
+        if branch_id:
+            self.active_branch_id = branch_id
+        else:
+            self.active_branch_id = self.env["git.repo.branch"].create(
+                {"name": branch_name, "repo_id": self.id}
+            )
+        self.cmd_message_post()
         return output
 
     def cmd_clone(self):
@@ -645,6 +689,7 @@ class GitRepo(models.Model):
         self.active_branch_id = self.branch_ids.filtered(
             lambda b: b.name == self._get_git_current_branch_name()
         )
+        self.cmd_message_post()
         return output
 
     def cmd_clone_all_branches(self):
@@ -670,6 +715,7 @@ class GitRepo(models.Model):
         self.active_branch_id = self.branch_ids.filtered(
             lambda b: b.name == self._get_git_current_branch_name()
         )
+        self.cmd_message_post()
         return output
 
     def cmd_remove(self, subfolder=False):
@@ -681,7 +727,8 @@ class GitRepo(models.Model):
         if self.local_path == remove_path:
             self.write({"state": "deleted", "active_branch_id": False})
             self.branch_ids.unlink()
-            return output
+        self.cmd_message_post(subfolder)
+        return output
 
     def cmd_mkdir(self, subfolder=False):
         self.ensure_one()
@@ -689,6 +736,7 @@ class GitRepo(models.Model):
         if subfolder:
             mkdir_path = os.path.join(self.local_path, subfolder)
         output = check_output(["mkdir", "-p", mkdir_path], stderr=STDOUT)
+        self.cmd_message_post(subfolder)
         return output
 
     def cmd_ssh_test(self):
@@ -705,4 +753,5 @@ class GitRepo(models.Model):
                 f"git@{self.forge_id.hostname}",
             ]
         )
+        self.cmd_message_post()
         return output

@@ -303,7 +303,7 @@
         <field name="next_command_id" ref="git_base.cmd_list" />
     </record>
     <record id="cmd_remove" model="git.repo.cmd">
-        <field name="next_command_id" ref="git_base.cmd_init" />
+        <field name="next_command_id" ref="git_base.commit_all" />
     </record>
     <record id="cmd_clone" model="git.repo.cmd">
         <field name="next_command_id" ref="git_base.cmd_status" />
@@ -316,5 +316,8 @@
     </record>
     <record id="cmd_commit_all" model="git.repo.cmd">
         <field name="next_command_id" ref="git_base.cmd_push" />
+    </record>
+    <record id="cmd_push" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_log" />
     </record>
 </odoo>

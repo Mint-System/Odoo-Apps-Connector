@@ -21,9 +21,8 @@ class Company(models.Model):
         """
         for company in self:
             icp = self.env["ir.config_parameter"].sudo()
-            ssh_private_key = icp.get_param("git.ssh_private_key")
-            if ssh_private_key:
-                company.ssh_private_key_file = ssh_private_key
+            ssh_private_key = icp.get_param("git.ssh_private_key", False)
+            company.ssh_private_key_file = ssh_private_key
 
     def _compute_ssh_private_key_filename(self):
         for company in self:

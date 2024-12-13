@@ -8,7 +8,7 @@
     "category": "Technical",
     "version": "16.0.1.0.0",
     "license": "AGPL-3",
-    "depends": ["server_config_environment"],
+    "depends": ["server_config_environment", "mail"],
     "data": [
         "security/security.xml",
         "security/ir.model.access.csv",
