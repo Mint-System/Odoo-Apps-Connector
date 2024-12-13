@@ -16,7 +16,14 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     name = fields.Char()
     index_date = fields.Datetime()
-    index_document = fields.Text(compute="_compute_index_document", store=True)
+    index_document = fields.Json(
+        compute="_compute_index_document",
+        store=True,
+        help="Stores the document in Odoo.",
+    )
+    index_document_read = fields.Text(
+        compute="_compute_index_document_read", help="The document stored in Odoo."
+    )
     index_result = fields.Selection(
         [
             ("queued", "Queued"),
@@ -26,7 +33,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             ("no_index", "No Index"),
         ]
     )
-    index_response = fields.Text()
+    index_response = fields.Text(help="Response from Meilisearch index.")
 
     def button_view_document(self):
         return {
@@ -86,6 +93,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         )
         if delete_records:
             delete_records._delete_documents()
+
+    def _compute_index_document_read(self):
+        for record in self:
+            record.index_document_read = record.index_document
 
     def _get_batches(self, batch_size=0):
         if not batch_size:

@@ -93,7 +93,12 @@
                     </div>
                     <group>
                         <group>
-                            <field name="index_document" />
+                            <field
+                                name="index_document_read"
+                                class="code-json"
+                                nolabel="1"
+                                colspan="2"
+                            />
                         </group>
                         <group>
                             <field name="index_result" />

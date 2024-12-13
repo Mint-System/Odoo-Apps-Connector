@@ -29,4 +29,5 @@
             "meilisearch",
         ],
     },
+    "assets": {"web.assets_backend": ["meilisearch_base/static/src/css/style.css"]},
 }
