@@ -204,7 +204,7 @@
         <field name="code">pull</field>
         <field name="command">git pull origin $BRANCH</field>
         <field name="help">Pull branch from origin.</field>
-        <field name="states">connected</field>
+        <field name="states">initialized,connected</field>
     </record>
     <record id="cmd_push" model="git.repo.cmd">
         <field name="sequence">21</field>

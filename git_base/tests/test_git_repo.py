@@ -44,31 +44,27 @@ class TestGitRepo(TransactionCase):
             with file_open("git_base/tests/test.txt", "r") as source_file:
                 target_file.write(source_file.read())
 
-        self.repo_id.cmd_list()
-        self.assertTrue("test.txt" in self.repo_id.cmd_output, self.repo_id.cmd_output)
+        output = self.repo_id.cmd_list()
+        self.assertTrue("test.txt" in output, output)
 
         self.repo_id.cmd_add_all()
-        self.repo_id.cmd_status()
-        self.assertTrue("new file:   test.txt" in self.repo_id.cmd_output)
+        output = self.repo_id.cmd_status()
+        self.assertTrue("new file:   test.txt" in output, output)
 
         self.repo_id.cmd_commit("Test commit")
-        self.repo_id.cmd_log()
-        self.assertTrue(
-            "Test commit" in self.repo_id.cmd_output, self.repo_id.cmd_output
-        )
+        output = self.repo_id.cmd_log()
+        self.assertTrue("Test commit" in output, output)
 
         self.repo_id.cmd_switch("dev")
-        self.repo_id.cmd_branch_list()
-        self.assertTrue("dev" in self.repo_id.cmd_output)
+        output = self.repo_id.cmd_branch_list()
+        self.assertTrue("dev" in output)
 
         self.repo_id.cmd_delete_branch("master")
         self.assertTrue(len(self.repo_id.branch_ids) == 2, self.repo_id.branch_ids)
 
         self.repo_id.cmd_mkdir("new_folder")
-        self.repo_id.cmd_list()
-        self.assertTrue(
-            "new_folder" in self.repo_id.cmd_output, self.repo_id.cmd_output
-        )
+        output = self.repo_id.cmd_list()
+        self.assertTrue("new_folder" in output, output)
 
     def test_git_repo_keys(self):
         author = f"{self.account_id.name}-{self.repo_id.name}@{self.forge_id.hostname}"

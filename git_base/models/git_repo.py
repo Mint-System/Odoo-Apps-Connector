@@ -242,6 +242,15 @@ class GitRepo(models.Model):
         else:
             return ""
 
+    def _get_git_remote(self):
+        self.ensure_one()
+        if os.path.exists(f"{self.local_path}"):
+            return check_output(["git", "-C", self.local_path, "remote"]).decode(
+                "utf-8"
+            )
+        else:
+            return ""
+
     def _get_git_current_branch_name(self):
         self.ensure_one()
         if os.path.exists(f"{self.local_path}/.git"):
@@ -547,18 +556,22 @@ class GitRepo(models.Model):
 
     def cmd_add_remote(self):
         self.ensure_one()
-        output = check_output(
-            [
-                "git",
-                "-C",
-                self.local_path,
-                "remote",
-                "add",
-                "origin",
-                self.ssh_url,
-            ],
-            stderr=STDOUT,
-        )
+        remote = self._get_git_remote()
+        if "orign" in remote:
+            output = _("Remote already exists.")
+        else:
+            output = check_output(
+                [
+                    "git",
+                    "-C",
+                    self.local_path,
+                    "remote",
+                    "add",
+                    "origin",
+                    self.ssh_url,
+                ],
+                stderr=STDOUT,
+            )
         self.write({"state": "connected"})
         self.cmd_message_post()
         return output
