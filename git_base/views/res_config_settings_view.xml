@@ -19,11 +19,11 @@
                         <div attrs="{'invisible': [('module_git_base', '=', False)]}">
                             <div class="content-group mt16">
                                 <label for="ssh_public_key" class="o_light_label" />
-                                <field name="ssh_public_key" required="1" />
+                                <field name="ssh_public_key" />
                             </div>
                             <div class="content-group">
                                 <label for="ssh_private_key" class="o_light_label" />
-                                <field name="ssh_private_key" required="1" />
+                                <field name="ssh_private_key" />
                             </div>
                         </div>
                     </div>
