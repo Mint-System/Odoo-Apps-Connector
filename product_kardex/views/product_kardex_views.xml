@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-
-
     <record id="product_template_form_view_inherit_kardex" model="ir.ui.view">
         <field name="name">product.template.kardex.form</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_only_form_view"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='categ_id']" position="replace">
+                <field name="kardex" invisible="True"/>
                 <field name="product_category_ids_domain" invisible="True"/>
                 <field name="categ_id" domain="product_category_ids_domain"/>
             </xpath>
@@ -79,5 +78,31 @@
             </xpath>
         </field>
     </record>
+
+    <record id="product_category_form_view" model="ir.ui.view">
+        <field name="name">product.category.kardex.form</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='parent_id']" position="after">
+                <field name="abbr" string="Abbreviation"/>
+                <field name="parent_id_name" invisible="1"/>  
+                <field name="kardex_tracking" string="Tracking" class="oe_inline" column_invisible="parent_id_name != 'Kardex'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_category_list_view" model="ir.ui.view">
+        <field name="name">product.category.kardex.list</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_list_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="abbr" string="Abbreviation"/>
+            </xpath>
+        </field>
+    </record>
+
+
     
 </odoo>

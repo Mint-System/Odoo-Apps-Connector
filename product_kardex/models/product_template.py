@@ -21,6 +21,9 @@ class ProductCategory(models.Model):
     _inherit = ['product.category']
 
     kardex = fields.Boolean(string='Kardex', default=False)
+    kardex_tracking = fields.Selection(selection=[('none', 'None'), ('serial', 'Serial'), ('lot', 'Lot')], default='none', string="Tracking Type")
+    parent_id_name = fields.Char(related='parent_id.name')
+    abbr = fields.Char(string="Abbreviation")
 
 
 class ProductTemplate(models.Model):
@@ -56,6 +59,27 @@ class ProductTemplate(models.Model):
     #         if record.kardex and not record.default_code:
     #             raise ValidationError("The 'Internal Reference' (default_code) is required when 'Kardex' is enabled.")
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super(ProductTemplate, self).default_get(fields_list)
+        if 'categ_id' in res:
+            category = self.env['product.category'].browse(res['categ_id'])
+            if category and category.kardex_tracking:
+                res['tracking'] = category.kardex_tracking
+
+        return res
+
+    @api.onchange('categ_id')
+    def _onchange_category_set_tracking(self):
+        if self.categ_id and self.kardex:
+            self.tracking = self.categ_id.kardex_tracking or 'none'
+
+
+    @api.onchange('categ_id')
+    def _onchange_category_set_default_code(self):
+        if self.categ_id and self.kardex:
+            self.default_code = self.categ_id.name
+
 
     @api.depends('kardex')
     def _compute_category_domain(self):
@@ -77,7 +101,19 @@ class ProductTemplate(models.Model):
 
             product.product_category_ids_domain = domain
 
+    @api.constrains('default_code', 'categ_id', 'kardex')
+    def _check_default_code_pattern(self):
+        for record in self:
+            if record.categ_id and record.default_code and record.kardex:
+                category_name = re.escape(record.categ_id.name)  # Escape to handle any special characters in the category name
+                pattern = rf'^{category_name}\.[\w.]+$'  # Regex: category name + dot + alphanumeric or dots
 
+                # Validate default_code against the pattern
+                if not re.match(pattern, record.default_code):
+                    raise ValidationError(
+                        "The 'Internal Reference' must start with the category name, followed by a dot, and contain only alphanumeric characters or dots. "
+                        f"Expected pattern: '{category_name}.[alphanumeric or dot]'"
+                    )
 
 
     def update_to_kardex(self):
@@ -152,11 +188,10 @@ class ProductTemplate(models.Model):
                 product.write({'kardex_status': str(new_status), 'kardex_row_update_time': update_time})
             
             if updated:
-                message = f'Kardex Status was updated from {old_status} to {new_status}.'
+                message = f'Kardex Status was updated from {old_status} to {new_status}'
             else:
                 message = 'Kardex Status was not updated.'
-            
-                
+        
             return self._create_notification(message) 
 
             # raise ValidationError('Something went wrong.')
@@ -170,7 +205,14 @@ class ProductTemplate(models.Model):
 
 
     def _get_product_group(self, product):
-        group = product.categ_id.name # this is HTML object
+        # group = product.categ_id.name # this is HTML object
+        match = re.match(r"^[^.]+", product.default_code)
+
+        if match:
+            group = match.group(0)
+            return group
+        
+        group = 'NNN'
         return group
 
     
@@ -246,7 +288,6 @@ class ProductTemplate(models.Model):
         info4 = record.Info4.strip() if record.Info4 else ""
         val_dict["kardex_info_4"] = info4
         val_dict["kardex_tracking"] = self._get_tracking(record.ID, record.ChVerw, record.SnVerw) 
-        print("#### TACKING #####", val_dict["kardex_tracking"])
         val_dict["default_code"] = record.Suchbegriff
         val_dict["categ_id"] = self._get_categ_id(record.Artikelgruppe.strip())
         val_dict["uom_id"] = val_dict["uom_po_id"] = self._get_unit_id(record.Einheit.strip())
