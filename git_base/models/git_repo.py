@@ -621,6 +621,12 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
+        if self.state != "connected":
+            self.write(
+                {
+                    "state": "connected",
+                }
+            )
         self.cmd_message_post()
         return output
 

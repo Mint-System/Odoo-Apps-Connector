@@ -8,15 +8,24 @@
     </record>
 
     <record id="group_user" model="res.groups">
-        <field name="name">User</field>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'))]" />
+        <field name="name">Guest</field>
+        <field name="comment">Read access to the git repo.</field>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'), (4, ref('server_config_environment.group_server_config_environment')))]" />
         <field name="category_id" ref="module_category_git" />
     </record>
 
-    <record id="group_manager" model="res.groups">
-        <field name="name">Administrator</field>
+    <record id="group_developer" model="res.groups">
+        <field name="name">Developer</field>
+        <field name="comment">Read and write access to the git repo.</field>
         <field name="category_id" ref="module_category_git" />
         <field name="implied_ids" eval="[(4, ref('group_user'))]" />
+    </record>
+
+    <record id="group_manager" model="res.groups">
+        <field name="name">Owner</field>
+        <field name="comment">Fully manage the git repo.</field>
+        <field name="category_id" ref="module_category_git" />
+        <field name="implied_ids" eval="[(4, ref('group_developer'))]" />
         <field
             name="users"
             eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"
