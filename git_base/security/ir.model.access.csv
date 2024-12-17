@@ -14,3 +14,6 @@ access_git_repo_branch_user,access.git.repo.branch.user,model_git_repo_branch,gi
 access_git_repo_cmd_developer,access.git.repo.cmd.developer,model_git_repo_cmd,git_base.group_developer,1,0,0,0
 access_git_repo_cmd_manager,access.git.repo.cmd.manager,model_git_repo_cmd,git_base.group_manager,1,0,0,0
 access_git_repo_cmd_user,access.git.repo.cmd.user,model_git_repo_cmd,git_base.group_user,1,0,0,0
+access_git_repo_log_developer,access.git.repo.log.developer,model_git_repo_log,git_base.group_developer,1,1,1,1
+access_git_repo_log_manager,access.git.repo.log.manager,model_git_repo_log,git_base.group_manager,1,1,1,1
+access_git_repo_log_user,access.git.repo.log.user,model_git_repo_log,git_base.group_user,1,1,1,1

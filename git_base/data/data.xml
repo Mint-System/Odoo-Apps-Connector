@@ -320,4 +320,7 @@
     <record id="cmd_push" model="git.repo.cmd">
         <field name="next_command_id" ref="git_base.cmd_log" />
     </record>
+    <record id="cmd_add_all" model="git.repo.cmd">
+        <field name="next_command_id" ref="git_base.cmd_status" />
+    </record>
 </odoo>

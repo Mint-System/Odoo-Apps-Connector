@@ -119,6 +119,20 @@
                                 </group>
                             </group>
                         </page>
+                        <page
+                            string="Log"
+                            name="log"
+                            attrs="{'invisible': [('state','in', ['draft', 'deleted'])]}"
+                        >
+                            <field name="log_ids" readonly="1">
+                                <tree>
+                                    <field name="commit" />
+                                    <field name="author" />
+                                    <field name="date" />
+                                    <field name="message" />
+                                </tree>
+                            </field>
+                        </page>
                     </notebook>
                 </sheet>
                 <div class="oe_chatter">

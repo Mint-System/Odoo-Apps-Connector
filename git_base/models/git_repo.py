@@ -4,7 +4,10 @@ import logging
 import os
 import re
 import zipfile
+from datetime import datetime
 from subprocess import STDOUT, CalledProcessError, check_output, run
+
+import pytz
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -46,6 +49,14 @@ class GitRepo(models.Model):
     )
     ref = fields.Char(readonly=True, compute="_compute_ref")
     active_branch_id = fields.Many2one("git.repo.branch", readonly=True)
+    log_ids = fields.One2many(
+        "git.repo.log", "repo_id", readonly=True, compute="_compute_log_ids"
+    )
+
+    def _compute_log_ids(self):
+        for rec in self:
+            log_data = rec._get_git_log()
+            rec.log_ids = self.env["git.repo.log"].create(log_data)
 
     def _compute_http_url(self):
         for rec in self:
@@ -208,6 +219,8 @@ class GitRepo(models.Model):
         elif self.env.company.ssh_private_key_file:
             return self.env.company
 
+    # Git Methods
+
     def _get_git_author(self):
         user = self._get_git_user()
         return f"{user.name} <{user.email}>"
@@ -261,6 +274,49 @@ class GitRepo(models.Model):
             )
         else:
             return ""
+
+    def _get_git_log(self):
+        self.ensure_one()
+        if os.path.exists(f"{self.local_path}/.git"):
+            git_log_format = "%H|||%an|||%ai|||%s"
+            try:
+                git_log = (
+                    check_output(
+                        [
+                            "git",
+                            "-C",
+                            self.local_path,
+                            "log",
+                            f"--pretty=format:{git_log_format}",
+                        ]
+                    )
+                    .decode("utf-8")
+                    .strip()
+                    .split("\n")
+                )
+            except CalledProcessError:
+                git_log = []
+            log_data = []
+            for line in git_log:
+                parts = line.split("|||")
+                if len(parts) == 4:
+                    commit, author, date, message = parts
+                    log_data.append(
+                        {
+                            "commit": commit,
+                            "author": author,
+                            "date": datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z")
+                            .astimezone(pytz.UTC)
+                            .replace(tzinfo=None),
+                            "message": message,
+                            "repo_id": self.id,
+                        }
+                    )
+            return log_data
+        else:
+            return ""
+
+    # Command Methods
 
     def cmd_message_post(self, input=False):
         """
@@ -439,7 +495,7 @@ class GitRepo(models.Model):
             "commit",
             "--author",
             self._get_git_author(),
-            "-m",
+            "--message",
             message,
             "--no-gpg-sign",
         ]
@@ -461,8 +517,8 @@ class GitRepo(models.Model):
             "commit",
             "--author",
             self._get_git_author(),
-            "-a",
-            "-m",
+            "--all",
+            "--message",
             message,
             "--no-gpg-sign",
         ]

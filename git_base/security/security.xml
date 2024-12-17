@@ -10,7 +10,10 @@
     <record id="group_user" model="res.groups">
         <field name="name">Guest</field>
         <field name="comment">Read access to the git repo.</field>
-        <field name="implied_ids" eval="[(4, ref('base.group_user'), (4, ref('server_config_environment.group_server_config_environment')))]" />
+        <field
+            name="implied_ids"
+            eval="[(4, ref('base.group_user'), (4, ref('server_config_environment.group_server_config_environment')))]"
+        />
         <field name="category_id" ref="module_category_git" />
     </record>
 
