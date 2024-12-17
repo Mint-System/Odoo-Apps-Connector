@@ -21,6 +21,16 @@ class StockPicking(models.Model):
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
     kardex_status = fields.Selection(selection=[('0', 'Ready'), ('1', 'Pending'), ('2', 'Success'), ('3', 'Error PPG'), ('9', 'Error ERP')], default='0', string="Kardex STATUS")
 
+    def check_kardex(self):
+        for picking in self:
+            moves = self.env['stock.move'].search([('picking_id', '=', picking.id)])
+            for move in moves:
+                sql = f"SELECT Suchbegriff, Row_Update_Time FROM PPG_Artikel WHERE Suchbegriff = '{move.product_id.default_code}'"
+                result = self._execute_query_on_mssql('select', sql)
+                print("Result: %s" % (result,))
+                if result and result[0]['Suchbegriff'] == move.product_id.default_code:
+                    move.product_id.write({'kardex': True, 'kardex_done': True})
+    
     def send_to_kardex(self):
         
         for picking in self:

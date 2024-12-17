@@ -98,7 +98,8 @@ class BaseKardexMixin(models.AbstractModel):
         #if product.kardex_done:
         #    return True
         _logger.info("record._name: %s" % (record._name,))
-        sql_query = f"SELECT ID, Artikelbezeichnung FROM PPG_Artikel WHERE ID={record.kardex_id}"  
+        # sql_query = f"SELECT ID, Artikelbezeichnung FROM PPG_Artikel WHERE ID={record.kardex_id}"  
+        sql_query = f"SELECT ID, Suchbegriff FROM PPG_Artikel WHERE Suchbegriff='{record.default_code}'"
         rows = self._execute_query_on_mssql('select', sql_query)
         if len(rows) > 0:
             return True
@@ -193,3 +194,4 @@ class BaseKardexMixin(models.AbstractModel):
         else:
             raise ValidationError("No Records found in external Database")
 
+    

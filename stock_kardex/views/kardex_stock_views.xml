@@ -10,6 +10,7 @@
                 <page name="kardex" string="Kardex" invisible="not kardex">
                     <form string="Kardex Daten">
                         <header>
+                            <button name="check_kardex" type="object" string="Check SchnittstellenDB"/>
                             <button name="send_to_kardex" type="object" string="An Kardex senden" invisible="kardex_done"/>
                             <button name="update_status_from_kardex" type="object" string="Update Status" invisible="not kardex_done"/>
                         </header>
