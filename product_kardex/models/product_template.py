@@ -105,14 +105,14 @@ class ProductTemplate(models.Model):
     def _check_default_code_pattern(self):
         for record in self:
             if record.categ_id and record.default_code and record.kardex:
-                category_name = re.escape(record.categ_id.name)  # Escape to handle any special characters in the category name
-                pattern = rf'^{category_name}\.[\w.]+$'  # Regex: category name + dot + alphanumeric or dots
+                category_abbr = re.escape(record.categ_id.abbr)  # Escape to handle any special characters in the category name
+                pattern = rf'^{category_abbr}\.[\w.]+$'  # Regex: category name + dot + alphanumeric or dots
 
                 # Validate default_code against the pattern
                 if not re.match(pattern, record.default_code):
                     raise ValidationError(
-                        "The 'Internal Reference' must start with the category name, followed by a dot, and contain only alphanumeric characters or dots. "
-                        f"Expected pattern: '{category_name}.[alphanumeric or dot]'"
+                        "The 'Internal Reference' must start with the category abbreviation, followed by a dot, and contain only alphanumeric characters or dots. "
+                        f"Expected pattern: '{category_abbr}.[alphanumeric or dot]'"
                     )
 
 
