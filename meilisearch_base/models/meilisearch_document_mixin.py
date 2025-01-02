@@ -19,10 +19,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     index_document = fields.Json(
         compute="_compute_index_document",
         store=True,
-        help="Stores the document in Odoo.",
+        help="Stores the document as JSONB.",
     )
     index_document_read = fields.Text(
-        compute="_compute_index_document_read", help="The document stored in Odoo."
+        compute="_compute_index_document_read", help="Returns the document as JSON."
     )
     index_result = fields.Selection(
         [
@@ -81,7 +81,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         # Update Meilisearch document
         for record in index_records:
             document = record._prepare_index_document()
-            record.index_document = json.dumps(document, indent=4)
+            record.index_document = document
 
         # Create update task
         if index:
@@ -96,7 +96,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _compute_index_document_read(self):
         for record in self:
-            record.index_document_read = record.index_document
+            record.index_document_read = json.dumps(record.index_document, indent=4)
 
     def _get_batches(self, batch_size=0):
         if not batch_size:
@@ -111,7 +111,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             if client:
                 try:
                     res = client.index(index.index_name).update_documents(
-                        [json.loads(self.index_document) for self in batch]
+                        [self.index_document for self in batch]
                     )
                     if index.create_task:
                         self.env["meilisearch.task"].create(
