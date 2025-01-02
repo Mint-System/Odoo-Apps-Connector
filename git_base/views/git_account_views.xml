@@ -17,6 +17,7 @@
                         </h1>
                         <group>
                             <field name="forge_id" />
+                            <field name="local_path" />
                             <field name="http_url" widget="url" />
                         </group>
                     </div>

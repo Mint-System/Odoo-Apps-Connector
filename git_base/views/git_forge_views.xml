@@ -7,16 +7,22 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button
+                        name="action_import_repos_from_local_path"
+                        string="Import Repos from Local Path"
+                        class="btn btn-primary"
+                        type="object"
+                    />
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                    </div>
+                    <div class="oe_button_box" name="button_box" />
                     <div class="oe_title">
                         <h1>
                             <field name="name" />
                         </h1>
                         <group>
                             <field name="hostname" />
+                            <field name="local_path" />
                             <field name="http_url" widget="url" />
                         </group>
                     </div>
