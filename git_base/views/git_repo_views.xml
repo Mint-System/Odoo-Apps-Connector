@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="git_repo_form_view" model="ir.ui.view">
+        <field name="name">git_base.git_repo_form_view</field>
+        <field name="model">git.repo</field>
+        <field name="arch" type="xml">
+            <form duplicate="false">
+                <header>
+                    <field name="state" widget="statusbar" readonly="1" />
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box" />
+                    <div class="oe_title">
+                        <h1>
+                            <field class="oe_inline" name="name" />#<field
+                            class="oe_inline"
+                            name="ref"
+                            options="{'no_open': True}"
+                        />
+                        </h1>
+                        <group>
+                            <field name="account_id" />
+                            <field name="http_url" widget="url" />
+                            <field name="ssh_url" widget="url" />
+                        </group>
+                    </div>
+                    <notebook>
+                        <page string="Command" name="command">
+                            <group>
+                                <group string="Input" name="input">
+                                    <field name="local_path" />
+                                    <field name="active_branch_id" />
+                                    <field
+                                        name="cmd_id"
+                                        default_focus="1"
+                                        class="terminal-screen"
+                                        domain="[('states', 'ilike', state)]"
+                                    />
+                                    <field name="cmd_help" class="text-mute" />
+                                    <field name="has_input" invisible="1" />
+                                    <field
+                                        name="cmd_input"
+                                        placeholder="command input"
+                                        attrs="{'invisible': [('has_input','=',False)]}"
+                                    />
+                                    <label for="action_run_cmd" />
+                                    <button
+                                        name="action_run_cmd"
+                                        string="Run Command"
+                                        class="btn btn-primary"
+                                        type="object"
+                                    />
+                                </group>
+                                <group string="Output" name="output">
+                                    <field name="cmd_output" class="terminal-screen" />
+                                </group>
+                                <group string="Upload" name="upload">
+                                    <field name="cmd_input_filename" invisible="1" />
+                                    <field
+                                        name="cmd_input_file"
+                                        filename="cmd_input_filename"
+                                    />
+                                    <field name="cmd_input_folder_path" />
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Branches" name="branches">
+                            <field name="branch_ids" nolabel="1"> list<editable="bottom">
+                                    <field name="sequence" widget="handle" />
+                                    <field name="name" />
+                                    <field name="environment_id" />
+                                    <field name="is_active" />
+                                    <field name="upstream" />
+                                    <button
+                                        name="action_switch_branch"
+                                        string="Switch"
+                                        class="btn btn-primary"
+                                        type="object"
+                                    /><list/
+                            </field>
+                        </page>
+                        <page string="Configuration" name="configuration">
+                            <group>
+                                <group string="Repo User" name="repo_user">
+                                    <field name="active_keychain" />
+                                </group>
+                                <group string="Repo User" name="repo_user">
+                                    <field name="user_id" />
+                                </group>
+                                <group string="Deploy Keys" name="deploy_keys">
+                                    <label
+                                        for="action_generate_deploy_keys"
+                                        attrs="{'invisible': ['|', ('ssh_public_key', '!=', False), ('ssh_private_key_file', '!=', False)]}"
+                                    />
+                                    <button
+                                        name="action_generate_deploy_keys"
+                                        string="Generate Deploy Keys"
+                                        class="btn btn-primary"
+                                        type="object"
+                                        attrs="{'invisible': ['|', ('ssh_public_key', '!=', False), ('ssh_private_key_file', '!=', False)]}"
+                                    />
+                                    <field name="ssh_public_key" />
+                                    <field
+                                        name="ssh_private_key_file"
+                                        filename="ssh_private_key.txt"
+                                    />
+                                    <field
+                                        name="ssh_private_key_password"
+                                        password="True"
+                                    />
+                                </group>
+                                <group string="Remote Origin">
+                                    <field name="pull_url" />
+                                    <field name="push_url" />
+                                </group>
+                            </group>
+                        </page>
+                        <page
+                            string="Log"
+                            name="log"
+                            attrs="{'invisible': [('state','in', ['draft', 'deleted'])]}"
+                        >
+                            <field name="log_ids" readonly="1"> list<
+                                    <field name="commit" />
+                                    <field name="author" />
+                                    <field name="date" />
+                                    <field name="message" /><list/
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" />
+                    <field name="activity_ids" />
+                    <field name="message_ids" />
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="git_repo_tree_view" model="ir.ui.view">
+        <field name="name">git_base.git_repo_tree_view</field>
+        <field name="model">git.repo</field>
+        <field name="arch" type="xml"> list<duplicate="false">
+                <field name="name" />
+                <field name="http_url" />
+                <field name="state" /><list/
+        </field>
+    </record>
+
+    <record id="git_repo_search_view" model="ir.ui.view">
+        <field name="name">git_base.git_repo_search_view</field>
+        <field name="model">git.repo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="http_url" />
+            </search>
+        </field>
+    </record>
+
+    <record id="action_git_repo_view" model="ir.actions.act_window">
+        <field name="name">Repos</field>
+        <field name="res_model">git.repo</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="git_repo_search_view" />
+    </record>
+
+    <menuitem
+        id="git_base.menu_git_repo"
+        name="Repos"
+        parent="git_base.menu_root"
+        action="git_base.action_git_repo_view"
+        sequence="10"
+    />
+</odoo>

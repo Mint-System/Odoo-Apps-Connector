@@ -1,0 +1,46 @@
+<?xml version="1.0" ?>
+<odoo>
+    <record id="view_users_form" model="ir.ui.view">
+        <field name="name">git_base.view_users_form</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences']" position="after">
+                <page string="SSH" name="ssh" groups="git_base.group_manager">
+                    <group>
+                        <group string="Personal Keys" name="personal_keys">
+                            <field name="ssh_public_key" />
+                            <field
+                                name="ssh_private_key_file"
+                                filename="ssh_private_key.txt"
+                            />
+                            <field name="ssh_private_key_password" password="True" />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_form_simple_modif" model="ir.ui.view">
+        <field name="name">git_base.view_users_form_simple_modif</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences_page']" position="after">
+                <page string="SSH" name="ssh">
+                    <group>
+                        <group string="Personal Keys" name="personal_keys">
+                            <field name="ssh_public_key" />
+                            <field
+                                name="ssh_private_key_file"
+                                filename="ssh_private_key.txt"
+                            />
+                            <field name="ssh_private_key_password" password="True" />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
