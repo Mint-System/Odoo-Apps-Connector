@@ -1,23 +1,37 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    
+
     <record id="view_picking_form" model="ir.ui.view">
         <field name="name">stock.picking.kardex.form</field>
         <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="inherit_id" ref="stock.view_picking_form" />
         <field name="arch" type="xml">
             <xpath expr="//page[@name='extra']" position="after">
                 <page name="kardex" string="Kardex" invisible="not kardex">
                     <form string="Kardex Daten">
                         <header>
-                            <button name="check_kardex" type="object" string="Check SchnittstellenDB"/>
-                            <button name="send_to_kardex" type="object" string="An Kardex senden" invisible="kardex_done"/>
-                            <button name="update_status_from_kardex" type="object" string="Update Status" invisible="not kardex_done"/>
+                            <button
+                                name="check_kardex"
+                                type="object"
+                                string="Check SchnittstellenDB"
+                            />
+                            <button
+                                name="send_to_kardex"
+                                type="object"
+                                string="An Kardex senden"
+                                invisible="kardex_done"
+                            />
+                            <button
+                                name="update_status_from_kardex"
+                                type="object"
+                                string="Update Status"
+                                invisible="not kardex_done"
+                            />
                         </header>
                          <sheet>
                         <group>
-                            <field name="kardex_status" readonly="1"/>
-                            <field name="kardex_row_create_time" /> 
+                            <field name="kardex_status" readonly="1" />
+                            <field name="kardex_row_create_time" />
                             <field name="kardex_row_update_time" />
                             <field name="kardex_done" />
                         </group>
@@ -26,18 +40,21 @@
                 </page>
             </xpath>
             <xpath expr="//field[@name='backorder_id']" position="after">
-                 <field name="kardex_done"/>
+                 <field name="kardex_done" />
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
-               
-                    <field name="kardex"/>
-                   
-               
+
+                    <field name="kardex" />
+
+
             </xpath>
             <xpath expr="//header" position="inside">
                 <button class="btn btn-primary">Kardex</button>
             </xpath>
-            <xpath expr="//page[@name='operations']//tree/field[@name='description_picking']" position="after">
+            <xpath
+                expr="//page[@name='operations']//tree/field[@name='description_picking']"
+                position="after"
+            >
                 <field name="kardex_done" string="->Kardex" optional="hide" />
                 <field name="kardex_id" string="Kardex ID" optional="hide" />
                 <field name="kardex_status" string="Kardex Status" optional="hide" />
@@ -47,7 +64,7 @@
             <xpath expr="//page[@name='operations']/field/tree/field[@name='product_id']" position="replace">
                 <field name="product_id" domain="[('kardex', '=', True)]" context="{'default_detailed_type': 'product'}" required="1" readonly="(state != 'draft' and not additional) or move_lines_count &gt; 0" force_save="1"/>
             </xpath>
-           
+
             <xpath expr="//page[@name='operations']/field/tree/field[@name='product_id']" position="replace">
                 <field name="products_domain" column_invisible="True"/>
                 <field name="product_id" domain="products_domain" context="{'default_detailed_type': 'product'}" required="1" readonly="(state != 'draft' and not additional) or move_lines_count &gt; 0" force_save="1"/>

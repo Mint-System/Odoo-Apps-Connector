@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
     <record id="view_order_form" model="ir.ui.view">
@@ -6,8 +6,10 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form" />
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='order_line']/tree[1]/field[@name='sequence']"
-                position="after">
+            <xpath
+                expr="//field[@name='order_line']/tree[1]/field[@name='sequence']"
+                position="after"
+            >
                 <field name="position" />
             </xpath>
         </field>
@@ -30,7 +32,12 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="button_close" string="Close" states="prepared" type="object" />
+                    <button
+                        name="button_close"
+                        string="Close"
+                        states="prepared"
+                        type="object"
+                    />
                     <field name="state" widget="statusbar" select="1" readonly="1" />
                 </header>
                 <sheet>
@@ -50,7 +57,7 @@
                     </div>
                     <div class="oe_title">
                         <h1>
-                            <field name="name"/>
+                            <field name="name" />
                         </h1>
                     </div>
                     <group>
@@ -97,12 +104,28 @@
 
     <menuitem name="base_kardex" id="base_kardex.menu_root" />
 
-    <menuitem name="Documents" id="base_kardex.menu_document" parent="base_kardex.menu_root" />
-    <menuitem name="Configurations" id="base_kardex.menu_configuration" parent="base_kardex.menu_root" />
+    <menuitem
+        name="Documents"
+        id="base_kardex.menu_document"
+        parent="base_kardex.menu_root"
+    />
+    <menuitem
+        name="Configurations"
+        id="base_kardex.menu_configuration"
+        parent="base_kardex.menu_root"
+    />
 
-    <menuitem name="Documents" id="base_kardex.menu_document" parent="base_kardex.documents_menu"
-        action="base_kardex.action_view_tree" />
-    <menuitem name="Server to list" id="base_kardex.menu_server_action"
-        parent="base_kardex.menu_configuration" action="base_kardex.document_server_action" />
+    <menuitem
+        name="Documents"
+        id="base_kardex.menu_document"
+        parent="base_kardex.documents_menu"
+        action="base_kardex.action_view_tree"
+    />
+    <menuitem
+        name="Server to list"
+        id="base_kardex.menu_server_action"
+        parent="base_kardex.menu_configuration"
+        action="base_kardex.document_server_action"
+    />
 
 </odoo>

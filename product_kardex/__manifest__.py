@@ -10,9 +10,9 @@
     "license": "AGPL-3",
     "depends": ["product"],
     "data": [
-        #"security/ir.model.access.csv",
-        #"views/assets.xml",
-        #"views/sale_order.xml"
+        # "security/ir.model.access.csv",
+        # "views/assets.xml",
+        # "views/sale_order.xml"
         "views/product_kardex_views.xml",
     ],
     "installable": True,

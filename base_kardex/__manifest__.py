@@ -10,10 +10,10 @@
     "license": "AGPL-3",
     "depends": ["base_external_mssql"],
     "data": [
-        #"security/ir.model.access.csv",
-        #"report/invoice_document.xml",
-        #"data/ir_sequence.xml",
-        #"views/sale_order_views.xml"
+        # "security/ir.model.access.csv",
+        # "report/invoice_document.xml",
+        # "data/ir_sequence.xml",
+        # "views/sale_order_views.xml"
         "views/base_kardex_settings.xml",
     ],
     "installable": True,
