@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from odoo import _, api, fields, models
 from odoo.tools.safe_eval import safe_eval
@@ -114,7 +115,7 @@ class MeilisearchTask(models.Model):
         unlink_task_ids = self.env["meilisearch.task"].search(
             [
                 ("index_id", "in", index_ids.ids),
-                ("create_date", "<", fields.Datetime.now() - fields.Date.day),
+                ("create_date", "<", fields.Datetime.now() - timedelta(days=1)),
             ]
         )
         unlink_task_ids.unlink()
