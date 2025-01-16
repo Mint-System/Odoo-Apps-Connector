@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_base_kardex_document_user,base_kardex.document,model_base_kardex_document,group_base_kardex_user,1,0,0,0
+access_base_kardex_document_manager,base_kardex.document,model_base_kardex_document,group_base_kardex_manager,1,1,1,1
