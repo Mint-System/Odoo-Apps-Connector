@@ -60,6 +60,7 @@ class BaseKardexMixin(models.AbstractModel):
         return notification_dict
 
     def _convert_date(self, date_obj):
+
         formatted_date_str = date_obj.strftime("%b %e %Y %l:%M")
 
         # workaround for not working %p conversion of datetime library used in odoo (?)

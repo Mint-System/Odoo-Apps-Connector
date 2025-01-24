@@ -5,10 +5,12 @@
         <field name="name">base.kardex.settings.tree</field>
         <field name="model">base.kardex.settings</field>
         <field name="type">tree</field>
-        <field name="arch" type="xml"> list<
+        <field name="arch" type="xml">
+            <tree>
                 <field name="send_to_kardex_on_create" />
                 <field name="number_of_kardex_products" />
-                <field name="kardex_date_handling" /><list/
+                <field name="kardex_date_handling" />
+            </tree>
         </field>
     </record>
     <record model="ir.ui.view" id="view_kardex_settings_form">
@@ -32,7 +34,7 @@
     <record model="ir.actions.act_window" id="action_kardex_settings">
         <field name="name">Kardex Settings</field>
         <field name="res_model">base.kardex.settings</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_kardex_settings_tree" />
     </record>
     <menuitem
