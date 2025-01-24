@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <templates xml:space="preserve">
     <t t-name="kardex_cog_menu.SyncOption" owl="1">
-         <DropdownItem class="'o_cog_menu'" onSelected.bind="actionNewOption">
+        <DropdownItem class="'o_cog_menu'" onSelected.bind="actionNewOption">
              Sync Kardex
         </DropdownItem>
     </t>

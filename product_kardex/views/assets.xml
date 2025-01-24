@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-
     <template id="widget" inherit_id="web.assets_backend">
         <xpath expr="//script[last()]" position="after">
             <script type="text/javascript" src="/kardex/static/js/widget.js" />
@@ -12,5 +11,4 @@
             <link rel="stylesheet" href="/{ name }}/static/src/css/style.css" />
         </xpath>
     </template>
-
 </odoo>

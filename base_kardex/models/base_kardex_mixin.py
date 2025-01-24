@@ -2,9 +2,12 @@ import logging
 from datetime import datetime
 from types import SimpleNamespace
 
+import pytz
+
 from odoo import models
 from odoo.exceptions import ValidationError
-from odoo.tools import pytz
+
+# from odoo.tools import pytz
 
 _logger = logging.getLogger(__name__)
 
@@ -60,7 +63,6 @@ class BaseKardexMixin(models.AbstractModel):
         return notification_dict
 
     def _convert_date(self, date_obj):
-
         formatted_date_str = date_obj.strftime("%b %e %Y %l:%M")
 
         # workaround for not working %p conversion of datetime library used in odoo (?)

@@ -16,71 +16,66 @@
         </field>
     </record>
 
-
-
-
     <record id="product_template_form_view" model="ir.ui.view">
         <field name="name">product.template.kardex.form</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view" />
         <field name="arch" type="xml">
-                <xpath expr="//field[@name='purchase_ok']/.." position="after">
-                    <span class="d-inline-block">
-                        <field name="kardex" />
-                        <label for="kardex" />
-                    </span>
-                     <span class="d-inline-block">
-                        <field name="kardex_done" readonly="1" />
-                        <label for="kardex_done" />
-                    </span>
-                </xpath>
-                <xpath expr="//page[@name='inventory']" position="after">
-                   <page name="kardex" string="Kardex" invisible="not kardex">
-                   <form string="Kardex Daten">
-                   <header>
-                        <button
+            <xpath expr="//field[@name='purchase_ok']/.." position="after">
+                <span class="d-inline-block">
+                    <field name="kardex" />
+                    <label for="kardex" />
+                </span>
+                <span class="d-inline-block">
+                    <field name="kardex_done" readonly="1" />
+                    <label for="kardex_done" />
+                </span>
+            </xpath>
+            <xpath expr="//page[@name='inventory']" position="after">
+                <page name="kardex" string="Kardex" invisible="not kardex">
+                    <form string="Kardex Daten">
+                        <header>
+                            <button
                                 name="send_to_kardex"
                                 type="object"
                                 string="An Kardex senden"
                                 invisible="kardex_done"
                             />
-                        <button
+                            <button
                                 name="update_to_kardex"
                                 type="object"
                                 string="Update Kardex"
                                 invisible="not kardex_done"
                             />
-                        <button
+                            <button
                                 name="update_status_from_kardex"
                                 type="object"
                                 string="Status Update"
                                 invisible="not kardex_done"
                             />
-                    </header>
-                   <sheet>
-                        <group>
-                            <field name="kardex_product_id" readonly="1" />
-                            <field name="kardex_id" readonly="1" />
-                            <field name="kardex_status" readonly="1" />
-                            <field name="description" />
-                            <field name="kardex_info_2" />
-                            <field name="kardex_info_3" />
-                            <field name="kardex_info_4" />
-                            <field name="default_code" />
-                            <field name="categ_id" />
-                            <field name="uom_id" />
-                            <field name="kardex_row_create_time" />
-                            <field name="kardex_row_update_time" />
-                            <field name="kardex_is_fifo" />
-                            <field name="kardex_done" />
-                        </group>
-                    </sheet>
-                   </form>
-                   </page>
-                </xpath>
-
+                        </header>
+                        <sheet>
+                            <group>
+                                <field name="kardex_product_id" readonly="1" />
+                                <field name="kardex_id" readonly="1" />
+                                <field name="kardex_status" readonly="1" />
+                                <field name="description" />
+                                <field name="kardex_info_2" />
+                                <field name="kardex_info_3" />
+                                <field name="kardex_info_4" />
+                                <field name="default_code" />
+                                <field name="categ_id" />
+                                <field name="uom_id" />
+                                <field name="kardex_row_create_time" />
+                                <field name="kardex_row_update_time" />
+                                <field name="kardex_is_fifo" />
+                                <field name="kardex_done" />
+                            </group>
+                        </sheet>
+                    </form>
+                </page>
+            </xpath>
         </field>
-
     </record>
 
     <record id="product_template_tree_view" model="ir.ui.view">
@@ -122,7 +117,4 @@
             </xpath>
         </field>
     </record>
-
-
-
 </odoo>

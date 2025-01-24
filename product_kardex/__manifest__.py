@@ -4,15 +4,12 @@
         Module summary.
     """,
     "author": "Mint System GmbH, Odoo Community Association (OCA)",
-    "website": "https://www.mint-system.ch",
+    "website": "https://github.com/OCA/sale-workflow",
     "category": "Stock",
-    "version": "17.0.1.0.0",
+    "version": "18.0.1.0.0",
     "license": "AGPL-3",
     "depends": ["product"],
     "data": [
-        # "security/ir.model.access.csv",
-        # "views/assets.xml",
-        # "views/sale_order.xml"
         "views/product_kardex_views.xml",
     ],
     "installable": True,

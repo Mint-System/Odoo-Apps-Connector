@@ -70,7 +70,7 @@ class ProductTemplate(models.Model):
 
     @api.model
     def default_get(self, fields_list):
-        res = super(ProductTemplate, self).default_get(fields_list)
+        res = super().default_get(fields_list)
         if "categ_id" in res:
             category = self.env["product.category"].browse(res["categ_id"])
             if category and category.kardex_tracking:
@@ -86,7 +86,7 @@ class ProductTemplate(models.Model):
     @api.onchange("categ_id")
     def _onchange_category_set_default_code(self):
         if self.categ_id and self.kardex:
-            self.default_code = self.categ_id.name
+            self.default_code = self.categ_id.abbr
 
     @api.depends("kardex")
     def _compute_category_domain(self):
@@ -98,11 +98,11 @@ class ProductTemplate(models.Model):
                 kardex_category = self.env["product.category"].search(
                     [("name", "=", "Kardex")], limit=1
                 )
-                _logger.info("########### KARDEX CATEGORY: %s" % (kardex_category,))
+                _logger.info("########### KARDEX CATEGORY: {}".format(kardex_category))
                 if kardex_category:
                     child_category_ids = kardex_category.child_id.ids
                     _logger.info(
-                        "########### CHILD CATEGORIES: %s" % (child_category_ids,)
+                        "########### CHILD CATEGORIES: {}".format(child_category_ids)
                     )
                     domain = [("id", "in", child_category_ids)]
                 else:
@@ -145,7 +145,6 @@ class ProductTemplate(models.Model):
                 return self._create_notification(message)
 
     def send_to_kardex(self):
-
         for product in self:
             product_vals = product.read()[0]
             if self._check_already_in_kardex(product):
@@ -201,7 +200,7 @@ class ProductTemplate(models.Model):
             old_status = product.kardex_status
             sql = f"SELECT STATUS, Row_Update_Time FROM PPG_Artikel WHERE ID = {kardex_id}"
             result = self._execute_query_on_mssql("select_one", sql)
-            _logger.info("result: %s" % (result,))
+            _logger.info("result: {}".format(result))
             new_status = result["STATUS"]
             update_time = result["Row_Update_Time"]
 

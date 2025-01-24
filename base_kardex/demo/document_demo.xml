@@ -1,9 +1,8 @@
 <odoo>
-<!--
+    <!--
   <record id="document0" model="base_kardex.document">
     <field name="name">Document 0</field>
     <field name="value">0</field>
   </record>
 -->
-
 </odoo>
