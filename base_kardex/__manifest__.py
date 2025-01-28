@@ -3,7 +3,7 @@
     "summary": """
         Provides Basic Kardex Functionality.
     """,
-    "author": "Mint System GmbH, Odoo Community Association (OCA)",
+    "author": "Mint System GmbH",
     "website": "https://github.com/OCA/sale-workflow",
     "category": "Purchase,Technical,Accounting,Invoicing,Sales,Human Resources,Services,Helpdesk,Manufacturing,Website,Inventory,Administration,Productivity",
     "version": "18.0.1.0.0",

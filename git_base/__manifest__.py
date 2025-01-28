@@ -3,7 +3,7 @@
     "summary": """
         Manage git repositories with Odoo.
     """,
-    "author": "Mint System GmbH, Odoo Community Association (OCA)",
+    "author": "Mint System GmbH",
     "website": "https://github.com/OCA/sale-workflow",
     "category": "Technical",
     "version": "18.0.1.0.0",
