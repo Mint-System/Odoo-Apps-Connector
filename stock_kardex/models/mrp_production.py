@@ -16,3 +16,6 @@ class MrpProduction(models.Model):
         for record in self:
             # Check if the related product template's kardex field is True
             record.kardex = record.product_id.product_tmpl_id.kardex
+
+
+

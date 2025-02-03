@@ -8,10 +8,12 @@ from odoo.exceptions import UserError, ValidationError
 _logger = logging.getLogger(__name__)
 
 PICKING_DATE_HANDLING = "send"  # or 'create'
+PICKING_AUTO = True
 
 ODOO_KARDEX_UNIT_FIXER = {
     "Einheit(en)": "Stk",
 }
+
 
 
 
@@ -72,6 +74,40 @@ class StockPicking(models.Model):
         max_kardex_running_id = res["maximum_running_id"]
         kardex_running_id = max_kardex_running_id + 1 if max_kardex_running_id else 1
         return int(kardex_running_id)
+
+
+    @api.model
+    def create(self, vals):
+        record = super().create(vals)
+        production_kardex = self.env["mrp.production"].search([("name", "=", vals['origin'])]).mapped("kardex")
+
+        record["kardex"] = production_kardex[0]
+
+        return record
+
+    
+    def action_assign(self):
+        """ Check availability of picking moves.
+        This has the effect of changing the state and reserve quants on available moves, and may
+        also impact the state of the picking as it is computed based on move's states.
+        @return: True
+        """
+        self.mapped('package_level_ids').filtered(lambda pl: pl.state == 'draft' and not pl.move_ids)._generate_moves()
+        self.filtered(lambda picking: picking.state == 'draft').action_confirm()
+        moves = self.move_ids.filtered(lambda move: move.state not in ('draft', 'cancel', 'done')).sorted(
+            key=lambda move: (-int(move.priority), not bool(move.date_deadline), move.date_deadline, move.date, move.id)
+        )
+        if not moves:
+            raise UserError(_('Nothing to check the availability for.'))
+        moves._action_assign()
+        all_moves_assigned = all(move.state == 'assigned' for move in moves)
+        if all_moves_assigned and PICKING_AUTO:
+            self.send_to_kardex()
+
+
+        return True
+
+
 
     def send_to_kardex(self):
         for picking in self:
