@@ -75,6 +75,8 @@ class ProductTemplate(models.Model):
             category = self.env["product.category"].browse(res["categ_id"])
             if category and category.kardex_tracking:
                 res["tracking"] = category.kardex_tracking
+                if category.kardex_tracking != 'none':
+                    res["is_storable"] = True
 
         return res
 
@@ -95,16 +97,11 @@ class ProductTemplate(models.Model):
         """
         for product in self:
             if product.kardex:
-                kardex_category = self.env["product.category"].search(
-                    [("name", "=", "Kardex")], limit=1
+                kardex_categories = self.env["product.category"].search(
+                    [("kardex", "=", True)]
                 )
-                _logger.info("########### KARDEX CATEGORY: {}".format(kardex_category))
-                if kardex_category:
-                    child_category_ids = kardex_category.child_id.ids
-                    _logger.info(
-                        "########### CHILD CATEGORIES: {}".format(child_category_ids)
-                    )
-                    domain = [("id", "in", child_category_ids)]
+                if kardex_categories:
+                    domain = [("id", "in", kardex_categories.ids)]
                 else:
                     domain = []
             else:
@@ -179,7 +176,7 @@ class ProductTemplate(models.Model):
                 product_vals["kardex_status"] = "1"
 
                 table = "PPG_Artikel"
-                new_id, create_time, update_time = self._create_external_object(
+                new_id, create_time, update_time, running_id = self._create_external_object(
                     product_vals, table
                 )
 

@@ -40,7 +40,12 @@ ODOO_KARDEX_PICKING_FIXER = {
     "kardex_doc_number": "Belegnummer",
     "kardex_direction": "Richtung",
     "kardex_search": "Suchbegriff",
+    "kardex_running_id": "BzId",
+    "kardex_send_flag": "Versandflag"
 }
+
+
+
 
 
 class BaseKardexMixin(models.AbstractModel):
@@ -159,14 +164,20 @@ class BaseKardexMixin(models.AbstractModel):
         # in case of inserting a record result is id of created object
         # getting dates from external database
         columns = "Row_Create_Time, Row_Update_Time"
+        if table == "PPG_Auftraege":
+            columns = f"{columns}, BzId"
+            
         sql = f"SELECT {columns} FROM {table} WHERE ID = {new_id}"
         _logger.info("sql: %s" % (sql,))
         record = self._execute_query_on_mssql("select", sql)
         _logger.info("record: %s" % (record,))
+        running_id = ""
         if len(record) == 1:
             create_time = record[0]["Row_Create_Time"]
             update_time = record[0]["Row_Update_Time"]
-        return new_id, create_time, update_time
+            if table == "PPG_Auftraege":
+                running_id = record[0]["BzId"]
+        return new_id, create_time, update_time, running_id
 
     def _sync_external_db(self, query):
         # import pdb; pdb.set_trace()

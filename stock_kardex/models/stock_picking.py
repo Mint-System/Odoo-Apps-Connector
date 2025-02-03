@@ -9,6 +9,25 @@ _logger = logging.getLogger(__name__)
 
 PICKING_DATE_HANDLING = "send"  # or 'create'
 
+ODOO_KARDEX_UNIT_FIXER = {
+    "Einheit(en)": "Stk",
+}
+
+
+
+class StockPickingJournal(models.Model):
+    _name = "stock.picking.journal" 
+    _description = "Stock Picking Journal"
+
+    journal_id = fields.Integer(string='Journal Id', required=True)
+    kardex_running_id = fields.Integer(string='BzId', required=True)
+
+    _sql_constraints = [
+        ('unique_journal', 'unique(journal_id)', 
+         'The Journal ID must be unique!')
+    ]
+
+
 
 class StockPicking(models.Model):
     _name = "stock.picking"
@@ -31,6 +50,8 @@ class StockPicking(models.Model):
         default="0",
         string="Kardex STATUS",
     )
+    kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
+
 
     def check_kardex(self):
         for picking in self:
@@ -41,6 +62,16 @@ class StockPicking(models.Model):
                 print("Result: %s" % (result,))
                 if result and result[0]["Suchbegriff"] == move.product_id.default_code:
                     move.product_id.write({"kardex": True, "kardex_done": True})
+
+    def _get_kardex_running_id(self):
+        # Find the current maximum kardex_running_id
+        # max_kardex_product_id = self.env['product.template'].search([('kardex_product_id', '>', '0')], order='kardex_product_id desc', limit=1).kardex_product_id
+
+        sql_query = "SELECT Max(BzId) AS maximum_running_id FROM PPG_Auftraege WHERE Richtung = 4"
+        res = self._execute_query_on_mssql("select_one", sql_query)
+        max_kardex_running_id = res["maximum_running_id"]
+        kardex_running_id = max_kardex_running_id + 1 if max_kardex_running_id else 1
+        return int(kardex_running_id)
 
     def send_to_kardex(self):
         for picking in self:
@@ -76,13 +107,15 @@ class StockPicking(models.Model):
                 # picking_vals['kardex_row_create_time'] = create_time
                 # picking_vals['kardex_row_update_time'] = update_time
                 picking_vals["kardex_status"] = "1"
-                picking_vals["kardex_unit"] = move.product_id.uom_id.name
+                picking_vals["kardex_send_flag"] = "0"
+                picking_vals["kardex_running_id"] = self._get_kardex_running_id()
+                picking_vals["kardex_unit"] = self._get_unit(move.product_id.uom_id.name)
                 picking_vals["kardex_quantity"] = move.quantity
                 picking_vals["kardex_doc_number"] = picking.name
                 picking_vals["kardex_direction"] = self._get_direction()
                 picking_vals["kardex_search"] = move.product_id.default_code
                 if move.product_id.kardex:
-                    new_id, create_time, update_time = self._create_external_object(
+                    new_id, create_time, update_time, running_id = self._create_external_object(
                         picking_vals, table
                     )
                     _logger.info("new_id: {}".format(new_id))
@@ -93,6 +126,7 @@ class StockPicking(models.Model):
                         "kardex_status": "1",
                         "kardex_row_create_time": create_time,
                         "kardex_row_update_time": update_time,
+                        "kardex_running_id": running_id,
                     }
                     move.write(done_move)
             message = "Kardex Picking was sent to Kardex."
@@ -140,8 +174,130 @@ class StockPicking(models.Model):
         message = ", ".join(message_list)
         return self._create_notification(message)
 
+    def sync_pickings(self):
+        # all pickings with status not done
+        pickings = self.env["stock.picking"].search([("state", "!=", 'done')])
+        for picking in pickings:
+            print("Picking:", picking.name)
+            moves = self.env["stock.move"].search([("picking_id", "=", picking.id)])
+            
+            complete = 1
+            for move in moves:
+                # if move.kardex_running_id and not move.kardex_sync:
+                if move.kardex_running_id:
+                    print("######## move.kardex_running_id:", move.kardex_running_id)
+                    picking_journal_ids = self.env["stock.picking.journal"].search([("kardex_running_id", "=", move.kardex_running_id)]).mapped("journal_id")
+                    picking_journal_ids_tuple = f"({', '.join(map(str, picking_journal_ids))})" if picking_journal_ids else "('')"
+                    print("## picking_journal_ids_tuple:", picking_journal_ids_tuple)
+                    conditions = f"WHERE BzId = {move.kardex_running_id} AND ID NOT IN {picking_journal_ids_tuple}"
+                    sql = """
+                        WITH CTE AS (
+                            SELECT BzId, 
+                                Seriennummer,
+                                Row_Create_Time,
+                                Row_Update_Time,
+                                SUM(Menge) AS MengeErledigt,
+                                MAX(Komplett) AS MaxKomplett
+                            FROM PPG_Journal
+                            {}
+                            GROUP BY BzId, Seriennummer, Row_Create_Time, Row_Update_Time
+                        )
+                        SELECT c.BzId, 
+                            c.Seriennummer,
+                            c.Row_Create_Time,
+                            c.Row_Update_Time,
+                            c.MengeErledigt, 
+                            c.MaxKomplett, 
+                            STUFF(
+                                    (SELECT ', ' + CAST(ID AS VARCHAR)
+                                    FROM PPG_Journal 
+                                    WHERE BzId = c.BzId
+                                    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'),
+                                    1, 2, ''
+                            ) AS id_list
+                        FROM CTE c;
+                        """.format(conditions)
+
+                    print("##  SQL:", sql)
+                    result = self._execute_query_on_mssql("select_one", sql)
+                    
+                    print("Result: %s" % (result,))
+                    
+                    if result:
+                        print("MengeErledigt", result["MengeErledigt"])
+                        print("MaxKomplett:", result["MaxKomplett"])
+                        new_journal_status = result["MaxKomplett"] 
+                        journal_ids = result["id_list"] 
+                        create_time = result["Row_Create_Time"]
+                        update_time = result["Row_Update_Time"]   
+                        complete = max(complete, new_journal_status)  
+                        #complete = result["MaxKomplett"]
+                        lot_name = result["Seriennummer"]  
+                        move.write(
+                            {
+                                "kardex_journal_status": new_journal_status,
+                                #"kardex_journal_status": complete,
+                                "kardex_sync": True
+                            }
+                        )   
+
+                        for journal_id in journal_ids.split(','):
+                            self.env['stock.picking.journal'].create({
+                                'journal_id': journal_id,
+                                'kardex_running_id': move.kardex_running_id,
+                            })
+
+                        # get amounts for one move
+                        qty_done = result["MengeErledigt"]
+                        print("MengeErledigt:", qty_done)
+
+                        # update qty_done for move lines
+                        move_lines = self.env["stock.move.line"].search([("move_id", "=", move.id)])
+                        for move_line in move_lines:
+                            new_qty_done = move_line.qty_done + qty_done
+                            move_line_vals = {
+                                "qty_done": new_qty_done
+                            }
+                            if lot_name:
+                                lot_id = self.env["stock.lot"].search([("name", "=", lot_name)]).mapped("id")[0]
+                                move_line_vals["lot_id"] = lot_id
+
+                            move_line.write(move_line_vals)
+
+                        
+                        move.write({"kardex_sync": True})
+
+            # if complete == 1:
+            #     # copy picking
+            #     new_pickings = self.copy(default={"kardex_sync": False})
+            #     if len(new_pickings) == 1:
+            #         new_picking = new_pickings[0]
+
+            #         for move in new_picking:
+            #             product_uom_qty = new_amounts_dict[move.kardex_running_id]
+            #             move.write(
+            #                 {
+            #                     "product_uom_qty": product_uom_qty,
+            #                     "kardex_running_id": "",
+            #                 }
+            #             )
+
+                
+            #elif complete == 2: 
+            if complete == 2:
+                picking.write({"state": "done", "kardex_sync": True})
+
+
+
+
+    def _get_unit(self, unit):
+        fixer = ODOO_KARDEX_UNIT_FIXER
+        return fixer.get(unit, unit)
+    
+
+
     def _get_direction(self):
-        direction = 3
+        direction = 4
         return direction
 
     def _get_search(self):
@@ -189,6 +345,9 @@ class StockMove(models.Model):
         default="0",
         string="Kardex STATUS",
     )
+    kardex_running_id = fields.Char(string="Picking BzId")
+    kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
+    kardex_journal_status = fields.Char(string="Komplett")
 
     @api.depends("picking_id.kardex")
     def _compute_products_domain(self):

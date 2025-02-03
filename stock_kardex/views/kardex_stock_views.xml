@@ -43,6 +43,7 @@
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="kardex" />
+                <field name="kardex_sync" string="Sync PPG-J" readonly="1" />
             </xpath>
             <xpath expr="//header" position="inside">
                 <button class="btn btn-primary">Kardex</button>
@@ -51,6 +52,9 @@
                 <field name="kardex_done" string="->Kardex" optional="hide" />
                 <field name="kardex_id" string="Kardex ID" optional="hide" />
                 <field name="kardex_status" string="Kardex Status" optional="hide" />
+                <field name="kardex_running_id" string="BzId" optional="hide" />
+                <field name="kardex_journal_status" string="Kompl." optional="hide" />
+                <field name="kardex_sync" string="JSync" optional="hide" />
             </xpath>
 
             <!--dlist/field[@name='product_id']" position="replace">
