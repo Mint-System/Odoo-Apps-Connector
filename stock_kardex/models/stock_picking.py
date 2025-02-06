@@ -13,6 +13,8 @@ from .config import (
     STOCK_PICKING_DIRECTION_FIXER,
     STOCK_PICKING_SEND_FLAG_FIXER,
     START_STOCK_SYNC,
+    KARDEX_WAREHOUSE,
+    COMPANY_ID,
 )
 
 
@@ -421,8 +423,94 @@ class StockMove(models.Model):
         return super().create(vals)
 
 
+class StockQuant(models.Model):
+    _name = "stock.quant" 
+    _description = "Stock Update Quant"
+    _inherit = ["stock.quant", "base.kardex.mixin"]
+
+
+    def _get_location_id(self, location_name):
+        location_id = self.env["stock.location"].search([('complete_name', '=', location_name)]).mapped("id")
+        return location_id
+
+
+    @api.model
     def sync_stocks(self):
-        conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')"
+        # get stock quants of Kardex Warehouse
+        location_ids = self._get_location_id(KARDEX_WAREHOUSE)
+        if not location_ids:
+            return False
+
+        location_id = location_ids[0]
+
+        print("location_id:", location_id)
+
+        # company id from settings
+        company_id = COMPANY_ID
+
+
+        # create dict with product ids and non empty default codes
+        self.env.cr.execute("""
+            SELECT pt.default_code, pp.id  
+            FROM product_product pp
+            JOIN product_template pt ON pp.product_tmpl_id = pt.id
+            WHERE pt.default_code IS NOT NULL
+        """)
+        product_mapping = dict(self.env.cr.fetchall())  
+
+        print("PRODUCT MAPPING:", product_mapping)
+
+        # get quantities from stock quant for Kardex Warehouse
+        # location_condition = f"WHERE sq.location_id = {location_id}"
+        location_condition = f"WHERE location_id = {location_id}"
+        # odoo_sql = """
+        #     SELECT 
+        #         sq.product_id, 
+        #         sp.default_code AS product,
+        #         sq.location_id, 
+        #         sq.lot_id, 
+        #         sl.name AS lot, 
+        #     FROM stock_quant sq
+        #     LEFT JOIN stock_lot sl ON sq.lot_id = sl.id
+        #     LEFT JOIN product_product sp ON sq.product_id = sp.id
+        #     {};
+        # """.format(location_condition)
+
+        odoo_sql = """
+            SELECT id, product_id, lot_id FROM stock_quant
+            {}
+        """.format(location_condition)
+
+        
+        print("Odoo sql:", odoo_sql)
+
+        self.env.cr.execute(odoo_sql)
+        stock_quants = self.env.cr.fetchall()
+        stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
+        print("STOCK QUANT MAPPING", stock_quant_mapping)
+
+        # create dict with lot ids and lot names
+        # lot_ids = tuple(set(q[3] for q in stock_quants if q[3] is not None)) 
+        # lot_mapping = {}
+        # if lot_ids:
+        #     self.env.cr.execute("SELECT id, name FROM stock_lot WHERE id IN %s", (lot_ids,))
+        #     lot_mapping = dict(self.env.cr.fetchall())  # {lot_id: lot_name}
+
+        # 2. Get existing lot_id mapping {lot_name → lot_id}
+        self.env.cr.execute("SELECT id, name FROM stock_lot")
+        lot_mapping = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
+
+        print("LOT MAPPING:", lot_mapping)
+
+        products = tuple(set(q[2] for q in stock_quants if q[2]))
+        # print("PRODUCTS:", products)
+
+        if not products:
+            return False  # No products to update
+
+
+        # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
+        conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
         # conditions = f"WHERE ID > {START_STOCK_SYNC}"
         # get data from PPG_Bestandsabgleich
         ppg_sql = """
@@ -445,21 +533,95 @@ class StockMove(models.Model):
             ORDER BY Suchbegriff, Seriennummer;
         """.format(conditions)
 
-        odoo_sql = """
-            SELECT 
-                sq.id, 
-                sq.product_id, 
-                sq.location_id, 
-                sq.lot_id, 
-                sl.name AS lot, 
-                sloc.complete_name AS location_name, 
-                sq.quantity
-            FROM stock_quant sq
-            LEFT JOIN stock_lot sl ON sq.lot_id = sl.id
-            LEFT JOIN stock_location sloc ON sq.location_id = sloc.id;
-        """
+        ppg_data = self._execute_query_on_mssql("select", ppg_sql)
+        print("PPG DATA:", ppg_data)
 
-        self.env.cr.execute(odoo_sql)
-        result = self.env.cr.fetchall()
-        print(result)
-        return result
+        # stock_dict = {
+        #     product_mapping[Suchbegriff]: Bestand
+        #     for Suchbegriff, Bestand in self.env.cr.fetchall()
+        #     if Suchbegriff in product_mapping
+        # }
+
+
+
+
+        for row in ppg_data:
+            default_code = row["Suchbegriff"]
+            lot_name = row["Seriennummer"]
+            create_time = row["Row_Create_Time"]
+            quantity = row["Bestand"]
+
+            product_id = product_mapping.get(default_code)
+            print("PRODUCT_ID:", product_id)
+            if not product_id:
+                continue 
+
+            lot_id = lot_mapping.get(lot_name) if lot_name else None
+
+            if lot_id and (product_id, lot_id) in stock_quant_mapping:
+                print("CASE 1")
+                # Case 1: Update existing stock_quant record with known lot
+                quant_id = stock_quant_mapping[(product_id, lot_id)]
+                self.env.cr.execute("""
+                    UPDATE stock_quant 
+                    SET quantity = %s 
+                    WHERE id = %s
+                """, (quantity, quant_id))
+            elif lot_name and lot_name not in lot_mapping:
+                # Case 2: Create a new lot if necessary
+                print("CASE 2")
+                self.env.cr.execute("""
+                    INSERT INTO stock_lot (name, product_id, location_id, create_date) 
+                    VALUES (%s, %s, %s, NOW()) 
+                    RETURNING id
+                """, (lot_name, product_id, location_id))
+                lot_id = self.env.cr.fetchone()[0]
+                lot_mapping[lot_name] = lot_id  # Update lot mapping
+
+                # Insert new stock_quant record for product with this lot
+                self.env.cr.execute("""
+                    INSERT INTO stock_quant (product_id, lot_id, quantity, reserved_quantity, location_id, company_id, in_date, create_date)
+                    VALUES (%s, %s, %s, 0, %s, %s, NOW(), NOW())
+                """, (product_id, lot_id, quantity, location_id, company_id))
+            else:
+                if (product_id, None) in stock_quant_mapping:
+                    # Case 3: Update stock_quant for product without lot
+                    print("CASE 3")
+                    quant_id = stock_quant_mapping[(product_id, None)]
+                    self.env.cr.execute("""
+                        UPDATE stock_quant 
+                        SET quantity = %s 
+                        WHERE id = %s
+                    """, (quantity, quant_id))
+                else:
+                    # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
+                    print("CASE 4")
+                    self.env.cr.execute("""
+                        INSERT INTO stock_quant (product_id, lot_id, quantity, reserved_quantity, location_id, company_id, in_date, create_date)
+                        VALUES (%s, NULL, %s, 0, %s, %s, NOW(), NOW())
+                    """, (product_id, quantity, location_id, company_id))
+
+
+        
+
+        # update
+        # for record in records:
+        #     self.env.cr.execute("""
+        #             UPDATE stock_quant 
+        #             SET quantity = %s 
+        #             WHERE id = %s
+        #         """, (bestand_dict[product_id], quant_id))
+
+        # for quant_id, product_id, lot_id in stock_quants:
+        #     if product_id in stock_dict:
+        #         quantity = bestand_dict[product_id]
+        #         lot_name = lot_mapping.get(lot_id, "No Lot")  # Lookup lot name or default "No Lot"
+
+        #         self.env.cr.execute("""
+        #             UPDATE stock_quant 
+        #             SET quantity = %s 
+        #             WHERE id = %s
+        #         """, (quantity, quant_id))
+
+        
+        return True
