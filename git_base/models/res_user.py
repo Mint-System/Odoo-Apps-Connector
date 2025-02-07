@@ -15,6 +15,15 @@ class ResUsers(models.Model):
     )
     ssh_private_key_password = fields.Char("SSH Private Key Password")
 
+    @property
+    def SELF_READABLE_FIELDS(self):
+        return super().SELF_READABLE_FIELDS + [
+            "ssh_public_key",
+            "ssh_private_key_file",
+            "ssh_private_key_filename",
+            "ssh_private_key_password",
+        ]
+
     def _compute_ssh_private_key_filename(self):
         for user in self:
             user.ssh_private_key_filename = f"/tmp/user_private_key_{self.id}"
