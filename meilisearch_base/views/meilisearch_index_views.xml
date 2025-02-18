@@ -121,6 +121,7 @@
                             <field name="document_queued_count" />
                             <field name="document_indexed_count" />
                             <field name="document_error_count" />
+                            <field name="document_not_found_count" />
                             <label for="button_update_document_count" />
                             <button
                                 name="button_update_document_count"

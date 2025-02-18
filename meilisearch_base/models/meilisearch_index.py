@@ -81,25 +81,18 @@ class MeilisearchIndex(models.Model):
         for index in self:
             if index.active:
                 model = self.env[index.model]
-                documents = index._get_all_documents()
-                index.document_filtered_count = len(
-                    documents.filtered(model._get_index_document_filter())
-                )
-                index.document_queued_count = len(
-                    documents.filtered(lambda d: d.index_result == "queued")
-                )
-                index.document_indexed_count = len(
-                    documents.filtered(lambda d: d.index_result == "indexed")
-                )
-                index.document_error_count = len(
-                    documents.filtered(lambda d: d.index_result == "error")
-                )
-                index.document_not_found_count = len(
-                    documents.filtered(lambda d: d.index_result == "not_found")
-                )
-                index.document_no_index_count = len(
-                    documents.filtered(lambda d: d.index_result == "no_index")
-                )
+                groups = model.read_group([], ["index_result"], ["index_result"])
+                index.document_filtered_count = model.search_count([])
+
+                def get_status_count(status):
+                    matching = [g for g in groups if g["index_result"] == status]
+                    return matching[0].get("index_result_count", 0) if matching else 0
+
+                index.document_queued_count = get_status_count("queued")
+                index.document_indexed_count = get_status_count("indexed")
+                index.document_error_count = get_status_count("error")
+                index.document_not_found_count = get_status_count("not_found")
+                index.document_no_index_count = get_status_count("no_index")
             else:
                 index.document_filtered_count = 0
                 index.document_queued_count = 0
@@ -226,8 +219,17 @@ class MeilisearchIndex(models.Model):
         }
 
     def check_all_documents(self):
-        documents = self._get_all_documents()
-        documents._get_documents()
+        """
+        Check all documents in index that are not indexed.
+        """
+        self.ensure_one()
+        model = self.env[self.model]
+        records_counts = model.search_count([("index_result", "!=", "indexed")])
+        for offset in range(0, records_counts, 80):
+            records = model.search(
+                [("index_result", "!=", "indexed")], offset=offset, limit=80
+            )
+            records._get_documents()
         self._compute_document_count()
 
     def _get_version(self):
@@ -367,7 +369,3 @@ class MeilisearchIndex(models.Model):
                         e.message,
                     )
                 ) from None
-
-    def _get_all_documents(self):
-        self.ensure_one()
-        return self.env[self.model].search([])

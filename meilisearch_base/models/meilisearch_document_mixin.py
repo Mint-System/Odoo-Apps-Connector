@@ -99,7 +99,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             record.index_document_read = json.dumps(record.index_document, indent=4)
 
     def _get_batches(self, batch_size=0):
-        if not batch_size:
+        if not batch_size and self._batch_size:
             batch_size = self._batch_size
         for i in range(0, len(self), batch_size):
             yield self[i : i + batch_size]
