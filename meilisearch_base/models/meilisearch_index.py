@@ -108,7 +108,7 @@ class MeilisearchIndex(models.Model):
             [
                 ("active", "=", True),
                 "|",
-                ("database_filter", "=", False),
+                ("database_filter", "=", ""),
                 ("database_filter", "=", self._cr.dbname),
             ]
         ):
@@ -224,12 +224,12 @@ class MeilisearchIndex(models.Model):
         """
         self.ensure_one()
         model = self.env[self.model]
-        records_counts = model.search_count([("index_result", "!=", "indexed")])
-        for offset in range(0, records_counts, 80):
-            records = model.search(
+        records_count = model.search_count([("index_result", "!=", "indexed")])
+        for offset in range(0, records_count, 80):
+            batch = model.search(
                 [("index_result", "!=", "indexed")], offset=offset, limit=80
             )
-            records._get_documents()
+            batch._get_documents()
         self._compute_document_count()
 
     def _get_version(self):

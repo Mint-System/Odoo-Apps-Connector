@@ -98,16 +98,12 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         for record in self:
             record.index_document_read = json.dumps(record.index_document, indent=4)
 
-    def _get_batches(self, batch_size=0):
-        if not batch_size and self._batch_size:
-            batch_size = self._batch_size
-        for i in range(0, len(self), batch_size):
-            yield self[i : i + batch_size]
-
     def _update_documents(self, index):
         client = index.get_client()
-
-        for batch in self._get_batches():
+        for offset in range(0, len(self), 80):
+            batch = self.search(
+                [("index_result", "!=", "indexed")], offset=offset, limit=80
+            )
             if client:
                 try:
                     res = client.index(index.index_name).update_documents(
@@ -143,7 +139,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         client = index.get_client()
 
         # Batch size has to match the max operators in the filter
-        for batch in self._get_batches(20):
+        for offset in range(0, len(self), 20):
+            batch = self.search(
+                [("index_result", "!=", "indexed")], offset=offset, limit=20
+            )
             if client:
                 try:
                     search_filter = (
@@ -185,7 +184,10 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         client = index.get_client()
 
-        for batch in self._get_batches():
+        for offset in range(0, len(self), 80):
+            batch = self.search(
+                [("index_result", "!=", "indexed")], offset=offset, limit=80
+            )
             if client:
                 try:
                     search_filter = (
