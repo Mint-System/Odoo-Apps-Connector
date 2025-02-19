@@ -35,41 +35,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
     )
     index_response = fields.Text(help="Response from Meilisearch index.")
 
-    def button_view_document(self):
-        return {
-            "type": "ir.actions.act_window",
-            "view_mode": "form",
-            "res_model": self._name,
-            "res_id": self.id,
-            "context": {
-                "create": True,
-                "delete": True,
-                "edit": True,
-            },
-        }
-
-    def documents_indexed(self, response):
-        self.write({"index_result": "indexed", "index_response": response})
-
-    def check_index_document(self):
-        return self._get_documents()
-
-    def update_index_document(self):
-        return self._compute_index_document()
-
-    def delete_index_document(self):
-        return self._delete_documents()
-
-    def unlink(self):
-        self._delete_documents()
-        return super().unlink()
-
-    def _prepare_index_document(self):
-        self.ensure_one()
-        return {"id": self.id, "name": self.name}
-
-    def _get_index_document_filter(self):
-        return lambda r: True
+    # Compute methods
 
     @api.depends("name")
     def _compute_index_document(self):
@@ -98,12 +64,60 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         for record in self:
             record.index_document_read = json.dumps(record.index_document, indent=4)
 
+    # Helper methods
+
+    def _convert_to_timestamp(self, dt, tz=pytz.UTC):
+        if not dt:
+            return 0
+        if isinstance(dt, datetime.date) and not isinstance(dt, datetime.datetime):
+            dt = datetime.datetime.combine(dt, datetime.datetime.min.time())
+        if tz:
+            dt = dt.astimezone(tz)
+        return int(dt.timestamp())
+
+    # Model methods
+
+    def check_index_document(self):
+        return self._get_documents()
+
+    def update_index_document(self):
+        return self._compute_index_document()
+
+    def delete_index_document(self):
+        return self._delete_documents()
+
+    def unlink(self):
+        self._delete_documents()
+        return super().unlink()
+
+    # Action methods
+
+    def button_view_document(self):
+        return {
+            "type": "ir.actions.act_window",
+            "view_mode": "form",
+            "res_model": self._name,
+            "res_id": self.id,
+            "context": {
+                "create": True,
+                "delete": True,
+                "edit": True,
+            },
+        }
+
+    # Private methods
+
+    def _prepare_index_document(self):
+        self.ensure_one()
+        return {"id": self.id, "name": self.name}
+
+    def _get_index_document_filter(self):
+        return lambda r: True
+
     def _update_documents(self, index):
         client = index.get_client()
         for offset in range(0, len(self), 80):
-            batch = self.search(
-                [("index_result", "!=", "indexed")], offset=offset, limit=80
-            )
+            batch = self[offset : offset + 80]
             if client:
                 try:
                     res = client.index(index.index_name).update_documents(
@@ -140,9 +154,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
         # Batch size has to match the max operators in the filter
         for offset in range(0, len(self), 20):
-            batch = self.search(
-                [("index_result", "!=", "indexed")], offset=offset, limit=20
-            )
+            batch = self[offset : offset + 20]
             if client:
                 try:
                     search_filter = (
@@ -155,7 +167,12 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                         found_ids = []
                         for document in res["hits"]:
                             rec = self.browse(int(document["id"]))
-                            rec.documents_indexed(json.dumps(document, indent=4))
+                            rec.write(
+                                {
+                                    "index_result": "indexed",
+                                    "index_response": json.dumps(document, indent=4),
+                                }
+                            )
                             found_ids.append(rec.id)
 
                         # Update records not in hits set
@@ -184,10 +201,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         client = index.get_client()
 
-        for offset in range(0, len(self), 80):
-            batch = self.search(
-                [("index_result", "!=", "indexed")], offset=offset, limit=80
-            )
+        for offset in range(0, len(self), 5):
+            batch = self[offset : offset + 5]
             if client:
                 try:
                     search_filter = (
@@ -220,12 +235,3 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 batch.write(
                     {"index_result": "no_index", "index_response": "Index not found"}
                 )
-
-    def _convert_to_timestamp(self, dt, tz=pytz.UTC):
-        if not dt:
-            return 0
-        if isinstance(dt, datetime.date) and not isinstance(dt, datetime.datetime):
-            dt = datetime.datetime.combine(dt, datetime.datetime.min.time())
-        if tz:
-            dt = dt.astimezone(tz)
-        return int(dt.timestamp())

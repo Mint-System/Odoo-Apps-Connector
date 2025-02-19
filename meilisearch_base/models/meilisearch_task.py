@@ -81,7 +81,14 @@ class MeilisearchTask(models.Model):
         )
         if self.name == "documentAdditionOrUpdate":
             document_ids = self._get_document_ids()
-            document_ids.documents_indexed("Task succeeded")
+            document_ids.write(
+                {"index_result": "indexed", "index_response": "Task succeeded"}
+            )
+        if self.name == "documentDeletion":
+            document_ids = self._get_document_ids()
+            document_ids.write(
+                {"index_result": "not_found", "index_response": "Task succeeded"}
+            )
 
     def task_failed(self):
         self.ensure_one()
