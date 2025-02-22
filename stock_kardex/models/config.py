@@ -7,6 +7,12 @@ STOCK_PICKING_DIRECTION_FIXER = {
 STOCK_PICKING_SEND_FLAG_FIXER = {
     17: "0",
     1: "",
+    5: ""
+}
+
+PICKING_TYPE_FIXER = {
+    17: "outgoing",
+    6: "store",
 }
 
 ODOO_KARDEX_UNIT_FIXER = {
@@ -19,6 +25,8 @@ PICKING_DATE_HANDLING = "send"  # or 'create'
 
 START_STOCK_SYNC = 72000000
 
-KARDEX_WAREHOUSE = "WH/Bestand"
+KARDEX_WAREHOUSE = "Kardex"
+KARDEX_DESTINATION = "Kardex"
 
 COMPANY_ID = 1
+
