@@ -494,14 +494,16 @@ class StockQuant(models.Model):
 
 
     def _get_location_id(self, location_name):
-        location_id = self.env["stock.location"].search([('complete_name', '=', location_name)]).mapped("id")
+        location_id = self.env["stock.location"].search([('name', '=', location_name)]).mapped("id")
         return location_id
 
 
     @api.model
     def sync_stocks(self):
+        print("SYNC STOCKS CALLED")
         # get stock quants of Kardex Warehouse
         location_ids = self._get_location_id(KARDEX_WAREHOUSE)
+        print("location_ids:", location_ids)
         if not location_ids:
             return False
 
@@ -545,11 +547,11 @@ class StockQuant(models.Model):
             {}
         """.format(location_condition)
 
-        
         print("Odoo sql:", odoo_sql)
 
         self.env.cr.execute(odoo_sql)
         stock_quants = self.env.cr.fetchall()
+        print("STOCK QUANTS:", stock_quants)
         stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
         print("STOCK QUANT MAPPING", stock_quant_mapping)
 
@@ -561,13 +563,13 @@ class StockQuant(models.Model):
         #     lot_mapping = dict(self.env.cr.fetchall())  # {lot_id: lot_name}
 
         # 2. Get existing lot_id mapping {lot_name → lot_id}
-        self.env.cr.execute("SELECT id, name FROM stock_lot")
+        self.env.cr.execute("SELECT name, id FROM stock_lot")
         lot_mapping = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
 
         print("LOT MAPPING:", lot_mapping)
 
-        products = tuple(set(q[2] for q in stock_quants if q[2]))
-        # print("PRODUCTS:", products)
+        products = tuple(set(q[1] for q in stock_quants if q[1]))
+        print("PRODUCTS:", products)
 
         if not products:
             return False  # No products to update
@@ -608,7 +610,6 @@ class StockQuant(models.Model):
 
 
 
-
         for row in ppg_data:
             default_code = row["Suchbegriff"]
             lot_name = row["Seriennummer"]
@@ -620,6 +621,9 @@ class StockQuant(models.Model):
             if not product_id:
                 continue 
 
+            print("LOT MAPPING:", lot_mapping)
+            print("LOT NAME:", lot_name)
+            print("STOCK QUANT MAPPING:", stock_quant_mapping)
             lot_id = lot_mapping.get(lot_name) if lot_name else None
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
@@ -632,6 +636,7 @@ class StockQuant(models.Model):
                     WHERE id = %s
                 """, (quantity, quant_id))
             elif lot_name and lot_name not in lot_mapping:
+                print("LOT NAME NOT IN LOT MAPPING", lot_name not in lot_mapping)
                 # Case 2: Create a new lot if necessary
                 print("CASE 2")
                 self.env.cr.execute("""
