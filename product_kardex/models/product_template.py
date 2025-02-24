@@ -116,6 +116,7 @@ class ProductTemplate(models.Model):
                 category_abbr = re.escape(
                     record.categ_id.abbr
                 )  # Escape to handle any special characters in the category name
+                
                 pattern = rf"^{category_abbr}\.[\w.]+$"  # Regex: category name + dot + alphanumeric or dots
 
                 # Validate default_code against the pattern
