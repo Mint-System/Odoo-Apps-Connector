@@ -97,12 +97,13 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='parent_id']" position="after">
                 <field name="abbr" string="Abbreviation" />
+                <field name="kardex" string="Kardex" />
                 <field name="parent_id_name" invisible="1" />
                 <field
                     name="kardex_tracking"
                     string="Tracking"
                     class="oe_inline"
-                    column_invisible="parent_id_name != 'Kardex'"
+                    column_invisible="kardex != true"
                 />
             </xpath>
         </field>
@@ -115,6 +116,8 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='display_name']" position="after">
                 <field name="abbr" string="Abbreviation" />
+                <field name='kardex' string="Kardex" optional="show" />
+                <field name='kardex_tracking' string="Tracking" optional="show" />
             </xpath>
         </field>
     </record>
