@@ -103,7 +103,7 @@
                     name="kardex_tracking"
                     string="Tracking"
                     class="oe_inline"
-                    column_invisible="kardex != true"
+                    invisible="not kardex"
                 />
             </xpath>
         </field>

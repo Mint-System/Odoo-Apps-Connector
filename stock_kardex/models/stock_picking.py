@@ -636,7 +636,7 @@ class StockQuant(models.Model):
                     WHERE id = %s
                 """, (quantity, quant_id))
             elif lot_name and lot_name not in lot_mapping:
-                print("LOT NAME NOT IN LOT MAPPING", lot_name not in lot_mapping)
+                print("LOT NAME NOT IN LOT MAPPING", lot_name not in lot_mapping)n
                 # Case 2: Create a new lot if necessary
                 print("CASE 2")
                 self.env.cr.execute("""
