@@ -15,6 +15,7 @@ from .config import (
     PICKING_TYPE_FIXER,
     START_STOCK_SYNC,
     KARDEX_WAREHOUSE,
+    USE_KARDEX_AS_DEFAULT_WAREHOUSE,
     KARDEX_DESTINATION,
     COMPANY_ID,
 )
@@ -54,6 +55,28 @@ class StockPicking(models.Model):
         string="Kardex STATUS",
     )
     kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
+    send_button_is_visible = fields.Boolean(
+        string="Send to Kardex Button Visibility",
+        compute="_compute_send_button_is_visible",
+        store=False
+    )
+
+    validate_button_is_invisible = fields.Boolean(
+        string="Validate Button Visibility",
+        compute="_compute_validate_button_is_invisible",
+        store=False
+    )
+
+
+    @api.depends('kardex_done', 'picking_type_id')
+    def _compute_send_button_is_visible(self):
+        for rec in self:
+            rec.send_button_is_visible = not rec.kardex_done and rec.picking_type_id.id == 6
+
+    @api.depends('kardex_status', 'picking_type_id')
+    def _compute_validate_button_is_invisible(self):
+        for rec in self:
+            rec.validate_button_is_invisible = rec.kardex_status != 2 and rec.picking_type_id.id == 6
 
 
     def check_kardex(self):
@@ -107,7 +130,7 @@ class StockPicking(models.Model):
 
 
     def button_validate(self):
-        print("SELF:", self)
+
         res = super().button_validate()
         if res and PICKING_TYPE_FIXER.get(self.picking_type_id.id, None) in ["outgoing", "store"]:
             self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
@@ -124,9 +147,12 @@ class StockPicking(models.Model):
             if next_transfer_id:
                 next_transfer = self.env["stock.picking"].search([("id", "=", next_transfer_id)])
                 print("next_transfer:", next_transfer)
-                if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"]:
+                if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and USE_KARDEX_AS_DEFAULT_WAREHOUSE:
                     kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
                     write_vals["location_dest_id"] = kardex_location.id
+                print("STATE:", self.kardex_status)
+                # if self.kardex_status != 2:
+                #     write_vals["state"] = 'waiting'
 
                 write_vals["kardex"] = self.kardex
                 next_transfer.write(write_vals)
@@ -158,6 +184,10 @@ class StockPicking(models.Model):
 
     def send_to_kardex_picking(self):
         self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
+
+
+     
+        
 
 
     def send_to_kardex(self, picking_type):

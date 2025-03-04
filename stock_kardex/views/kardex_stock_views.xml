@@ -5,6 +5,13 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form" />
         <field name="arch" type="xml">
+            <!-- <xpath expr="//button[hasclass('oe_highlight')]" position="replace">
+            <field name="validate_button_is_invisible" invisible="1" />
+            <button name="button_validate" invisible="state in ('draft', 'confirmed', 'done', 'cancel') or validate_button_is_invisible" string="Validate" type="object" class="oe_highlight" groups="stock.group_stock_user" data-hotkey="v"/>
+            </xpath>
+            <xpath expr="//button[hasclass('o_btn_validate')]" position="replace">
+            <button name="button_validate" invisible="state in ('waiting', 'assigned', 'done', 'cancel') or validate_button_is_invisible" string="Validate" type="object" groups="stock.group_stock_user" class="o_btn_validate" data-hotkey="v"/>
+            </xpath> -->
             <xpath expr="//page[@name='extra']" position="after">
                 <page name="kardex" string="Kardex" invisible="not kardex">
                     <form string="Kardex Daten">
@@ -15,7 +22,7 @@
                                 string="Check SchnittstellenDB"
                             />
                             <button
-                                name="send_to_kardex"
+                                name="send_to_kardex_picking"
                                 type="object"
                                 string="An Kardex senden"
                                 invisible="kardex_done"
@@ -33,6 +40,7 @@
                                 <field name="kardex_row_create_time" />
                                 <field name="kardex_row_update_time" />
                                 <field name="kardex_done" />
+                                <field name="send_button_is_visible"/>
                             </group>
                         </sheet>
                     </form>
@@ -46,7 +54,18 @@
                 <field name="kardex_sync" string="Sync PPG-J" readonly="1" />
             </xpath>
             <xpath expr="//header" position="inside">
-                <button class="btn btn-primary">Kardex</button>
+                <!-- <button
+                                name="send_to_kardex_picking"
+                                type="object"
+                                string="An Kardex senden"
+                                invisible="kardex_done or picking_type_id.id not in [6]"
+                /> -->
+                <button
+                                name="send_to_kardex_picking"
+                                type="object"
+                                string="An Kardex senden"
+                                invisible="not send_button_is_visible"
+                />
             </xpath>
             <xpath expr="//list/field[@name='description_picking']" position="after">
                 <field name="kardex_done" string="->Kardex" optional="hide" />
