@@ -48,8 +48,7 @@ class MeilisearchTask(models.Model):
 
     def button_check_task(self):
         self.ensure_one()
-        client = self.index_id.get_client()
-        self.fetch_status(client)
+        self.check_task()
 
     def button_view_documents(self):
         tree_view_id = self.env.ref("meilisearch_base.document_view_tree")
@@ -101,10 +100,11 @@ class MeilisearchTask(models.Model):
         documents = self._get_document_ids()
         documents.write({"index_result": "error", "index_response": "Task failed"})
 
-    def fetch_status(self, client):
-        self.ensure_one()
-        index_task = client.get_task(self.uid)
-        self.write({"status": index_task.status, "response": index_task})
+    def check_task(self):
+        client = self.index_id.get_client()
+        for task in self:
+            index_task = client.get_task(task.uid)
+            task.write({"status": index_task.status, "response": index_task})
 
     @api.autovacuum
     def _gc_meilisearch_tasks(self):

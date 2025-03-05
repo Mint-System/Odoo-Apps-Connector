@@ -12,7 +12,6 @@ _logger = logging.getLogger(__name__)
 class MeilsearchDocumentMixin(models.AbstractModel):
     _name = "meilisearch.document.mixin"
     _description = "Meilisearch Document Mixin"
-    _batch_size = 80
 
     name = fields.Char()
     index_date = fields.Datetime()
@@ -116,31 +115,30 @@ class MeilsearchDocumentMixin(models.AbstractModel):
 
     def _update_documents(self, index):
         client = index.get_client()
-        for offset in range(0, len(self), 80):
-            batch = self[offset : offset + 80]
+        for offset in range(0, len(self), 20):
+            batch = self[offset : offset + 20]
             if client:
                 try:
-                    res = client.index(index.index_name).update_documents(
-                        [self.index_document for self in batch]
-                    )
-                    if index.create_task:
-                        self.env["meilisearch.task"].create(
+                    with self.env.cr.savepoint():
+                        res = client.index(index.index_name).update_documents(
+                            [self.index_document for self in batch]
+                        )
+                        if index.create_task:
+                            self.env["meilisearch.task"].create(
+                                {
+                                    "name": "documentAdditionOrUpdate",
+                                    "index_id": index.id,
+                                    "uid": res.task_uid,
+                                    "document_ids": [rec.id for rec in batch],
+                                }
+                            )
+                        batch.update(
                             {
-                                "name": "documentAdditionOrUpdate",
-                                "index_id": index.id,
-                                "uid": res.task_uid,
-                                "document_ids": [rec.id for rec in batch],
+                                "index_result": "queued",
+                                "index_response": "Task enqueued",
+                                "index_date": res.enqueued_at,
                             }
                         )
-                    batch.update(
-                        {
-                            "index_result": "queued",
-                            "index_response": "Task enqueued",
-                            "index_date": res.enqueued_at,
-                        }
-                    )
-                    if index.create_task:
-                        self.env.cr.commit()  # Commit changes so the task can be accessed by the webhook controller
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
@@ -157,39 +155,42 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             batch = self[offset : offset + 20]
             if client:
                 try:
-                    search_filter = (
-                        f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                    )
-                    res = client.index(index.index_name).search(
-                        "", {"filter": search_filter}
-                    )
-                    if res["hits"]:
-                        found_ids = []
-                        for document in res["hits"]:
-                            rec = self.browse(int(document["id"]))
-                            rec.write(
+                    with self.env.cr.savepoint():
+                        search_filter = (
+                            f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                        )
+                        res = client.index(index.index_name).search(
+                            "", {"filter": search_filter}
+                        )
+                        if res["hits"]:
+                            found_ids = []
+                            for document in res["hits"]:
+                                rec = self.browse(int(document["id"]))
+                                rec.write(
+                                    {
+                                        "index_result": "indexed",
+                                        "index_response": json.dumps(
+                                            document, indent=4
+                                        ),
+                                    }
+                                )
+                                found_ids.append(rec.id)
+
+                            # Update records not in hits set
+                            not_found = batch.filtered(lambda r: r.id not in found_ids)
+                            not_found.write(
                                 {
-                                    "index_result": "indexed",
-                                    "index_response": json.dumps(document, indent=4),
+                                    "index_result": "not_found",
+                                    "index_response": "Document not found",
                                 }
                             )
-                            found_ids.append(rec.id)
-
-                        # Update records not in hits set
-                        not_found = batch.filtered(lambda r: r.id not in found_ids)
-                        not_found.write(
-                            {
-                                "index_result": "not_found",
-                                "index_response": "Document not found",
-                            }
-                        )
-                    else:
-                        batch.update(
-                            {
-                                "index_result": "not_found",
-                                "index_response": res,
-                            }
-                        )
+                        else:
+                            batch.update(
+                                {
+                                    "index_result": "not_found",
+                                    "index_response": res,
+                                }
+                            )
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
@@ -201,34 +202,33 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
         client = index.get_client()
 
-        for offset in range(0, len(self), 5):
-            batch = self[offset : offset + 5]
+        for offset in range(0, len(self), 20):
+            batch = self[offset : offset + 20]
             if client:
                 try:
-                    search_filter = (
-                        f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                    )
-                    res = client.index(index.index_name).delete_documents(
-                        filter=search_filter
-                    )
-                    if index.create_task:
-                        self.env["meilisearch.task"].create(
+                    with self.env.cr.savepoint():
+                        search_filter = (
+                            f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                        )
+                        res = client.index(index.index_name).delete_documents(
+                            filter=search_filter
+                        )
+                        if index.create_task:
+                            self.env["meilisearch.task"].create(
+                                {
+                                    "name": "documentDeletion",
+                                    "index_id": index.id,
+                                    "uid": res.task_uid,
+                                    "document_ids": [rec.id for rec in batch],
+                                }
+                            )
+                        batch.update(
                             {
-                                "name": "documentDeletion",
-                                "index_id": index.id,
-                                "uid": res.task_uid,
-                                "document_ids": [rec.id for rec in batch],
+                                "index_result": "queued",
+                                "index_response": "Task enqueued",
+                                "index_date": res.enqueued_at,
                             }
                         )
-                    batch.update(
-                        {
-                            "index_result": "queued",
-                            "index_response": "Task enqueued",
-                            "index_date": res.enqueued_at,
-                        }
-                    )
-                    if index.create_task:
-                        self.env.cr.commit()  # Commit changes so the task can be accessed by the webhook controller
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:

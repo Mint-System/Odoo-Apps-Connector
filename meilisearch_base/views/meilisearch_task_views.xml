@@ -6,10 +6,20 @@
         <field name="model">meilisearch.task</field>
         <field name="arch" type="xml">
             <tree>
+                <header>
+                    <button
+                        name="check_task"
+                        string="Check Tasks"
+                        type="object"
+                        class="oe_highlight"
+                    />
+                </header>
                 <field name="uid" />
                 <field name="name" />
                 <field name="index_id" />
                 <field name="status" />
+                <field name="write_date" />
+                <field name="create_date" />
             </tree>
         </field>
     </record>
@@ -69,6 +79,8 @@
                                     <field name="uid" widget="text" />
                                     <field name="response" />
                                     <field name="document_ids" />
+                                    <field name="write_date" />
+                                    <field name="create_date" />
                                 </group>
                             </group>
                         </page>

@@ -10,7 +10,7 @@
         <field name="value">test</field>
     </record>
 
-    <record id="demo_index0" model="meilisearch.index">
+    <record id="demo_index_countries" model="meilisearch.index">
         <field name="name">Countries</field>
         <field name="index_name">countries</field>
         <field name="active" eval="True" />

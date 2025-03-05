@@ -77,6 +77,11 @@
                         string="Check All Documents"
                         type="object"
                     />
+                    <button
+                        name="button_check_all_tasks"
+                        string="Check All Tasks"
+                        type="object"
+                    />
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -122,18 +127,10 @@
                             <field name="document_indexed_count" />
                             <field name="document_error_count" />
                             <field name="document_not_found_count" />
-                            <label for="button_update_document_count" />
-                            <button
-                                name="button_update_document_count"
-                                type="object"
-                                class="btn-link"
-                            >
-                                <i
-                                    title="Update Document Count"
-                                    role="img"
-                                    aria-label="Update Document Count"
-                                    class="fa fa-refresh"
-                                /> Update Document Count </button>
+                            <field name="task_enqueued_count" />
+                            <field name="task_processing_count" />
+                            <field name="task_succeeded_count" />
+                            <field name="task_failed_count" />
                         </group>
                     </group>
                 </sheet>

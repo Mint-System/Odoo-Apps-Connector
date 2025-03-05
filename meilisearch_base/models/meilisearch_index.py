@@ -62,6 +62,18 @@ class MeilisearchIndex(models.Model):
     document_no_index_count = fields.Integer(
         string="Documents No Index", compute="_compute_document_count", store=True
     )
+    task_enqueued_count = fields.Integer(
+        string="Task Enqueued", compute="_compute_task_count", store=True
+    )
+    task_processing_count = fields.Integer(
+        string="Task Processing", compute="_compute_task_count", store=True
+    )
+    task_succeeded_count = fields.Integer(
+        string="Task Succeeded", compute="_compute_task_count", store=True
+    )
+    task_failed_count = fields.Integer(
+        string="Task Failed", compute="_compute_task_count", store=True
+    )
     meilisearch_index_url = fields.Char(
         compute="_compute_meilisearch_index_url",
     )
@@ -72,10 +84,6 @@ class MeilisearchIndex(models.Model):
                 self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url")
             )
             index.meilisearch_index_url = url
-
-    def _compute_task_count(self):
-        for index in self:
-            index.task_count = len(index.task_ids)
 
     def _compute_document_count(self):
         for index in self:
@@ -100,6 +108,29 @@ class MeilisearchIndex(models.Model):
                 index.document_error_count = 0
                 index.document_not_found_count = 0
                 index.document_no_index_count = 0
+
+    def _compute_task_count(self):
+        for index in self:
+            if index.active:
+                model = self.env[index.model]
+                groups = self.env["meilisearch.task"].read_group(
+                    [("index_id", "=", index.id)], ["status"], ["status"]
+                )
+                index.document_filtered_count = model.search_count([])
+
+                def get_status_count(status):
+                    matching = [g for g in groups if g["status"] == status]
+                    return matching[0].get("status_count", 0) if matching else 0
+
+                index.task_enqueued_count = get_status_count("enqueued")
+                index.task_processing_count = get_status_count("processing")
+                index.task_succeeded_count = get_status_count("succeeded")
+                index.task_failed_count = get_status_count("failed")
+            else:
+                index.task_enqueued_count = 0
+                index.task_processing_count = 0
+                index.task_succeeded_count = 0
+                index.task_failed_count = 0
 
     @api.model
     def _cron_check_documents(self):
@@ -204,11 +235,11 @@ class MeilisearchIndex(models.Model):
     def button_check_all_documents(self):
         return self.check_all_documents()
 
+    def button_check_all_tasks(self):
+        return self.check_all_tasks()
+
     def button_check_api_key(self):
         return self._get_version()
-
-    def button_update_document_count(self):
-        return self._compute_document_count()
 
     def button_open_meilisearch_index_url(self):
         self.ensure_one()
@@ -224,13 +255,28 @@ class MeilisearchIndex(models.Model):
         """
         self.ensure_one()
         model = self.env[self.model]
-        records_count = model.search_count([("index_result", "!=", "indexed")])
-        for offset in range(0, records_count, 80):
-            batch = model.search(
-                [("index_result", "!=", "indexed")], offset=offset, limit=80
-            )
+
+        # Get records that are not indexed
+        records = model.search([("index_result", "!=", "indexed")])
+        records_count = len(records)
+        for offset in range(0, records_count, 20):
+            batch = records[offset : offset + 20]
             batch._get_documents()
         self._compute_document_count()
+
+    def check_all_tasks(self):
+        """
+        Check all tasks of index that are enqueued.
+        """
+        self.ensure_one()
+        task_ids = self.env["meilisearch.task"].search(
+            [
+                ("status", "=", "enqueued"),
+                ("index_id", "=", self.id),
+            ]
+        )
+        task_ids.check_task()
+        self._compute_task_count()
 
     def _get_version(self):
         self.ensure_one()
