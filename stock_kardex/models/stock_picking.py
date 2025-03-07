@@ -55,6 +55,10 @@ class StockPicking(models.Model):
         string="Kardex STATUS",
     )
     kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
+    state = fields.Selection(
+        selection_add=[('waiting_for_kardex', 'Waiting for Kardex')]
+    )
+
     send_button_is_visible = fields.Boolean(
         string="Send to Kardex Button Visibility",
         compute="_compute_send_button_is_visible",
@@ -67,6 +71,7 @@ class StockPicking(models.Model):
         store=False
     )
 
+    
 
     @api.depends('kardex_done', 'picking_type_id')
     def _compute_send_button_is_visible(self):
@@ -141,6 +146,8 @@ class StockPicking(models.Model):
         next_transfers = super().action_next_transfer()
         print("next_transfers:", next_transfers)
         print("self.kardex:", self.kardex)
+        print("self.state:", self.state)
+        print("self.kardex_status:", self.kardex_status)
         if next_transfers:
             next_transfer_id = next_transfers.get("res_id", None)
             write_vals = {}
@@ -150,9 +157,9 @@ class StockPicking(models.Model):
                 if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and USE_KARDEX_AS_DEFAULT_WAREHOUSE:
                     kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
                     write_vals["location_dest_id"] = kardex_location.id
-                print("STATE:", self.kardex_status)
-                # if self.kardex_status != 2:
-                #     write_vals["state"] = 'waiting'
+                print("KARDEX_STATE:", self.kardex_status)
+                if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and self.kardex_status != 2:
+                    write_vals["state"] = 'waiting_for_kardex'
 
                 write_vals["kardex"] = self.kardex
                 next_transfer.write(write_vals)
@@ -240,7 +247,7 @@ class StockPicking(models.Model):
                 # add ID of products zo picking vals
                 picking_vals["kardex_product_id"] = move_line.product_id.kardex_product_id
                 # create_time, update_time = self._get_dates(move, PICKING_DATE_HANDLING)
-                # picking_vals['kardex_row_create_time'] = create_time
+                # picking_vals['kardex_row_create_ime'] = create_time
                 # picking_vals['kardex_row_update_time'] = update_time
                 picking_vals["kardex_status"] = "1"
                 picking_vals["kardex_send_flag"] = self._get_send_flag(picking_type_id)
@@ -280,11 +287,11 @@ class StockPicking(models.Model):
     def update_status_from_kardex(self):
         message_list = []
         for picking in self:
-            moves = self.env["stock.move"].search([("picking_id", "=", picking.id)])
+            moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("kardex_running_id", "!=", None)]) 
             for move in moves:
-                kardex_id = move.kardex_id
+                kardex_running_id = move.kardex_running_id
                 old_status = move.kardex_status
-                sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE ID = {kardex_id}"
+                sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE BzId = {kardex_running_id}"
                 result = self._execute_query_on_mssql("select_one", sql)
                 new_status = result["Status"]
                 update_time = result["Row_Update_Time"]
@@ -299,15 +306,20 @@ class StockPicking(models.Model):
                             "kardex_row_update_time": update_time,
                         }
                     )
+                    #import pdb; pdb.set_trace() 
+                    if new_status == 2:
+                        picking.write({"state": "assigned"})
 
                 if updated:
                     message_list.append(
                         f"Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}."
                     )
+                    
                 else:
                     message_list.append(
                         f"Kardex Status for {move.product_id.name} was not updated."
                     )
+                
 
         message = ", ".join(message_list)
         return self._create_notification(message)

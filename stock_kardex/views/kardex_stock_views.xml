@@ -5,13 +5,17 @@
         <field name="model">stock.picking</field>
         <field name="inherit_id" ref="stock.view_picking_form" />
         <field name="arch" type="xml">
-            <!-- <xpath expr="//button[hasclass('oe_highlight')]" position="replace">
-            <field name="validate_button_is_invisible" invisible="1" />
-            <button name="button_validate" invisible="state in ('draft', 'confirmed', 'done', 'cancel') or validate_button_is_invisible" string="Validate" type="object" class="oe_highlight" groups="stock.group_stock_user" data-hotkey="v"/>
+        <!-- <xpath expr="//button[@name='button_validate']" position="attributes">
+            <attribute name="invisible">
+                <replace regex='"state in \((.*?)\)"' replacement='"state in (\1, 'waiting_for_kardex')"'/>
+            </attribute>
+        </xpath> -->
+            <xpath expr="//button[@name='button_validate'][hasclass('oe_highlight')]" position="replace">
+            <button name="button_validate" invisible="state in ('waiting_for_kardex', 'draft', 'confirmed', 'done', 'cancel')" string="Validate" type="object" class="oe_highlight" groups="stock.group_stock_user" data-hotkey="v"/>
             </xpath>
-            <xpath expr="//button[hasclass('o_btn_validate')]" position="replace">
-            <button name="button_validate" invisible="state in ('waiting', 'assigned', 'done', 'cancel') or validate_button_is_invisible" string="Validate" type="object" groups="stock.group_stock_user" class="o_btn_validate" data-hotkey="v"/>
-            </xpath> -->
+            <xpath expr="//button[@name='button_validate'][hasclass('o_btn_validate')]" position="replace">
+            <button name="button_validate" invisible="state in ('waiting_for_kardex', 'waiting', 'assigned', 'done', 'cancel')" string="Validate" type="object" groups="stock.group_stock_user" class="o_btn_validate" data-hotkey="v"/>
+            </xpath>
             <xpath expr="//page[@name='extra']" position="after">
                 <page name="kardex" string="Kardex" invisible="not kardex">
                     <form string="Kardex Daten">
@@ -40,7 +44,7 @@
                                 <field name="kardex_row_create_time" />
                                 <field name="kardex_row_update_time" />
                                 <field name="kardex_done" />
-                                <field name="send_button_is_visible"/>
+                                <field name="state"/>
                             </group>
                         </sheet>
                     </form>
