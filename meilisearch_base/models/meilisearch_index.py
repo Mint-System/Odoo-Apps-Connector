@@ -87,7 +87,7 @@ class MeilisearchIndex(models.Model):
 
     def _compute_document_count(self):
         for index in self:
-            if index.active:
+            if index.active and index.model in self.env:
                 model = self.env[index.model]
                 groups = model.read_group([], ["index_result"], ["index_result"])
                 index.document_filtered_count = model.search_count([])
@@ -111,7 +111,7 @@ class MeilisearchIndex(models.Model):
 
     def _compute_task_count(self):
         for index in self:
-            if index.active:
+            if index.active and index.model in self.env:
                 model = self.env[index.model]
                 groups = self.env["meilisearch.task"].read_group(
                     [("index_id", "=", index.id)], ["status"], ["status"]
