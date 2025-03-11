@@ -736,3 +736,13 @@ class StockQuant(models.Model):
 
         
         return True
+
+class StockLot(models.Model):
+    _name = "stock.lot" 
+    _description = "Stock Update Lot"
+    _inherit = ["stock.lot"]
+
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        return super().create(vals_list)
