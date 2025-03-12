@@ -109,22 +109,22 @@ class ProductTemplate(models.Model):
 
             product.product_category_ids_domain = domain
 
-    @api.constrains("default_code", "categ_id", "kardex")
-    def _check_default_code_pattern(self):
-        for record in self:
-            if record.categ_id and record.default_code and record.kardex:
-                category_abbr = re.escape(
-                    record.categ_id.abbr
-                )  # Escape to handle any special characters in the category name
+    # @api.constrains("default_code", "categ_id", "kardex")
+    # def _check_default_code_pattern(self):
+    #     for record in self:
+    #         if record.categ_id and record.default_code and record.kardex:
+    #             category_abbr = re.escape(
+    #                 record.categ_id.abbr
+    #             )  # Escape to handle any special characters in the category name
                 
-                pattern = rf"^{category_abbr}\.[\w.]+$"  # Regex: category name + dot + alphanumeric or dots
+    #             pattern = rf"^{category_abbr}\.[\w.]+$"  # Regex: category name + dot + alphanumeric or dots
 
-                # Validate default_code against the pattern
-                if not re.match(pattern, record.default_code):
-                    raise ValidationError(
-                        "The 'Internal Reference' must start with the category abbreviation, followed by a dot, and contain only alphanumeric characters or dots. "
-                        f"Expected pattern: '{category_abbr}.[alphanumeric or dot]'"
-                    )
+    #             # Validate default_code against the pattern
+    #             if not re.match(pattern, record.default_code):
+    #                 raise ValidationError(
+    #                     "The 'Internal Reference' must start with the category abbreviation, followed by a dot, and contain only alphanumeric characters or dots. "
+    #                     f"Expected pattern: '{category_abbr}.[alphanumeric or dot]'"
+    #                 )
 
     def update_to_kardex(self):
         for product in self:
