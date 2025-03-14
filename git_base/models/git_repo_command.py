@@ -29,16 +29,12 @@ class GitRepoCommand(models.Model):
         return res
 
     @api.model
-    def _name_search(
-        self, name, args=None, operator="ilike", limit=100, name_get_uid=None
-    ):
+    def _name_search(self, name, args=None, operator="ilike", limit=100, name_get_uid=None):
         args = args or []
         domain = []
         if name:
             domain = ["|", ("name", operator, name), ("command", operator, name)]
-        return self._search(
-            expression.AND([domain, args]), limit=limit, access_rights_uid=name_get_uid
-        )
+        return self._search(expression.AND([domain, args]), limit=limit, access_rights_uid=name_get_uid)
 
     @api.model
     def get_by_code(self, code):

@@ -16,9 +16,7 @@ class GitRepoBranch(models.Model):
     repo_id = fields.Many2one("git.repo", required=True)
     upstream = fields.Char(readonly=True)
 
-    _sql_constraints = [
-        ("name_unique", "unique(repo_id, name)", "Branch name must be unique.")
-    ]
+    _sql_constraints = [("name_unique", "unique(repo_id, name)", "Branch name must be unique.")]
 
     def _compute_is_active(self):
         for rec in self:

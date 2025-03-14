@@ -41,9 +41,7 @@ class MeilisearchTask(models.Model):
 
     def _get_document_ids(self):
         self.ensure_one()
-        document_ids = self.env[self.index_id.model].browse(
-            safe_eval(self.document_ids)
-        )
+        document_ids = self.env[self.index_id.model].browse(safe_eval(self.document_ids))
         return document_ids
 
     def button_check_task(self):
@@ -80,14 +78,10 @@ class MeilisearchTask(models.Model):
         )
         if self.name == "documentAdditionOrUpdate":
             document_ids = self._get_document_ids()
-            document_ids.write(
-                {"index_result": "indexed", "index_response": "Task succeeded"}
-            )
+            document_ids.write({"index_result": "indexed", "index_response": "Task succeeded"})
         if self.name == "documentDeletion":
             document_ids = self._get_document_ids()
-            document_ids.write(
-                {"index_result": "not_found", "index_response": "Task succeeded"}
-            )
+            document_ids.write({"index_result": "not_found", "index_response": "Task succeeded"})
 
     def task_failed(self):
         self.ensure_one()

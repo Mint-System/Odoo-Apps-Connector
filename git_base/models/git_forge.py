@@ -13,9 +13,7 @@ class GitForge(models.Model):
 
     name = fields.Char(required=True)
     hostname = fields.Char(required=True)
-    http_url = fields.Char(
-        string="HTTP Url", compute="_compute_http_url", readonly=True
-    )
+    http_url = fields.Char(string="HTTP Url", compute="_compute_http_url", readonly=True)
     local_path = fields.Char(compute="_compute_local_path")
 
     def _compute_http_url(self):
@@ -29,37 +27,22 @@ class GitForge(models.Model):
     def _import_repos_from_local_path(self):
         imported_repos = []
         for forge_id in self:
-
             # First level in local path are accounts
             accounts = [
-                f
-                for f in os.listdir(forge_id.local_path)
-                if os.path.isdir(os.path.join(forge_id.local_path, f))
+                f for f in os.listdir(forge_id.local_path) if os.path.isdir(os.path.join(forge_id.local_path, f))
             ]
             for account in accounts:
                 local_path = os.path.join(forge_id.local_path, account)
-                account_id = self.env["git.account"].search(
-                    [("name", "=", account)], limit=1
-                )
+                account_id = self.env["git.account"].search([("name", "=", account)], limit=1)
                 if not account_id:
-                    account_id = self.env["git.account"].create(
-                        {"name": account, "forge_id": forge_id.id}
-                    )
+                    account_id = self.env["git.account"].create({"name": account, "forge_id": forge_id.id})
 
                 # Second level in local path are repos
-                repos = [
-                    f
-                    for f in os.listdir(local_path)
-                    if os.path.isdir(os.path.join(local_path, f))
-                ]
+                repos = [f for f in os.listdir(local_path) if os.path.isdir(os.path.join(local_path, f))]
                 for repo in repos:
-                    repo_id = self.env["git.repo"].search(
-                        [("name", "=", repo)], limit=1
-                    )
+                    repo_id = self.env["git.repo"].search([("name", "=", repo)], limit=1)
                     if not repo_id:
-                        repo_id = self.env["git.repo"].create(
-                            {"name": repo, "account_id": account_id.id}
-                        )
+                        repo_id = self.env["git.repo"].create({"name": repo, "account_id": account_id.id})
                         imported_repos.append(repo_id.name)
 
         return imported_repos

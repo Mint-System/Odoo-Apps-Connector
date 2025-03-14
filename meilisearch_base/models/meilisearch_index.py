@@ -18,9 +18,7 @@ class MeilisearchIndex(models.Model):
     active = fields.Boolean(default=False)
     name = fields.Char(required=True)
     index_name = fields.Char(required=True)
-    database_filter = fields.Char(
-        help="If set the index is only active on matching databases."
-    )
+    database_filter = fields.Char(help="If set the index is only active on matching databases.")
     model_id = fields.Many2one(
         "ir.model",
         required=True,
@@ -44,21 +42,14 @@ class MeilisearchIndex(models.Model):
     task_ids = fields.One2many("meilisearch.task", "index_id")
     task_count = fields.Integer(compute="_compute_task_count", store=True)
 
-    document_filtered_count = fields.Integer(
-        string="Documents Filtered", compute="_compute_document_count", store=True
-    )
-    document_queued_count = fields.Integer(
-        string="Documents Queued", compute="_compute_document_count", store=True
-    )
-    document_indexed_count = fields.Integer(
-        string="Documents Indexed", compute="_compute_document_count", store=True
-    )
-    document_error_count = fields.Integer(
-        string="Documents Error", compute="_compute_document_count", store=True
-    )
+    document_filtered_count = fields.Integer(string="Documents Filtered", compute="_compute_document_count", store=True)
+    document_queued_count = fields.Integer(string="Documents Queued", compute="_compute_document_count", store=True)
+    document_indexed_count = fields.Integer(string="Documents Indexed", compute="_compute_document_count", store=True)
+    document_error_count = fields.Integer(string="Documents Error", compute="_compute_document_count", store=True)
     document_not_found_count = fields.Integer(
         string="Documents Not Found", compute="_compute_document_count", store=True
     )
+<<<<<<< HEAD
     document_no_index_count = fields.Integer(
         string="Documents No Index", compute="_compute_document_count", store=True
     )
@@ -74,15 +65,16 @@ class MeilisearchIndex(models.Model):
     task_failed_count = fields.Integer(
         string="Task Failed", compute="_compute_task_count", store=True
     )
+=======
+    document_no_index_count = fields.Integer(string="Documents No Index", compute="_compute_document_count", store=True)
+>>>>>>> f68f89c (feat!: split into ssh and git_base)
     meilisearch_index_url = fields.Char(
         compute="_compute_meilisearch_index_url",
     )
 
     def _compute_meilisearch_index_url(self):
         for index in self:
-            url = (
-                self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url")
-            )
+            url = self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url")
             index.meilisearch_index_url = url
 
     def _compute_document_count(self):
@@ -160,12 +152,7 @@ class MeilisearchIndex(models.Model):
         api_key = icp.get_param("meilisearch.api_key")
 
         if not url or not api_key:
-            _logger.error(
-                _(
-                    "Meilisearch URL and API key need to be configured "
-                    "in the system parameters."
-                )
-            )
+            _logger.error(_("Meilisearch URL and API key need to be configured " "in the system parameters."))
             return
 
         return meilisearch.Client(
@@ -255,12 +242,18 @@ class MeilisearchIndex(models.Model):
         """
         self.ensure_one()
         model = self.env[self.model]
+<<<<<<< HEAD
 
         # Get records that are not indexed
         records = model.search([("index_result", "!=", "indexed")])
         records_count = len(records)
         for offset in range(0, records_count, 20):
             batch = records[offset : offset + 20]
+=======
+        records_count = model.search_count([("index_result", "!=", "indexed")])
+        for offset in range(0, records_count, 80):
+            batch = model.search([("index_result", "!=", "indexed")], offset=offset, limit=80)
+>>>>>>> f68f89c (feat!: split into ssh and git_base)
             batch._get_documents()
         self._compute_document_count()
 
@@ -283,11 +276,7 @@ class MeilisearchIndex(models.Model):
         client = self.get_client()
         if client:
             try:
-                url = (
-                    self.env["ir.config_parameter"]
-                    .sudo()
-                    .get_param("meilisearch.api_url"),
-                )
+                url = (self.env["ir.config_parameter"].sudo().get_param("meilisearch.api_url"),)
                 client.health()
                 return {
                     "type": "ir.actions.client",
@@ -300,9 +289,7 @@ class MeilisearchIndex(models.Model):
                     },
                 }
             except Exception as e:
-                raise UserError(
-                    _("The Meilisearch API key for '%s' does not work: %s", url, e)
-                ) from None
+                raise UserError(_("The Meilisearch API key for '%s' does not work: %s", url, e)) from None
 
     def _get_index(self):
         self.ensure_one()
@@ -315,9 +302,7 @@ class MeilisearchIndex(models.Model):
                     "tag": "display_notification",
                     "params": {
                         "title": _("Meilisearch Index"),
-                        "message": _(
-                            "The Meilisearch index '%s' was found.", self.index_name
-                        ),
+                        "message": _("The Meilisearch index '%s' was found.", self.index_name),
                         "sticky": False,
                         "type": "success",
                     },
@@ -364,9 +349,7 @@ class MeilisearchIndex(models.Model):
         client = self.get_client()
         if client:
             try:
-                client.index(self.index_name).update_settings(
-                    json.loads(self.index_settings)
-                )
+                client.index(self.index_name).update_settings(json.loads(self.index_settings))
                 return {
                     "type": "ir.actions.client",
                     "tag": "display_notification",
@@ -400,9 +383,7 @@ class MeilisearchIndex(models.Model):
                     "tag": "display_notification",
                     "params": {
                         "title": _("Meilisearch Index Deleted"),
-                        "message": _(
-                            "The Meilisearch index '%s' was deleted.", self.index_name
-                        ),
+                        "message": _("The Meilisearch index '%s' was deleted.", self.index_name),
                         "sticky": False,
                         "type": "success",
                     },

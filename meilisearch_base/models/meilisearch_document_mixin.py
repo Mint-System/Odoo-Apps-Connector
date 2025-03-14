@@ -20,9 +20,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         store=True,
         help="Stores the document as JSONB.",
     )
-    index_document_read = fields.Text(
-        compute="_compute_index_document_read", help="Returns the document as JSON."
-    )
+    index_document_read = fields.Text(compute="_compute_index_document_read", help="Returns the document as JSON.")
     index_result = fields.Selection(
         [
             ("queued", "Queued"),
@@ -53,9 +51,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             index_records._update_documents(index)
 
         # Get documents that are indexed and no longer match with filter
-        delete_records = (
-            self.filtered(lambda d: d.index_result == "indexed") - index_records
-        )
+        delete_records = self.filtered(lambda d: d.index_result == "indexed") - index_records
         if delete_records:
             delete_records._delete_documents()
 
@@ -142,9 +138,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
-                batch.write(
-                    {"index_result": "no_index", "index_response": "Index not found"}
-                )
+                batch.write({"index_result": "no_index", "index_response": "Index not found"})
 
     def _get_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
@@ -194,9 +188,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
-                batch.write(
-                    {"index_result": "no_index", "index_response": "Index not found"}
-                )
+                batch.write({"index_result": "no_index", "index_response": "Index not found"})
 
     def _delete_documents(self):
         index = self.env["meilisearch.index"].get_matching_index(model=self[:0]._name)
@@ -232,6 +224,4 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                 except Exception as e:
                     batch.write({"index_result": "error", "index_response": e})
             else:
-                batch.write(
-                    {"index_result": "no_index", "index_response": "Index not found"}
-                )
+                batch.write({"index_result": "no_index", "index_response": "Index not found"})

@@ -21,7 +21,6 @@ class MeilissearchController(http.Controller):
     )
     def meilisearch_task_webhook(self, **kwargs):
         if request.httprequest.method == "POST" and request.httprequest.data:
-
             # Decode compressed ndjson
             compressed_data = request.httprequest.data
             with gzip.GzipFile(fileobj=BytesIO(compressed_data)) as gz:
@@ -33,11 +32,7 @@ class MeilissearchController(http.Controller):
                 data = json.loads(line)
 
                 # Get task by uid
-                task = (
-                    request.env["meilisearch.task"]
-                    .sudo()
-                    .search([("uid", "=", data["uid"])])
-                )
+                task = request.env["meilisearch.task"].sudo().search([("uid", "=", data["uid"])])
                 # _logger.warning(
                 #     [
                 #         "webhook",

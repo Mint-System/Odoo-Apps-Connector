@@ -10,9 +10,7 @@ class ResUsers(models.Model):
 
     ssh_public_key = fields.Char("SSH Public Key")
     ssh_private_key_file = fields.Binary("SSH Private Key")
-    ssh_private_key_filename = fields.Char(
-        "SSH Private Key Filename", compute="_compute_ssh_private_key_filename"
-    )
+    ssh_private_key_filename = fields.Char("SSH Private Key Filename", compute="_compute_ssh_private_key_filename")
     ssh_private_key_password = fields.Char("SSH Private Key Password")
 
     @property

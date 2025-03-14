@@ -3,13 +3,13 @@
     :alt: License: GPL-3
 
 
-========
-Git Base
-========
+===
+SSH
+===
 
-Manage git repositories with Odoo.
+Manage SSH credentials.
 
-For a detailed documentation have a look at https://www.odoo-wiki.org/git-base.html
+For a detailed documentation have a look at https://www.odoo-wiki.org/ssh.html
 
 Configuration
 ~~~~~~~~~~~~~

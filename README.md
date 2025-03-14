@@ -16,4 +16,5 @@ git clone git@github.com:mint-system/odoo-apps-stock-logistics-workflow.git ./ad
 | --- | --- |
 | [git_base](git_base) |         Manage git repositories with Odoo. |
 | [meilisearch_base](meilisearch_base) |         Sets up meilisearch indexes and provides a document mixin. |
+| [ssh](ssh) |         Manage SSH credentials. |
 | [storyblok_base](storyblok_base) |         Sozialinfo base module for Storyblok. |
