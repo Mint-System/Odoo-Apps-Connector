@@ -25,7 +25,7 @@ class ResUsersKeychain(models.AbstractModel):
         elif self.env.company.ssh_private_key_file:
             return self.env.company
 
-    def run_ssh_command(self, git_command, timeout=10):
+    def run_ssh_command(self, command, timeout=10):
         """
         Context manager to set up the SSH environment.
         """
@@ -58,8 +58,8 @@ class ResUsersKeychain(models.AbstractModel):
                 os.environ[
                     "GIT_SSH_COMMAND"
                 ] = f"ssh -o StrictHostKeyChecking=no -i {keychain.ssh_private_key_filename}"
-                # _logger.warning(" ".join(git_command))
-                output += check_output(git_command, stderr=STDOUT, timeout=timeout)
+                # _logger.warning(" ".join(command))
+                output += check_output(command, stderr=STDOUT, timeout=timeout)
                 return output
             except CalledProcessError as e:
                 raise Exception(e.output)
