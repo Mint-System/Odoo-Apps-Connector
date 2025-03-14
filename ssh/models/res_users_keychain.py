@@ -1,4 +1,7 @@
+import base64
 import logging
+import os
+from subprocess import STDOUT, CalledProcessError, check_output
 
 from odoo import models
 

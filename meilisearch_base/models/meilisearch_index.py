@@ -49,25 +49,11 @@ class MeilisearchIndex(models.Model):
     document_not_found_count = fields.Integer(
         string="Documents Not Found", compute="_compute_document_count", store=True
     )
-<<<<<<< HEAD
-    document_no_index_count = fields.Integer(
-        string="Documents No Index", compute="_compute_document_count", store=True
-    )
-    task_enqueued_count = fields.Integer(
-        string="Task Enqueued", compute="_compute_task_count", store=True
-    )
-    task_processing_count = fields.Integer(
-        string="Task Processing", compute="_compute_task_count", store=True
-    )
-    task_succeeded_count = fields.Integer(
-        string="Task Succeeded", compute="_compute_task_count", store=True
-    )
-    task_failed_count = fields.Integer(
-        string="Task Failed", compute="_compute_task_count", store=True
-    )
-=======
     document_no_index_count = fields.Integer(string="Documents No Index", compute="_compute_document_count", store=True)
->>>>>>> f68f89c (feat!: split into ssh and git_base)
+    task_enqueued_count = fields.Integer(string="Task Enqueued", compute="_compute_task_count", store=True)
+    task_processing_count = fields.Integer(string="Task Processing", compute="_compute_task_count", store=True)
+    task_succeeded_count = fields.Integer(string="Task Succeeded", compute="_compute_task_count", store=True)
+    task_failed_count = fields.Integer(string="Task Failed", compute="_compute_task_count", store=True)
     meilisearch_index_url = fields.Char(
         compute="_compute_meilisearch_index_url",
     )
@@ -105,9 +91,7 @@ class MeilisearchIndex(models.Model):
         for index in self:
             if index.active and index.model in self.env:
                 model = self.env[index.model]
-                groups = self.env["meilisearch.task"].read_group(
-                    [("index_id", "=", index.id)], ["status"], ["status"]
-                )
+                groups = self.env["meilisearch.task"].read_group([("index_id", "=", index.id)], ["status"], ["status"])
                 index.document_filtered_count = model.search_count([])
 
                 def get_status_count(status):
@@ -242,18 +226,12 @@ class MeilisearchIndex(models.Model):
         """
         self.ensure_one()
         model = self.env[self.model]
-<<<<<<< HEAD
 
         # Get records that are not indexed
         records = model.search([("index_result", "!=", "indexed")])
         records_count = len(records)
         for offset in range(0, records_count, 20):
             batch = records[offset : offset + 20]
-=======
-        records_count = model.search_count([("index_result", "!=", "indexed")])
-        for offset in range(0, records_count, 80):
-            batch = model.search([("index_result", "!=", "indexed")], offset=offset, limit=80)
->>>>>>> f68f89c (feat!: split into ssh and git_base)
             batch._get_documents()
         self._compute_document_count()
 

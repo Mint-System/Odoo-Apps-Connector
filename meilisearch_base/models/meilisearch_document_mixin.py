@@ -116,9 +116,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             if client:
                 try:
                     with self.env.cr.savepoint():
-                        res = client.index(index.index_name).update_documents(
-                            [self.index_document for self in batch]
-                        )
+                        res = client.index(index.index_name).update_documents([self.index_document for self in batch])
                         if index.create_task:
                             self.env["meilisearch.task"].create(
                                 {
@@ -150,12 +148,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             if client:
                 try:
                     with self.env.cr.savepoint():
-                        search_filter = (
-                            f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                        )
-                        res = client.index(index.index_name).search(
-                            "", {"filter": search_filter}
-                        )
+                        search_filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                        res = client.index(index.index_name).search("", {"filter": search_filter})
                         if res["hits"]:
                             found_ids = []
                             for document in res["hits"]:
@@ -163,9 +157,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                                 rec.write(
                                     {
                                         "index_result": "indexed",
-                                        "index_response": json.dumps(
-                                            document, indent=4
-                                        ),
+                                        "index_response": json.dumps(document, indent=4),
                                     }
                                 )
                                 found_ids.append(rec.id)
@@ -199,12 +191,8 @@ class MeilsearchDocumentMixin(models.AbstractModel):
             if client:
                 try:
                     with self.env.cr.savepoint():
-                        search_filter = (
-                            f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
-                        )
-                        res = client.index(index.index_name).delete_documents(
-                            filter=search_filter
-                        )
+                        search_filter = f"{' OR '.join(['id='+str(rec.id) for rec in batch])}"
+                        res = client.index(index.index_name).delete_documents(filter=search_filter)
                         if index.create_task:
                             self.env["meilisearch.task"].create(
                                 {
