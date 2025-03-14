@@ -61,12 +61,16 @@ class ProductTemplate(models.Model):
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
     kardex_is_fifo = fields.Boolean(string="Kardex isFIFO", default=False)
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
+    kardex_search_term_one = fields.Char(string="Suchbegriff")
+    kardex_search_term_two = fields.Char(string="Suchbegriff 2")
 
     # @api.constrains('kardex', 'default_code')
     # def _check_default_code_required(self):
     #     for record in self:
     #         if record.kardex and not record.default_code:
     #             raise ValidationError("The 'Internal Reference' (default_code) is required when 'Kardex' is enabled.")
+
+
 
     @api.model
     def default_get(self, fields_list):
