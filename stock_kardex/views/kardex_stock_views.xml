@@ -72,9 +72,10 @@
                 />
             </xpath>
             <xpath expr="//list/field[@name='description_picking']" position="after">
+                <field name="has_kardex_location" invisible="1" optional="hide" />
                 <field name="kardex_done" string="->Kardex" optional="hide" />
                 <field name="kardex_id" string="Kardex ID" optional="hide" />
-                <field name="kardex_status" string="Kardex Status" optional="hide" />
+                <field name="kardex_status" string="Kardex Status" optional="hide" invisible="not has_kardex_location"/>
                 <field name="kardex_running_id" string="BzId" optional="hide" />
                 <field name="kardex_journal_status" string="Kompl." optional="hide" />
                 <field name="kardex_sync" string="JSync" optional="hide" />

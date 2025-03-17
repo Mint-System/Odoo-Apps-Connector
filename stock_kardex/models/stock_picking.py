@@ -135,9 +135,8 @@ class StockPicking(models.Model):
 
 
     def button_validate(self):
-
         res = super().button_validate()
-        if res and PICKING_TYPE_FIXER.get(self.picking_type_id.id, None) in ["outgoing", "store"]:
+        if res and PICKING_TYPE_FIXER.get(self.picking_type_id.id, None) in ["outgoing", "store"] and not self.kardex_done:
             self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
         print("res:", res)
         return res
@@ -498,6 +497,17 @@ class StockMove(models.Model):
     kardex_running_id = fields.Char(string="Picking BzId")
     kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
     kardex_journal_status = fields.Char(string="Komplett")
+    has_kardex_location = fields.Boolean(
+        string="Has Kardex Location",
+        compute="_compute_has_kardex_location",
+        store=False
+    )
+
+    @api.onchange('move_line_ids.has_kardex_location')
+    @api.depends('move_line_ids.has_kardex_location')
+    def _compute_has_kardex_location(self):
+        for move in self:
+            move.has_kardex_location = any(move.move_line_ids.mapped('has_kardex_location'))
 
     @api.depends("picking_id.kardex")
     def _compute_products_domain(self):
@@ -527,6 +537,22 @@ class StockMove(models.Model):
         return super().create(vals)
 
 
+    
+class StockMoveLine(models.Model):
+    _inherit = 'stock.move.line'
+
+    has_kardex_location = fields.Boolean(
+        string="Is Kardex Location",
+        compute="_compute_has_kardex_location",
+        store=False  
+    )
+
+    @api.depends('location_id')
+    @api.onchange('location_id')
+    def _compute_has_kardex_location(self):
+        kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_DESTINATION)], limit=1)
+        for record in self:
+            record.has_kardex_location = record.location_dest_id.id == kardex_location.id
 
 
 class StockQuant(models.Model):
