@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
+
+    
     <record id="product_template_form_view_inherit_kardex" model="ir.ui.view">
         <field name="name">product.template.kardex.form</field>
         <field name="model">product.template</field>
@@ -90,8 +92,26 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_tree_view" />
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='name']" position="after">
+            <xpath expr="//field[@name='default_code']" position="replace"/>
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="default_code"/>
+            </xpath>
+             <xpath expr="//field[@name='name']" position="after">
+                <field name="kardex_search_term_one"/>
+                <field name="kardex_search_term_two"/>
                 <field name='kardex' string="Kardex" optional="show" />
+            </xpath>
+          
+        </field>
+    </record>
+
+    <record id="product_template_search_view_inherited" model="ir.ui.view">
+        <field name="name">product.template.search.inherit</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="replace">
+                <field name="name" string="Product" filter_domain="['|', '|', '|', '|', '|', '|', ('default_code', 'ilike', self), ('product_variant_ids.default_code', 'ilike', self), ('name', 'ilike', self), ('kardex_search_term_one', 'ilike', self), ('kardex_search_term_two', 'ilike', self), ('barcode', 'ilike', self), ('categ_id.name', 'ilike', self)]"/>
             </xpath>
         </field>
     </record>
