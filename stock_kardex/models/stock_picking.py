@@ -65,18 +65,40 @@ class StockPicking(models.Model):
         store=False
     )
 
+    update_button_is_visible = fields.Boolean(
+        string="Update Kardex State Button Visibility",
+        compute="_compute_update_button_is_visible",
+        store=False
+    )
+
     validate_button_is_invisible = fields.Boolean(
         string="Validate Button Visibility",
         compute="_compute_validate_button_is_invisible",
         store=False
     )
 
-    
 
     @api.depends('kardex_done', 'picking_type_id')
     def _compute_send_button_is_visible(self):
+        store_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "store"]
+        outgoing_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "outgoing"]
         for rec in self:
-            rec.send_button_is_visible = not rec.kardex_done and rec.picking_type_id.id == 6
+            rec.send_button_is_visible = not rec.kardex_done and (rec.picking_type_id.id in store_keys or rec.picking_type_id.id in outgoing_keys)
+
+
+    @api.depends('kardex_done', 'picking_type_id')
+    def _compute_update_button_is_visible(self):
+        store_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "store"]
+        outgoing_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "outgoing"]
+        
+        for rec in self:
+            if rec.move_ids:
+                all_moves_have_status_success = all(
+                    move.kardex_status == 2 for move in rec.move_ids
+                )
+            else:
+                all_moves_have_status_success = False
+            rec.update_button_is_visible = not all_moves_have_status_success and rec.kardex_done and (rec.picking_type_id.id in store_keys or rec.picking_type_id.id in outgoing_keys)
 
     @api.depends('kardex_status', 'picking_type_id')
     def _compute_validate_button_is_invisible(self):
@@ -550,9 +572,11 @@ class StockMoveLine(models.Model):
     @api.depends('location_id')
     @api.onchange('location_id')
     def _compute_has_kardex_location(self):
-        kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_DESTINATION)], limit=1)
+        kardex_destination = self.env['stock.location'].search([('name', '=', KARDEX_DESTINATION)], limit=1)
+        kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE)], limit=1)
+        #import pdb; pdb.set_trace()
         for record in self:
-            record.has_kardex_location = record.location_dest_id.id == kardex_location.id
+            record.has_kardex_location = record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
 
 
 class StockQuant(models.Model):

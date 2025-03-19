@@ -70,6 +70,12 @@
                                 string="An Kardex senden"
                                 invisible="not send_button_is_visible"
                 />
+                <button
+                                name="update_status_from_kardex"
+                                type="object"
+                                string="Update Status"
+                                invisible="not update_button_is_visible"
+                />
             </xpath>
             <xpath expr="//list/field[@name='description_picking']" position="after">
                 <field name="has_kardex_location" invisible="1" optional="hide" />
