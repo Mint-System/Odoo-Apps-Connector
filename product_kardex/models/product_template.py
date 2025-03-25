@@ -356,7 +356,7 @@ class ProductTemplate(models.Model):
         return kardex_status
         # todo: what means status exactly?
 
-    def _update_record(self, vals, record):
+    def _update_record(self, vals):
         vals["kardex_status"] = self._get_kardex_status()
         # vals["kardex_product_name"] = self._get_kardex_product_name(record)
 
@@ -371,32 +371,32 @@ class ProductTemplate(models.Model):
             for variant in product.product_variant_ids:
                 variant.write({"tracking": tracking_value})
 
-    @api.model
-    def create(self, vals):
-        record = super(ProductTemplate, self).create(vals)
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            # record = super(ProductTemplate, self).create(vals)
         # handle tracking
-        if "kardex_tracking" in vals:
-            record._update_variants_tracking(vals["kardex_tracking"])
-        # fixing missing kardex values
-        if vals["kardex"]:
-            vals = self._update_record(vals, record)
-            # vals['kardex_row_create_time'], vals['kardex_row_update_time'] = self._get_dates(record, KARDEX_DATE_HANDLING)
+            if "kardex_tracking" in vals:
+                self._update_variants_tracking(vals["kardex_tracking"])
+            # fixing missing kardex values
+            if vals["kardex"]:
+                vals = self._update_record(vals)
+                # vals['kardex_row_create_time'], vals['kardex_row_update_time'] = self._get_dates(record, KARDEX_DATE_HANDLING)
 
-            if (
-                not (record.kardex_done or vals["kardex_done"])
-                and SEND_KARDEX_PRODUCT_ON_CREATE
-            ):
-                table = "PPG_Artikel"
-                new_id = self._create_external_object(
-                    vals, table
-                )  # in case of creating a new record the new id is returned
-                vals["kardex_done"] = True
-                vals["kardex_id"] = new_id
+                if (
+                    not vals["kardex_done"]
+                    and SEND_KARDEX_PRODUCT_ON_CREATE
+                ):
+                    table = "PPG_Artikel"
+                    new_id = self._create_external_object(
+                        vals, table
+                    )  # in case of creating a new record the new id is returned
+                    vals["kardex_done"] = True
+                    vals["kardex_id"] = new_id
 
-            _logger.info("VALS %s" % (vals,))
-            record.write(vals)
+        records = super().create(vals_list)
 
-        return record
+        return records
         # TODO:
         # tracking -> ChVerw, SnVerw
         # product.product !

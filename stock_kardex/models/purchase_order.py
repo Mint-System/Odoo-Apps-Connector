@@ -21,20 +21,20 @@ class PurchaseOrder(models.Model):
             order.kardex = any(line.product_id.kardex for line in order.order_line)
 
 
-class PurchaseOrderLine(models.Model):
-    _inherit = 'purchase.order.line'
+# class PurchaseOrderLine(models.Model):
+#     _inherit = 'purchase.order.line'
 
-    @api.model
-    def create(self, vals):
-        line = super().create(vals)
-        if line.order_id:
-            line.order_id._compute_kardex()
-        return line
+#     @api.model
+#     def create(self, vals):
+#         line = super().create(vals)
+#         if line.order_id:
+#             line.order_id._compute_kardex()
+#         return line
 
-    def write(self, vals):
-        res = super().write(vals)
-        for line in self:
-            if line.order_id:
-                line.order_id._compute_kardex()
-        return res
+#     def write(self, vals):
+#         res = super().write(vals)
+#         for line in self:
+#             if line.order_id:
+#                 line.order_id._compute_kardex()
+#         return res
 
