@@ -1,4 +1,5 @@
 import logging
+from unittest.mock import patch
 
 from odoo.tests.common import TransactionCase
 
@@ -13,6 +14,14 @@ class TestResCountry(TransactionCase):
         cls.country_id = cls.env["res.country"].create(
             {"code": "TX", "name": "Taixan", "currency_id": cls.env.ref("base.TWD").id, "phone_code": 887}
         )
+
+    # @patch("odoo.addons.meilisearch_base.models.meilisearch_document_mixin.MeilsearchDocumentMixin._update_documents")
+    @patch("odoo.addons.meilisearch_base.models.res_country.Country._compute_index_document")
+    def test_compute_index_document(self, mock):
+        self.country_id.write({"code": "TX"})
+        self.assertFalse(mock.called)
+        self.country_id.write({"code": "TY"})
+        self.assertFalse(mock.called)
 
     def test_setup_index(self):
         self.index.button_check_api_key()
