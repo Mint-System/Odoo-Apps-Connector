@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+from hashlib import sha256
 
 import pytz
 
@@ -20,6 +21,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         store=True,
         help="Stores the document as JSONB.",
     )
+    index_document_hash = fields.Text(compute="_compute_index_document", store=True)
     index_document_read = fields.Text(compute="_compute_index_document_read", help="Returns the document as JSON.")
     index_result = fields.Selection(
         [
@@ -41,17 +43,25 @@ class MeilsearchDocumentMixin(models.AbstractModel):
         # Filter all records that should be indexed
         index_records = self.filtered(self._get_index_document_filter())
 
-        # Update Meilisearch document
+        # Update Meilisearch document if hash has changed
+        update_records = index_records
         for record in index_records:
             document = record._prepare_index_document()
-            record.index_document = document
+            document_hash = sha256(json.dumps(document).encode()).hexdigest()
+            if (document_hash != record.index_document_hash) or record.index_result != "indexed":
+                record.index_document = document
+                record.index_document_hash = document_hash
+            else:
+                update_records = update_records - record
 
-        # Create update task
+        # Update
         if index:
-            index_records._update_documents(index)
+            update_records._update_documents(index)
 
-        # Get documents that are indexed and no longer match with filter
+        # Get documents that are indexed and no longer match the filter
         delete_records = self.filtered(lambda d: d.index_result == "indexed") - index_records
+
+        # Delete these documents from index
         if delete_records:
             delete_records._delete_documents()
 
@@ -207,6 +217,7 @@ class MeilsearchDocumentMixin(models.AbstractModel):
                                 "index_result": "queued",
                                 "index_response": "Task enqueued",
                                 "index_date": res.enqueued_at,
+                                "index_document_hash": "",
                             }
                         )
                 except Exception as e:

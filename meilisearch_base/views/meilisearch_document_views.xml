@@ -99,6 +99,7 @@
                                 nolabel="1"
                                 colspan="2"
                             />
+                            <field name="index_document_hash" />
                         </group>
                         <group>
                             <field name="index_result" />

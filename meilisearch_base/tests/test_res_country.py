@@ -10,6 +10,9 @@ class TestResCountry(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.index = cls.env.ref("meilisearch_base.demo_index_countries")
+        cls.country_id = cls.env["res.country"].create(
+            {"code": "TX", "name": "Taixan", "currency_id": cls.env.ref("base.TWD").id, "phone_code": 887}
+        )
 
     def test_setup_index(self):
         self.index.button_check_api_key()
@@ -24,4 +27,21 @@ class TestResCountry(TransactionCase):
         country_ids = self.env[self.index.model].search([])
         country_ids.check_index_document()
         self.index.button_check_all_documents()
-        self.assertEqual(self.index.document_indexed_count, 249)
+        self.assertEqual(self.index.document_indexed_count, 250)
+
+    def test_document_hash(self):
+        country_id = self.country_id
+
+        # This should trigger the compute method, but not a document upate
+        last_index_document_hash = country_id.index_document_hash
+        country_id.write({"code": "TX"})
+        self.assertEqual(country_id.index_document_hash, last_index_document_hash)
+
+        # This should trigger the compute method and a document update
+        country_id.write({"code": "XX"})
+        self.assertNotEqual(country_id.index_date, last_index_document_hash)
+
+        # This should not trigger anything
+        last_index_document_hash = country_id.index_document_hash
+        country_id.write({"phone_code": 888})
+        self.assertEqual(country_id.index_document_hash, last_index_document_hash)
