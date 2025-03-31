@@ -84,10 +84,12 @@ class StockPicking(models.Model):
     @api.depends("origin")
     def _compute_kardex(self):
         for rec in self:
-            picking = self.env["stock.picking"].search([("name", "=", rec.origin)])
-            if picking:
-                rec.kardex = picking.kardex
             rec.kardex = False
+            for model in ['stock.picking', 'purchase.order', 'mrp.production']:
+                origin = self.env[model].search([("name", "=", rec.origin)])
+                if origin and origin.kardex:
+                    rec.kardex = origin.kardex
+            
 
     @api.depends('kardex_done', 'picking_type_id')
     def _compute_send_button_is_visible(self):
@@ -105,23 +107,36 @@ class StockPicking(models.Model):
 
     @api.depends('kardex_done', 'picking_type_id')
     def _compute_update_button_is_visible(self):
-        store_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "store"]
-        outgoing_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "outgoing"]
+        # store_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "store"]
+        # outgoing_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "outgoing"]
+        
         
         for rec in self:
+            #import pdb; pdb.set_trace()
             if rec.move_ids:
                 all_moves_have_status_success = all(
-                    move.kardex_status == 2 for move in rec.move_ids
+                    [move.kardex_status == '2' for move in rec.move_ids]
+                )
+                any_move_has_kardex_destination = any(
+                    [self._check_if_destination_is_kardex(move.location_final_id)
+                    for move in rec.move_ids]
                 )
             else:
                 all_moves_have_status_success = False
-            rec.update_button_is_visible = not all_moves_have_status_success and rec.kardex_done and (rec.picking_type_id.id in store_keys or rec.picking_type_id.id in outgoing_keys)
+                any_move_has_kardex_destination = False
+            rec.update_button_is_visible = not all_moves_have_status_success and rec.kardex_done and any_move_has_kardex_destination
 
-    @api.depends('kardex_status', 'picking_type_id')
+    @api.depends()
     def _compute_validate_button_is_invisible(self):
         for rec in self:
-            rec.validate_button_is_invisible = rec.kardex_status != 2 and rec.picking_type_id.id == 6
-
+            if rec.move_ids:
+                all_moves_has_kardex_destination = all(
+                    self._check_if_destination_is_kardex(move.location_final_id)
+                    for move in rec.move_ids
+                )
+            else:
+                all_moves_has_kardex_destination = False
+            rec.validate_button_is_invisible = not all_moves_has_kardex_destination
 
     def check_kardex(self):
         for picking in self:
@@ -172,23 +187,43 @@ class StockPicking(models.Model):
 
     #     return record
 
+    
+
+
+
     def _check_send_to_kardex(self):
         # import pdb; pdb.set_trace()
         # if PICKING_TYPE_FIXER.get(self.picking_type_id.id, None) in ["outgoing", "store"] and not self.kardex_done:
         #     return True
-        check_kardex_destination = any([move.location_final_id.name == KARDEX_DESTINATION for move in self.move_ids])
-        if self._check_picking_type() == "store" and check_kardex_destination:
+        # check_kardex_destination = any([move.location_final_id.name == KARDEX_DESTINATION for move in self.move_ids])
+        if self._check_picking_type() == "production" and self.kardex:
             return True
         
 
 
     def button_validate(self):
         res = super().button_validate()
-        if res and self._check_send_to_kardex():
+        for picking in self:
+            if self._check_picking_type() == "store":
+                for move in picking.move_ids:
+                    product = move.product_id
+                    product.write({"last_location_id": move.location_final_id})
+        #if res and self._check_send_to_kardex():
+        #    self.send_to_kardex(self.origin)
             # self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
-            self.send_to_kardex(self.origin)
+            # self.send_to_kardex(self.origin)
         print("res:", res)
         return res
+
+
+    def _check_is_kardex_store(self, id):
+        check = False
+        picking = self.env["stock.picking"].search([("id", "=", id)])
+        for move in picking.move_ids:
+            if move and move.picking_code == "internal" and move.location_final_id.name == KARDEX_DESTINATION:
+                check = True
+        return check
+
 
     def action_next_transfer(self):
         next_transfers = super().action_next_transfer()
@@ -197,20 +232,25 @@ class StockPicking(models.Model):
         print("self.state:", self.state)
         print("self.kardex_status:", self.kardex_status)
         if next_transfers:
-            next_transfer_id = next_transfers.get("res_id", None)
-            write_vals = {}
-            if next_transfer_id:
-                next_transfer = self.env["stock.picking"].search([("id", "=", next_transfer_id)])
-                print("next_transfer:", next_transfer)
-                if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and USE_KARDEX_AS_DEFAULT_WAREHOUSE:
-                    kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
-                    write_vals["location_dest_id"] = kardex_location.id
+            if 'domain' in next_transfers:
+                pickings = self.env['stock.picking'].search(next_transfers['domain'])
+            elif 'res_id' in next_transfers:    
+                pickings = self.env['stock.picking'].search([('id', '=', next_transfers['res_id'])])
+            for picking in pickings:
+                write_vals = {}
+                print("PICKING:", picking)
+                # if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and USE_KARDEX_AS_DEFAULT_WAREHOUSE:
+                #     kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
+                #     write_vals["location_dest_id"] = kardex_location.id
                 print("KARDEX_STATE:", self.kardex_status)
-                if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and self.kardex_status != 2:
-                    write_vals["state"] = 'waiting_for_kardex'
+                # import pdb; pdb.set_trace()
+                if picking._check_is_kardex_store(picking.id):
+                    picking.send_to_kardex(self.origin)
+                    # if move.kardex_status != 2:
+                    #     write_vals["state"] = 'waiting'
 
                 write_vals["kardex"] = self.kardex
-                next_transfer.write(write_vals)
+                picking.write(write_vals)
         return next_transfers
 
 
@@ -246,6 +286,37 @@ class StockPicking(models.Model):
             return "store"
         elif self.origin and self.env['mrp.production'].search([('name', '=', self.origin)]):
             return "production"
+
+
+    def _update_picking_state(self):
+        for picking in self:
+            print("PICKING_TYPE:", picking._check_picking_type())
+            print("#### PICKING NAME:", picking.name, picking.state)
+            if picking._check_picking_type() == "production":
+                kardex_moves = [move for move in picking.move_ids if move.kardex_running_id]
+                print("KARDEX MOVES:", kardex_moves)
+                any_kardex_move_is_not_synced = any([not move.kardex_sync for move in kardex_moves])
+                if any_kardex_move_is_not_synced:
+                    picking.write({"state": "waiting_for_kardex"})
+                elif not any_kardex_move_is_not_synced and picking.state == "waiting_for_kardex":
+                    picking.write({"state": "assigned"})
+            elif picking._check_picking_type() == "store":
+
+                all_moves_have_kardex_destination = all(
+                    [move.location_final_id.name == KARDEX_DESTINATION for move in picking.move_ids]
+                )
+                print("all_moves_have_kardex_destination:", all_moves_have_kardex_destination)
+            
+                any_move_has_no_sync = any([move.kardex_sync == False for move in picking.move_ids])
+                print("any_move_has_no_sync:", any_move_has_no_sync)
+                if all_moves_have_kardex_destination and any_move_has_no_sync:
+                    picking.write({"state": "waiting_for_kardex"})
+        
+                if all_moves_have_kardex_destination and not any_move_has_no_sync:
+                    # TODO : Validate Aktion ausfuehren
+                    #picking.write({"state": "done"})
+                    self.button_validate()
+
 
 
     def send_to_kardex(self, picking_origin=None):
@@ -284,10 +355,11 @@ class StockPicking(models.Model):
                 
             kardex_move_lines = picking.move_line_ids
             #if self._check_mp_picking(picking_type_id):
-            if self._check_picking_type == "production":
+            #import pdb; pdb.set_trace()
+            if self._check_picking_type() == "production":
                 kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
                 kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_id == kardex_location)
-            elif self._check_picking_type == "store":
+            elif self._check_picking_type() == "store":
                 kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
                 kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_dest_id == kardex_location)
             
@@ -333,54 +405,65 @@ class StockPicking(models.Model):
                 # "kardex_row_update_time": update_time,
             }
             picking.write(done_picking)
+            self._update_picking_state()
             return self._create_notification(message)
 
     def update_status_from_kardex(self):
         message_list = []
+        print("############ PICKINGS:", self)
         for picking in self:
-            moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("kardex_running_id", "!=", None)]) 
+            moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("kardex_running_id", "!=", None), ("kardex_status", "!=", "2")]) 
             for move in moves:
                 kardex_running_id = move.kardex_running_id
                 old_status = move.kardex_status
                 sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE BzId = {kardex_running_id}"
                 result = self._execute_query_on_mssql("select_one", sql)
-                new_status = result["Status"]
-                update_time = result["Row_Update_Time"]
+                if result:
+                    new_status = result["Status"]
+                    update_time = result["Row_Update_Time"]
 
-                updated = False
+                    updated = False
 
-                if new_status != old_status and update_time:
-                    updated = True
-                    move.write(
-                        {
-                            "kardex_status": str(new_status),
-                            "kardex_row_update_time": update_time,
-                        }
-                    )
-                    #import pdb; pdb.set_trace() 
-                    if new_status == 2:
-                        picking.write({"state": "assigned"})
+                    if new_status != old_status and update_time:
+                        updated = True
+                        move.write(
+                            {
+                                "kardex_status": str(new_status),
+                                "kardex_row_update_time": update_time,
+                            }
+                        )
+                        #import pdb; pdb.set_trace() 
+                        if new_status == 2:
+                            picking.write({"state": "assigned"})
 
-                if updated:
-                    message_list.append(
-                        f"Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}."
-                    )
-                    
-                else:
-                    message_list.append(
-                        f"Kardex Status for {move.product_id.name} was not updated."
-                    )
+                    if updated:
+                        message_list.append(
+                            f"Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}."
+                        )
+                        
+                    else:
+                        message_list.append(
+                            f"Kardex Status for {move.product_id.name} was not updated."
+                        )
                 
-
+        self._update_picking_state()
         message = ", ".join(message_list)
         return self._create_notification(message)
+
+    def sync_status(self):
+        # pickings = self.env['stock.picking'].search([('state', '=', 'waiting_for_kardex')])
+        pickings = self.env['stock.picking'].search([
+            ('move_ids.kardex_status', '=', "1")
+        ])
+        print("pickings:", pickings)
+        pickings.update_status_from_kardex()
 
     def sync_pickings(self):
         # all pickings with status not done
         pickings = self.env["stock.picking"].search([("state", "!=", 'done')])
         for picking in pickings:
             print("Picking:", picking.name)
-            moves = self.env["stock.move"].search([("picking_id", "=", picking.id)])
+            moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)])
             
             complete = 1
             for move in moves:
@@ -394,16 +477,20 @@ class StockPicking(models.Model):
                         WITH CTE AS (
                             SELECT BzId, 
                                 Seriennummer,
+                                Suchbegriff,
+                                Richtung,
                                 Row_Create_Time,
                                 Row_Update_Time,
                                 SUM(Menge) AS MengeErledigt,
                                 MAX(Komplett) AS MaxKomplett
                             FROM PPG_Journal
                             {condition1} {condition2}
-                            GROUP BY BzId, Seriennummer, Row_Create_Time, Row_Update_Time
+                            GROUP BY BzId, Seriennummer, Suchbegriff, Richtung, Row_Create_Time, Row_Update_Time
                         )
                         SELECT c.BzId, 
                             c.Seriennummer,
+                            c.Suchbegriff,
+                            c.Richtung,
                             c.Row_Create_Time,
                             c.Row_Update_Time,
                             c.MengeErledigt, 
@@ -431,6 +518,8 @@ class StockPicking(models.Model):
                         complete = max(complete, new_journal_status)  
                         #complete = result["MaxKomplett"]
                         lot_name = result["Seriennummer"]  
+                        direction = result["Richtung"]
+                        product_code = result["Suchbegriff"]
                         move.write(
                             {
                                 "kardex_journal_status": new_journal_status,
@@ -452,13 +541,24 @@ class StockPicking(models.Model):
                         # update qty_done for move lines
                         move_lines = self.env["stock.move.line"].search([("move_id", "=", move.id)])
                         for move_line in move_lines:
-                            new_qty_done = move_line.qty_done + qty_done
+                            print("#### Quantity done:", qty_done)
+                            #new_qty_done = move_line.qty_done #- qty_done
+                            new_qty_done = qty_done
                             move_line_vals = {
-                                "qty_done": new_qty_done
+                                "qty_done": new_qty_done,
+                                "kardex_sync": True,
                             }
+                            print("LOT_NAME:", lot_name)
+                            print("DIRECTION:", direction)
                             if lot_name:
-                                lot_id = self.env["stock.lot"].search([("name", "=", lot_name)]).mapped("id")[0]
-                                move_line_vals["lot_id"] = lot_id
+                                product_id = self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
+                                lot = self.env["stock.lot"].search([("name", "=", lot_name), ("product_id", "=", product_id[0])]).mapped("id")
+                                print("LOT :", lot)
+                                if direction == "4":
+                                    print("LOT WILL BE CORRECTED")
+                                    move_line_vals["lot_id"] = lot[0]
+                                if not lot:
+                                    move_line_vals["kardex_sync"] = False
 
                             move_line.write(move_line_vals)
                         
@@ -482,7 +582,8 @@ class StockPicking(models.Model):
                 
             #elif complete == 2: 
             if complete == 2:
-                picking.write({"state": "done", "kardex_sync": True})
+                picking.write({"kardex_sync": True})
+                picking._update_picking_state()
 
 
     
@@ -608,6 +709,9 @@ class StockMove(models.Model):
         for vals in vals_list:
             picking_id = vals.get("picking_id")
             product_id = vals.get("product_id")
+            location_final_id = vals.get("location_final_id")
+            print("location_final_id", location_final_id)
+
 
             if picking_id and product_id:
                 # Retrieve the stock.picking record, see browse docs of odoo
@@ -616,10 +720,50 @@ class StockMove(models.Model):
                 product = self.env["product.product"].browse(vals.get("product_id"))
                 if picking.kardex and not product.kardex:
                     raise UserError("You can only add Kardex products.")
+
+                if location_final_id:
+                    picking_type_code = picking.picking_type_code
+                    origin_type = picking._check_picking_type()
+
+                    if picking_type_code == "incoming" and origin_type == "store":
+                        last_location_id = product.last_location_id
+                        print("##### last location", last_location_id.name)
+                        vals["location_final_id"] = last_location_id.id
+
+                # parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+                # print("#### Parent:", parent, "picking_type_code:", picking.picking_type_code)
+                # if parent and picking.picking_type_code == 'internal':
+                #     picking.send_to_kardex(picking.origin)
         
         records = super().create(vals_list)
+        print("###### RECORDS:", records )
+        already_sent = []
+        for move in records:
+            picking = move.picking_id
+            parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+            if parent and picking.picking_type_code == 'internal' and picking.id not in already_sent:
+                picking.send_to_kardex(picking.origin)
+                already_sent.append(picking.id)
+
+
 
         return records
+
+    @api.model
+    def _action_confirm(self, merge=True, merge_into=False):
+        # Call super to create stock moves and pickings
+        print('ACTION CONFIRM CALLED')
+        res = super()._action_confirm(merge, merge_into)
+
+        for move in res:
+            picking = move.picking_id
+            parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+
+            if parent and picking and picking.move_ids and not picking.kardex_done:
+                picking.send_to_kardex(picking.origin)
+                print("PICKING:", picking, "MOVES:", picking.move_ids)
+            
+        return res
 
 
     
@@ -631,7 +775,23 @@ class StockMoveLine(models.Model):
         compute="_compute_has_kardex_location",
         store=False  
     )
-    
+    kardex_sync = fields.Boolean(string="Mit Kardex synchronisiert", default=False)
+
+
+    # @api.depends('location_id', 'product_id')
+    # def _compute_last_location_id(self):
+    #     for record in self:
+    #         record.last_location_id = record.location_id
+    #         if record.product_id:
+    #             last_move = self.env['stock.move'].search([
+    #                 ('product_id', '=', product_id.id),
+    #                 ('location_dest_id.usage', '=', 'internal'),  # Only internal locations
+    #                 ('state', '=', 'done')  # Only completed moves
+    #             ], order='date desc', limit=1)
+            
+    #             if last_move:
+    #                 record.last_location_id = last_move.location_dest_id
+
 
     @api.depends('location_id')
     @api.onchange('location_id')
@@ -643,35 +803,12 @@ class StockMoveLine(models.Model):
             record.has_kardex_location = record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
 
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        #import pdb; pdb.set_trace()
-        """Set location_id to the last incoming location for the product."""
-        for vals in vals_list:
-            if 'product_id' in vals:
-                product_id = vals['product_id']
-
-                # Find the last incoming move for this product
-                last_move = self.env['stock.move'].search([
-                    ('product_id', '=', product_id),
-                    ('location_dest_id.usage', '=', 'internal'),  # Only internal locations
-                    ('state', '=', 'done')  # Only completed moves
-                ], order='date desc', limit=1)
-
-                if last_move:
-                    vals['location_id'] = last_move.location_dest_id.id
-
-        records = super().create(vals_list)
-        return records
-
-
 class StockQuant(models.Model):
     #_inherit = ["stock.quant", "base.kardex.mixin"]
     _inherit = 'stock.quant'
 
 
     def _get_location_id(self, location_name):
-        import pdb; pdb.set_trace()
         location_id = self.env["stock.location"].search([('name', '=', location_name)]).mapped("id")
         return location_id
 

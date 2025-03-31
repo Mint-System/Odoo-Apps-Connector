@@ -64,6 +64,8 @@ class ProductTemplate(models.Model):
     kardex_search_term_one = fields.Char(string="Suchbegriff")
     kardex_search_term_two = fields.Char(string="Suchbegriff 2")
 
+    last_location_id = fields.Many2one('stock.location', 'Last Location')
+
     # @api.constrains('kardex', 'default_code')
     # def _check_default_code_required(self):
     #     for record in self:

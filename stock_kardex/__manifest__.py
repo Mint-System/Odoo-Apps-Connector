@@ -10,7 +10,7 @@
     "license": "AGPL-3",
     "depends": ["stock", "mrp", "purchase"],
     "data": [
-        # "security/ir.model.access.csv",
+        "security/ir.model.access.csv",
         "views/kardex_stock_views.xml",
         "views/kardex_bom_views.xml",
         "views/kardex_production_views.xml",
