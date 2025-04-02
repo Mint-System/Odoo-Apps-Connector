@@ -129,10 +129,10 @@ class StockPicking(models.Model):
     @api.depends()
     def _compute_validate_button_is_invisible(self):
         for rec in self:
-            if rec.move_ids:
+            if rec.move_line_ids:
                 all_moves_has_kardex_destination = all(
-                    self._check_if_destination_is_kardex(move.location_final_id)
-                    for move in rec.move_ids
+                    self._check_if_destination_is_kardex(move.location_dest_id)
+                    for move in rec.move_line_ids
                 )
             else:
                 all_moves_has_kardex_destination = False
@@ -205,9 +205,9 @@ class StockPicking(models.Model):
         res = super().button_validate()
         for picking in self:
             if self._check_picking_type() == "store":
-                for move in picking.move_ids:
+                for move in picking.move_line_ids:
                     product = move.product_id
-                    product.write({"last_location_id": move.location_final_id})
+                    product.write({"last_location_id": move.location_dest_id})
         #if res and self._check_send_to_kardex():
         #    self.send_to_kardex(self.origin)
             # self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
@@ -292,8 +292,8 @@ class StockPicking(models.Model):
         for picking in self:
             print("PICKING_TYPE:", picking._check_picking_type())
             print("#### PICKING NAME:", picking.name, picking.state)
+            kardex_moves = [move for move in picking.move_line_ids if move.kardex_running_id]
             if picking._check_picking_type() == "production":
-                kardex_moves = [move for move in picking.move_ids if move.kardex_running_id]
                 print("KARDEX MOVES:", kardex_moves)
                 any_kardex_move_is_not_synced = any([not move.kardex_sync for move in kardex_moves])
                 if any_kardex_move_is_not_synced:
@@ -303,11 +303,9 @@ class StockPicking(models.Model):
             elif picking._check_picking_type() == "store":
 
                 all_moves_have_kardex_destination = all(
-                    [move.location_final_id.name == KARDEX_DESTINATION for move in picking.move_ids]
-                )
-                print("all_moves_have_kardex_destination:", all_moves_have_kardex_destination)
+                    [move.location_dest_id.name == KARDEX_DESTINATION for move in kardex_moves])
             
-                any_move_has_no_sync = any([move.kardex_sync == False for move in picking.move_ids])
+                any_move_has_no_sync = any([move.kardex_sync == False for move in kardex_moves])
                 print("any_move_has_no_sync:", any_move_has_no_sync)
                 if all_moves_have_kardex_destination and any_move_has_no_sync:
                     picking.write({"state": "waiting_for_kardex"})
@@ -396,7 +394,8 @@ class StockPicking(models.Model):
                         "kardex_row_update_time": update_time,
                         "kardex_running_id": running_id,
                     }
-                    move_line.move_id.write(done_move)
+                    # move_line.move_id.write(done_move)
+                    move_line.write(done_move)
             message = missing_products_message + "\n Kardex Picking was sent to Kardex."
 
             done_picking = {
@@ -412,7 +411,9 @@ class StockPicking(models.Model):
         message_list = []
         print("############ PICKINGS:", self)
         for picking in self:
-            moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("kardex_running_id", "!=", None), ("kardex_status", "!=", "2")]) 
+            print("############# Picking Name:", picking.name) 
+            moves = self.env["stock.move.line"].search([("picking_id", "=", picking.id), ("kardex_running_id", "!=", None), ("kardex_status", "!=", "2"), ("kardex_sync", "!=", True)]) 
+            print("#MOVES:", moves)
             for move in moves:
                 kardex_running_id = move.kardex_running_id
                 old_status = move.kardex_status
@@ -446,24 +447,24 @@ class StockPicking(models.Model):
                             f"Kardex Status for {move.product_id.name} was not updated."
                         )
                 
-        self._update_picking_state()
-        message = ", ".join(message_list)
+                picking._update_picking_state()
+            message = ", ".join(message_list)
         return self._create_notification(message)
 
     def sync_status(self):
         # pickings = self.env['stock.picking'].search([('state', '=', 'waiting_for_kardex')])
         pickings = self.env['stock.picking'].search([
-            ('move_ids.kardex_status', '=', "1")
+            ('move_line_ids.kardex_status', '=', "1")
         ])
         print("pickings:", pickings)
         pickings.update_status_from_kardex()
 
     def sync_pickings(self):
         # all pickings with status not done
-        pickings = self.env["stock.picking"].search([("state", "!=", 'done')])
+        pickings = self.env["stock.picking"].search([("state", "!=", 'done'), ('move_line_ids.kardex_status', '=', "2")])
         for picking in pickings:
             print("Picking:", picking.name)
-            moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)])
+            moves = self.env["stock.move.line"].search([("picking_id", "=", picking.id), ("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)])
             
             complete = 1
             for move in moves:
@@ -473,10 +474,26 @@ class StockPicking(models.Model):
                     picking_journal_ids_tuple = f"({', '.join(map(str, picking_journal_ids))})" if picking_journal_ids else "('')"
                     condition1 = f"WHERE BzId = {move.kardex_running_id}"
                     condition2 = f"AND ID NOT IN {picking_journal_ids_tuple}"
+
+                    # sql_simple = """
+                    #         SELECT BzId, 
+                    #             Seriennummer,
+                    #             Charge,
+                    #             Suchbegriff,
+                    #             Richtung,
+                    #             Row_Create_Time,
+                    #             Row_Update_Time,
+                    #             Menge AS MengeErledigt,
+                    #             Komplett AS MaxKomplett
+                    #         FROM PPG_Journal
+                    #         {condition1} {condition2}
+                    # """.format(condition1=condition1, condition2=condition2)
+
                     sql = """
                         WITH CTE AS (
                             SELECT BzId, 
                                 Seriennummer,
+                                Charge,
                                 Suchbegriff,
                                 Richtung,
                                 Row_Create_Time,
@@ -485,10 +502,11 @@ class StockPicking(models.Model):
                                 MAX(Komplett) AS MaxKomplett
                             FROM PPG_Journal
                             {condition1} {condition2}
-                            GROUP BY BzId, Seriennummer, Suchbegriff, Richtung, Row_Create_Time, Row_Update_Time
+                            GROUP BY BzId, Seriennummer, Charge, Suchbegriff, Richtung, Row_Create_Time, Row_Update_Time
                         )
                         SELECT c.BzId, 
                             c.Seriennummer,
+                            c.Charge,
                             c.Suchbegriff,
                             c.Richtung,
                             c.Row_Create_Time,
@@ -506,6 +524,7 @@ class StockPicking(models.Model):
                         FROM CTE c;
                         """.format(condition1=condition1, condition2=condition2)
 
+
                     result = self._execute_query_on_mssql("select_one", sql)
                     
                     if result:
@@ -517,7 +536,7 @@ class StockPicking(models.Model):
                         update_time = result["Row_Update_Time"]   
                         complete = max(complete, new_journal_status)  
                         #complete = result["MaxKomplett"]
-                        lot_name = result["Seriennummer"]  
+                        lot_name = result.get("Seriennummer") or result.get("Charge")  
                         direction = result["Richtung"]
                         product_code = result["Suchbegriff"]
                         move.write(
@@ -539,28 +558,52 @@ class StockPicking(models.Model):
                         print("MengeErledigt:", qty_done)
 
                         # update qty_done for move lines
-                        move_lines = self.env["stock.move.line"].search([("move_id", "=", move.id)])
-                        for move_line in move_lines:
-                            print("#### Quantity done:", qty_done)
-                            #new_qty_done = move_line.qty_done #- qty_done
-                            new_qty_done = qty_done
-                            move_line_vals = {
-                                "qty_done": new_qty_done,
-                                "kardex_sync": True,
-                            }
-                            print("LOT_NAME:", lot_name)
-                            print("DIRECTION:", direction)
-                            if lot_name:
-                                product_id = self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
-                                lot = self.env["stock.lot"].search([("name", "=", lot_name), ("product_id", "=", product_id[0])]).mapped("id")
-                                print("LOT :", lot)
-                                if direction == "4":
-                                    print("LOT WILL BE CORRECTED")
-                                    move_line_vals["lot_id"] = lot[0]
-                                if not lot:
-                                    move_line_vals["kardex_sync"] = False
+                        # move_lines = self.env["stock.move.line"].search([("move_id", "=", move.id)])
+                        # for move_line in move_lines:
+                        #     print("#### Quantity done:", qty_done)
+                        #     #new_qty_done = move_line.qty_done #- qty_done
+                        #     new_qty_done = qty_done
+                        #     move_line_vals = {
+                        #         "qty_done": new_qty_done,
+                        #         "kardex_sync": True,
+                        #     }
+                        #     print("LOT_NAME:", lot_name)
+                        #     print("DIRECTION:", direction)
+                        #     if lot_name:
+                        #         product_id = self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
+                        #         lot = self.env["stock.lot"].search([("name", "=", lot_name), ("product_id", "=", product_id[0])]).mapped("id")
+                        #         print("LOT :", lot)
+                        #         if direction == "4":
+                        #             print("LOT WILL BE CORRECTED")
+                        #             move_line_vals["lot_id"] = lot[0]
+                        #         if not lot:
+                        #             move_line_vals["kardex_sync"] = False
 
-                            move_line.write(move_line_vals)
+                        #     move_line.write(move_line_vals)
+                        
+                        # move.write({"kardex_sync": True})
+
+
+                        print("#### Quantity done:", qty_done)
+                        #new_qty_done = move_line.qty_done #- qty_done
+                        new_qty_done = qty_done
+                        move_line_vals = {
+                            "qty_done": new_qty_done,
+                            "kardex_sync": True,
+                        }
+                        print("LOT_NAME:", lot_name)
+                        print("DIRECTION:", direction)
+                        if lot_name:
+                            product_id = self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
+                            lot = self.env["stock.lot"].search([("name", "=", lot_name), ("product_id", "=", product_id[0])]).mapped("id")
+                            print("LOT :", lot)
+                            if direction == "4":
+                                print("LOT WILL BE CORRECTED")
+                                move_line_vals["lot_id"] = lot[0]
+                            if not lot:
+                                move_line_vals["kardex_sync"] = False
+
+                        move.write(move_line_vals)
                         
                         move.write({"kardex_sync": True})
 
@@ -651,6 +694,7 @@ class StockMove(models.Model):
         selection=[("0", "Ready"), ("1", "Pending"), ("2", "Success"), ("3", "Error")],
         default="0",
         string="Kardex STATUS",
+        compute="_compute_kardex_status", store=True
     )
     kardex_running_id = fields.Char(string="Picking BzId")
     kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
@@ -660,6 +704,7 @@ class StockMove(models.Model):
         compute="_compute_has_kardex_location",
         store=False
     )
+    kardex_running_id_string = fields.Char(string='BzIds', compute='_compute_kardex_running_id_string', store=False)
 
     # location_id = fields.Many2one(
     #     'stock.location', 
@@ -684,6 +729,21 @@ class StockMove(models.Model):
     #         if last_move:
     #             return last_move.location_dest_id.id
     #     return False
+
+    @api.depends("move_line_ids.kardex_running_id")
+    def _compute_kardex_running_id_string(self):
+        for move in self:
+            move.kardex_running_id_string = ", ".join(map(str, move.move_line_ids.filtered(lambda line: line.kardex_running_id).mapped('kardex_running_id')))
+
+    @api.depends('move_line_ids.kardex_status')
+    def _compute_kardex_status(self):
+        for move in self:
+            if move.move_line_ids and all(line.kardex_status == '2' for line in move.move_line_ids):
+                move.kardex_status = '2'
+            elif move.move_line_ids and any(line.kardex_status == '3' for line in move.move_line_ids):
+                move.kardex_status = '3' 
+            else:
+                move.kardex_status = '1'
 
     @api.onchange('move_line_ids.has_kardex_location')
     @api.depends('move_line_ids.has_kardex_location')
@@ -777,6 +837,20 @@ class StockMoveLine(models.Model):
     )
     kardex_sync = fields.Boolean(string="Mit Kardex synchronisiert", default=False)
 
+    kardex_id = fields.Integer(string="Kardex Id")
+    kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
+    kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
+    kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
+    kardex_status = fields.Selection(
+        selection=[("0", "Ready"), ("1", "Pending"), ("2", "Success"), ("3", "Error")],
+        default="0",
+        string="Kardex STATUS",
+    )
+    kardex_running_id = fields.Char(string="Picking BzId")
+   
+    kardex_journal_status = fields.Char(string="Komplett")
+  
+
 
     # @api.depends('location_id', 'product_id')
     # def _compute_last_location_id(self):
@@ -791,6 +865,8 @@ class StockMoveLine(models.Model):
             
     #             if last_move:
     #                 record.last_location_id = last_move.location_dest_id
+
+    kardex_running_id = fields.Integer(string='BzId', required=True)
 
 
     @api.depends('location_id')
