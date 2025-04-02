@@ -24,6 +24,8 @@ class ResUsersKeychain(models.AbstractModel):
             return self.env.user
         elif self.env.company.ssh_private_key_file:
             return self.env.company
+        else:
+            return False
 
     def run_ssh_command(self, command, timeout=10):
         """
@@ -31,7 +33,7 @@ class ResUsersKeychain(models.AbstractModel):
         """
 
         keychain = self._get_keychain()
-        if keychain.ssh_private_key_file:
+        if keychain and keychain.ssh_private_key_file:
             try:
                 with open(keychain.ssh_private_key_filename, "wb") as file:
                     file.write(base64.b64decode(keychain.ssh_private_key_file))

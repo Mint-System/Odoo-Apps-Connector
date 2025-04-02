@@ -402,9 +402,9 @@ class GitRepo(models.Model):
             message,
             "--no-gpg-sign",
         ]
-        output = check_output(git_command, stderr=STDOUT, text=True)
+        result = run(git_command, text=True, capture_output=True)
         self.cmd_message_post(message)
-        return output
+        return result.stdout
 
     def cmd_commit_all(self, message):
         self.ensure_one()
@@ -425,9 +425,9 @@ class GitRepo(models.Model):
             message,
             "--no-gpg-sign",
         ]
-        output = check_output(git_command, stderr=STDOUT, text=True)
+        result = run(git_command, text=True, capture_output=True)
         self.cmd_message_post(message)
-        return output
+        return result.stdout
 
     # Branch Commands
 
