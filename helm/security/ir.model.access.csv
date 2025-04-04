@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_helm_repo_user,access.helm.repo.user,model_helm_repo,helm.group_user,1,0,0,0
+access_helm_repo_manager,access.helm.repo.manager,model_helm_repo,helm.group_manager,1,1,1,1
