@@ -12,9 +12,7 @@ class GitForge(models.Model):
 
     name = fields.Char(required=True)
     hostname = fields.Char(required=True)
-    http_url = fields.Char(
-        string="HTTP Url", compute="_compute_http_url", readonly=True
-    )
+    http_url = fields.Char(string="HTTP Url", compute="_compute_http_url", readonly=True)
     local_path = fields.Char(compute="_compute_local_path")
 
     def _compute_http_url(self):

@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-
-    
     <record id="product_template_form_view_inherit_kardex" model="ir.ui.view">
         <field name="name">product.template.kardex.form</field>
         <field name="model">product.template</field>
@@ -18,16 +16,17 @@
         </field>
     </record>
 
-    
-
     <record id="product_template_form_view" model="ir.ui.view">
         <field name="name">product.template.kardex.form</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view" />
         <field name="arch" type="xml">
-            <xpath expr="//page[@name='general_information']//group[@name='group_general']" position="inside">
-                <field name="kardex_search_term_one"/>
-                <field name="kardex_search_term_two"/>
+            <xpath
+                expr="//page[@name='general_information']//group[@name='group_general']"
+                position="inside"
+            >
+                <field name="kardex_search_term_one" />
+                <field name="kardex_search_term_two" />
             </xpath>
 
             <xpath expr="//div[@name='options']" position="inside">
@@ -44,13 +43,13 @@
                 <page name="kardex" string="Kardex" invisible="not kardex">
                     <form string="Kardex Daten">
                         <header>
-                             <button
+                            <button
                                 name="send_to_kardex"
                                 type="object"
                                 string="An Kardex senden"
                                 invisible="kardex_done"
-                            /> 
-                           <button
+                            />
+                            <button
                                 name="update_to_kardex"
                                 type="object"
                                 string="Update Kardex"
@@ -61,7 +60,7 @@
                                 type="object"
                                 string="Status Update"
                                 invisible="not kardex_done"
-                            /> 
+                            />
                         </header>
                         <sheet>
                             <group>
@@ -92,26 +91,29 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_tree_view" />
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='default_code']" position="replace"/>
+            <xpath expr="//field[@name='default_code']" position="replace" />
             <xpath expr="//field[@name='name']" position="before">
-                <field name="default_code"/>
+                <field name="default_code" />
             </xpath>
-             <xpath expr="//field[@name='name']" position="after">
-                <field name="kardex_search_term_one"/>
-                <field name="kardex_search_term_two"/>
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="kardex_search_term_one" />
+                <field name="kardex_search_term_two" />
                 <field name='kardex' string="Kardex" optional="show" />
             </xpath>
-          
         </field>
     </record>
 
     <record id="product_template_search_view_inherited" model="ir.ui.view">
         <field name="name">product.template.search.inherit</field>
         <field name="model">product.template</field>
-        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="inherit_id" ref="product.product_template_search_view" />
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="replace">
-                <field name="name" string="Product" filter_domain="['|', '|', '|', '|', '|', '|', ('default_code', 'ilike', self), ('product_variant_ids.default_code', 'ilike', self), ('name', 'ilike', self), ('kardex_search_term_one', 'ilike', self), ('kardex_search_term_two', 'ilike', self), ('barcode', 'ilike', self), ('categ_id.name', 'ilike', self)]"/>
+                <field
+                    name="name"
+                    string="Product"
+                    filter_domain="['|', '|', '|', '|', '|', '|', ('default_code', 'ilike', self), ('product_variant_ids.default_code', 'ilike', self), ('name', 'ilike', self), ('kardex_search_term_one', 'ilike', self), ('kardex_search_term_two', 'ilike', self), ('barcode', 'ilike', self), ('categ_id.name', 'ilike', self)]"
+                />
             </xpath>
         </field>
     </record>

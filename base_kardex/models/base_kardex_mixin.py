@@ -41,11 +41,8 @@ ODOO_KARDEX_PICKING_FIXER = {
     "kardex_direction": "Richtung",
     "kardex_search": "Suchbegriff",
     "kardex_running_id": "BzId",
-    "kardex_send_flag": "Versandflag"
+    "kardex_send_flag": "Versandflag",
 }
-
-
-
 
 
 class BaseKardexMixin(models.AbstractModel):
@@ -87,9 +84,7 @@ class BaseKardexMixin(models.AbstractModel):
 
     def _execute_query_on_mssql(self, query_type, query, *params):
         # Find the instance of base.external.mssql with priority=True
-        mssql_instance = self.env["base.external.mssql"].search(
-            [("priority", "=", True)], limit=1
-        )
+        mssql_instance = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
         if mssql_instance:
             # Call the execute method on the found instance
             result = mssql_instance.execute(query_type, query, *params)
@@ -111,9 +106,7 @@ class BaseKardexMixin(models.AbstractModel):
     def _update_external_object(self, vals):
         # translate vals dictionary to external database scheme
         fixer = ODOO_KARDEX_PRODUCT_FIXER
-        kardex_dict = self._replace_false_with_empty_string(
-            self._fix_dictionary(fixer, vals)
-        )
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
         # building list
         kardex_list = []
         for key, value in kardex_dict.items():
@@ -152,9 +145,7 @@ class BaseKardexMixin(models.AbstractModel):
             fixer = ODOO_KARDEX_PRODUCT_FIXER
         elif table == "PPG_Auftraege":
             fixer = ODOO_KARDEX_PICKING_FIXER
-        kardex_dict = self._replace_false_with_empty_string(
-            self._fix_dictionary(fixer, vals)
-        )
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
         # building sql query
         ", ".join(["?"] * len(kardex_dict))
         columns = ", ".join(kardex_dict.keys())
@@ -166,7 +157,7 @@ class BaseKardexMixin(models.AbstractModel):
         columns = "Row_Create_Time, Row_Update_Time"
         if table == "PPG_Auftraege":
             columns = f"{columns}, BzId"
-            
+
         sql = f"SELECT {columns} FROM {table} WHERE ID = {new_id}"
         _logger.info("sql: %s" % (sql,))
         record = self._execute_query_on_mssql("select", sql)

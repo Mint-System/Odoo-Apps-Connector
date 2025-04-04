@@ -38,9 +38,7 @@ class TestGitRepo(TransactionCase):
         self.repo_id.cmd_init()
         self.assertEqual(self.repo_id.state, "initialized")
 
-        with open(
-            os.path.join(self.repo_id.local_path, "test.txt"), "w"
-        ) as target_file:
+        with open(os.path.join(self.repo_id.local_path, "test.txt"), "w") as target_file:
             with file_open("git_base/tests/test.txt", "r") as source_file:
                 target_file.write(source_file.read())
 
@@ -69,6 +67,4 @@ class TestGitRepo(TransactionCase):
     def test_git_repo_keys(self):
         author = f"{self.account_id.name}-{self.repo_id.name}@{self.forge_id.hostname}"
         self.repo_id.action_generate_deploy_keys()
-        self.assertTrue(
-            author in self.repo_id.ssh_public_key, self.repo_id.ssh_public_key
-        )
+        self.assertTrue(author in self.repo_id.ssh_public_key, self.repo_id.ssh_public_key)

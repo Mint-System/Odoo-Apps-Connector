@@ -30,12 +30,8 @@ class GitRepo(models.Model):
     # Repo fields
 
     name = fields.Char(required=True, states=READONLY_STATES)
-    http_url = fields.Char(
-        string="HTTP Url", compute="_compute_http_url", readonly=True
-    )
-    ssh_url = fields.Char(
-        string="SSH Url", compute="_compute_ssh_url", store=True, readonly=True
-    )
+    http_url = fields.Char(string="HTTP Url", compute="_compute_http_url", readonly=True)
+    ssh_url = fields.Char(string="SSH Url", compute="_compute_ssh_url", store=True, readonly=True)
     local_path = fields.Char(compute="_compute_local_path")
     state = fields.Selection(
         selection=[
@@ -49,9 +45,7 @@ class GitRepo(models.Model):
     )
     ref = fields.Char(readonly=True, compute="_compute_ref")
     active_branch_id = fields.Many2one("git.repo.branch", readonly=True)
-    log_ids = fields.One2many(
-        "git.repo.log", "repo_id", readonly=True, compute="_compute_log_ids"
-    )
+    log_ids = fields.One2many("git.repo.log", "repo_id", readonly=True, compute="_compute_log_ids")
 
     def _compute_log_ids(self):
         for rec in self:
@@ -65,9 +59,7 @@ class GitRepo(models.Model):
     @api.depends("forge_id", "account_id", "name")
     def _compute_ssh_url(self):
         for rec in self:
-            rec.ssh_url = (
-                f"git@{rec.forge_id.hostname}:{rec.account_id.name}/{rec.name}.git"
-            )
+            rec.ssh_url = f"git@{rec.forge_id.hostname}:{rec.account_id.name}/{rec.name}.git"
 
     @api.constrains("ssh_url")
     def _validate_ssh_url(self):
@@ -97,9 +89,7 @@ class GitRepo(models.Model):
         else:
             return self.env.ref("git_base.cmd_init")
 
-    cmd_id = fields.Many2one(
-        "git.repo.cmd", string="Command", default=_get_default_cmd_id
-    )
+    cmd_id = fields.Many2one("git.repo.cmd", string="Command", default=_get_default_cmd_id)
     cmd_help = fields.Char(related="cmd_id.help")
     has_input = fields.Boolean(related="cmd_id.has_input")
     cmd_input = fields.Text("Input")
@@ -126,14 +116,10 @@ class GitRepo(models.Model):
                     raise UserError(_("Upload path does not exist."))
 
                 if rec.cmd_input_filename.endswith(".zip"):
-                    with zipfile.ZipFile(
-                        io.BytesIO(base64.decodebytes(rec.cmd_input_file))
-                    ) as zip_file:
+                    with zipfile.ZipFile(io.BytesIO(base64.decodebytes(rec.cmd_input_file))) as zip_file:
                         zip_file.extractall(upload_path)
                 else:
-                    with open(
-                        os.path.join(upload_path, rec.cmd_input_filename), "wb"
-                    ) as file:
+                    with open(os.path.join(upload_path, rec.cmd_input_filename), "wb") as file:
                         file.write(base64.decodebytes(rec.cmd_input_file))
                 rec.cmd_input_file = False
                 rec.cmd_input_filename = False
@@ -146,18 +132,12 @@ class GitRepo(models.Model):
 
     # Configuration fields
 
-    push_url = fields.Char(
-        compute="_compute_remote_url", store=True, states=READONLY_STATES
-    )
-    pull_url = fields.Char(
-        compute="_compute_remote_url", store=True, states=READONLY_STATES
-    )
+    push_url = fields.Char(compute="_compute_remote_url", store=True, states=READONLY_STATES)
+    pull_url = fields.Char(compute="_compute_remote_url", store=True, states=READONLY_STATES)
     user_id = fields.Many2one("res.users")
     ssh_public_key = fields.Char("SSH Public Key")
     ssh_private_key_file = fields.Binary("SSH Private Key")
-    ssh_private_key_filename = fields.Char(
-        "SSH Private Key Filename", compute="_compute_ssh_private_key_filename"
-    )
+    ssh_private_key_filename = fields.Char("SSH Private Key Filename", compute="_compute_ssh_private_key_filename")
     ssh_private_key_password = fields.Char("SSH Private Key Password")
     active_keychain = fields.Char("Active Keychain", compute="_compute_active_keychain")
 
@@ -175,9 +155,7 @@ class GitRepo(models.Model):
         for rec in self:
             keychain = self._get_keychain()
             rec.active_keychain = (
-                f"{str(keychain).replace(',','')}: {keychain.ssh_private_key_filename}"
-                if keychain
-                else ""
+                f"{str(keychain).replace(',','')}: {keychain.ssh_private_key_filename}" if keychain else ""
             )
 
     # Model methods
@@ -185,13 +163,9 @@ class GitRepo(models.Model):
     @api.model
     def switch_to_environment_branch(self):
         environment_id = self.env["server.config.environment"].get_active_environment()
-        branch_id = self.branch_ids.filtered(
-            lambda b: b.environment_id == environment_id
-        )
+        branch_id = self.branch_ids.filtered(lambda b: b.environment_id == environment_id)
         if not branch_id:
-            raise UserError(
-                _("No branch found for environment: %s") % environment_id.name
-            )
+            raise UserError(_("No branch found for environment: %s") % environment_id.name)
         self.cmd_switch(branch_id.name)
 
     def ensure_local_path_exists(self):
@@ -247,31 +221,21 @@ class GitRepo(models.Model):
                 .replace("  origin/", "")
                 .strip()  # Remove newlines
             ).split("\n")
-            return [
-                branch
-                for branch in remote_branch_list
-                if not re.match(r"HEAD -> .+", branch)
-            ]
+            return [branch for branch in remote_branch_list if not re.match(r"HEAD -> .+", branch)]
         else:
             return ""
 
     def _get_git_remote(self):
         self.ensure_one()
         if os.path.exists(f"{self.local_path}"):
-            return check_output(["git", "-C", self.local_path, "remote"]).decode(
-                "utf-8"
-            )
+            return check_output(["git", "-C", self.local_path, "remote"]).decode("utf-8")
         else:
             return ""
 
     def _get_git_current_branch_name(self):
         self.ensure_one()
         if os.path.exists(f"{self.local_path}/.git"):
-            return (
-                check_output(["git", "-C", self.local_path, "branch", "--show-current"])
-                .decode("utf-8")
-                .strip()
-            )
+            return check_output(["git", "-C", self.local_path, "branch", "--show-current"]).decode("utf-8").strip()
         else:
             return ""
 
@@ -342,9 +306,7 @@ class GitRepo(models.Model):
                 output = getattr(self, "cmd_" + self.cmd_id.code)()
             self.write({"cmd_output": output})
 
-            if self.cmd_id.next_command_id and (
-                self.state in self.cmd_id.next_command_id.states
-            ):
+            if self.cmd_id.next_command_id and (self.state in self.cmd_id.next_command_id.states):
                 self.cmd_id = self.cmd_id.next_command_id
             if self.cmd_id.clear_input:
                 self.cmd_input = False
@@ -445,33 +407,25 @@ class GitRepo(models.Model):
 
     def cmd_add_all(self):
         self.ensure_one()
-        output = check_output(
-            ["git", "-C", self.local_path, "add", "--all"], stderr=STDOUT
-        )
+        output = check_output(["git", "-C", self.local_path, "add", "--all"], stderr=STDOUT)
         self.cmd_message_post()
         return output
 
     def cmd_unstage_all(self):
         self.ensure_one()
-        output = check_output(
-            ["git", "-C", self.local_path, "restore", "--staged", "."], stderr=STDOUT
-        )
+        output = check_output(["git", "-C", self.local_path, "restore", "--staged", "."], stderr=STDOUT)
         self.cmd_message_post()
         return output
 
     def cmd_clean(self):
         self.ensure_one()
-        output = check_output(
-            ["git", "-C", self.local_path, "clean", "-fd"], stderr=STDOUT
-        )
+        output = check_output(["git", "-C", self.local_path, "clean", "-fd"], stderr=STDOUT)
         self.cmd_message_post()
         return output
 
     def cmd_reset_hard(self):
         self.ensure_one()
-        output = check_output(
-            ["git", "-C", self.local_path, "reset", "--hard"], stderr=STDOUT
-        )
+        output = check_output(["git", "-C", self.local_path, "reset", "--hard"], stderr=STDOUT)
         self.cmd_message_post()
         return output
 
@@ -552,13 +506,9 @@ class GitRepo(models.Model):
         git_branch_list = self._get_git_branch_list()
 
         if branch_id and branch_name in git_branch_list:
-            output = check_output(
-                ["git", "-C", self.local_path, "switch", branch_name], stderr=STDOUT
-            )
+            output = check_output(["git", "-C", self.local_path, "switch", branch_name], stderr=STDOUT)
         if not branch_id:
-            branch_id = self.env["git.repo.branch"].create(
-                {"name": branch_name, "repo_id": self.id}
-            )
+            branch_id = self.env["git.repo.branch"].create({"name": branch_name, "repo_id": self.id})
         if branch_name not in git_branch_list:
             output = check_output(
                 ["git", "-C", self.local_path, "switch", "-c", branch_name],
@@ -594,17 +544,13 @@ class GitRepo(models.Model):
         self.ensure_one()
         if not branch_name:
             raise UserError(_("Missing branch name."))
-        output = self.run_ssh_command(
-            ["git", "-C", self.local_path, "rebase", branch_name]
-        )
+        output = self.run_ssh_command(["git", "-C", self.local_path, "rebase", branch_name])
         self.cmd_message_post(branch_name)
         return output
 
     def cmd_rebase_abort(self):
         self.ensure_one()
-        output = self.run_ssh_command(
-            ["git", "-C", self.local_path, "rebase", "--abort"]
-        )
+        output = self.run_ssh_command(["git", "-C", self.local_path, "rebase", "--abort"])
         self.cmd_message_post()
         return output
 
@@ -644,9 +590,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ],
         )
-        self.active_branch_id.write(
-            {"upstream": f"origin/{self.active_branch_id.name}"}
-        )
+        self.active_branch_id.write({"upstream": f"origin/{self.active_branch_id.name}"})
         self.cmd_message_post()
         return output
 
@@ -711,9 +655,7 @@ class GitRepo(models.Model):
                 self.active_branch_id.name,
             ]
         )
-        self.active_branch_id.write(
-            {"upstream": f"origin/{self.active_branch_id.name}"}
-        )
+        self.active_branch_id.write({"upstream": f"origin/{self.active_branch_id.name}"})
         self.cmd_message_post()
         return output
 
@@ -732,18 +674,14 @@ class GitRepo(models.Model):
         if branch_id:
             self.active_branch_id = branch_id
         else:
-            self.active_branch_id = self.env["git.repo.branch"].create(
-                {"name": branch_name, "repo_id": self.id}
-            )
+            self.active_branch_id = self.env["git.repo.branch"].create({"name": branch_name, "repo_id": self.id})
         self.cmd_message_post()
         return output
 
     def cmd_clone(self):
         self.ensure_one()
         cmd = self.env["git.repo.cmd"].get_by_code("clone")
-        output = self.run_ssh_command(
-            ["git", "clone", self.ssh_url, self.local_path], cmd.timeout
-        )
+        output = self.run_ssh_command(["git", "clone", self.ssh_url, self.local_path], cmd.timeout)
         self.write(
             {
                 "state": "connected",
@@ -761,9 +699,7 @@ class GitRepo(models.Model):
                 )
             else:
                 repo_branch.write({"upstream": f"origin/{branch}"})
-        self.active_branch_id = self.branch_ids.filtered(
-            lambda b: b.name == self._get_git_current_branch_name()
-        )
+        self.active_branch_id = self.branch_ids.filtered(lambda b: b.name == self._get_git_current_branch_name())
         self.cmd_message_post()
         return output
 
@@ -787,9 +723,7 @@ class GitRepo(models.Model):
                 )
             else:
                 repo_branch.write({"upstream": f"origin/{branch}"})
-        self.active_branch_id = self.branch_ids.filtered(
-            lambda b: b.name == self._get_git_current_branch_name()
-        )
+        self.active_branch_id = self.branch_ids.filtered(lambda b: b.name == self._get_git_current_branch_name())
         self.cmd_message_post()
         return output
 

@@ -64,15 +64,13 @@ class ProductTemplate(models.Model):
     kardex_search_term_one = fields.Char(string="Suchbegriff")
     kardex_search_term_two = fields.Char(string="Suchbegriff 2")
 
-    last_location_id = fields.Many2one('stock.location', 'Last Location')
+    last_location_id = fields.Many2one("stock.location", "Last Location")
 
     # @api.constrains('kardex', 'default_code')
     # def _check_default_code_required(self):
     #     for record in self:
     #         if record.kardex and not record.default_code:
     #             raise ValidationError("The 'Internal Reference' (default_code) is required when 'Kardex' is enabled.")
-
-
 
     @api.model
     def default_get(self, fields_list):
@@ -81,7 +79,7 @@ class ProductTemplate(models.Model):
             category = self.env["product.category"].browse(res["categ_id"])
             if category and category.kardex_tracking:
                 res["tracking"] = category.kardex_tracking
-                if category.kardex_tracking != 'none':
+                if category.kardex_tracking != "none":
                     res["is_storable"] = True
 
         return res
@@ -103,9 +101,7 @@ class ProductTemplate(models.Model):
         """
         for product in self:
             if product.kardex:
-                kardex_categories = self.env["product.category"].search(
-                    [("kardex", "=", True)]
-                )
+                kardex_categories = self.env["product.category"].search([("kardex", "=", True)])
                 if kardex_categories:
                     domain = [("id", "in", kardex_categories.ids)]
                 else:
@@ -122,7 +118,7 @@ class ProductTemplate(models.Model):
     #             category_abbr = re.escape(
     #                 record.categ_id.abbr
     #             )  # Escape to handle any special characters in the category name
-                
+
     #             pattern = rf"^{category_abbr}\.[\w.]+$"  # Regex: category name + dot + alphanumeric or dots
 
     #             # Validate default_code against the pattern
@@ -137,9 +133,7 @@ class ProductTemplate(models.Model):
             product_vals = product.read()[0]
             if self._check_already_in_kardex(product):
                 product_vals["description"] = (
-                    re.sub(r"<.*?>", "", product_vals["description"])
-                    if product_vals["description"]
-                    else ""
+                    re.sub(r"<.*?>", "", product_vals["description"]) if product_vals["description"] else ""
                 )
                 self._update_external_object(product_vals)
                 message = "Kardex Articel was updated."
@@ -174,18 +168,14 @@ class ProductTemplate(models.Model):
                 ) = self._get_sn_ch_verw(product)
                 product_vals["kardex_product_group"] = self._get_product_group(product)
                 product_vals["description"] = (
-                    re.sub(r"<.*?>", "", product_vals["description"])
-                    if product_vals["description"]
-                    else ""
+                    re.sub(r"<.*?>", "", product_vals["description"]) if product_vals["description"] else ""
                 )
                 product_vals["kardex_unit"] = product.uom_id.name
                 product_vals["kardex_search"] = product.default_code
                 product_vals["kardex_status"] = "1"
 
                 table = "PPG_Artikel"
-                new_id, create_time, update_time, running_id = self._create_external_object(
-                    product_vals, table
-                )
+                new_id, create_time, update_time, running_id = self._create_external_object(product_vals, table)
 
                 done = {
                     "kardex_done": True,
@@ -204,7 +194,7 @@ class ProductTemplate(models.Model):
             old_status = product.kardex_status
             sql = f"SELECT STATUS, Row_Update_Time FROM PPG_Artikel WHERE ID = {kardex_id}"
             result = self._execute_query_on_mssql("select_one", sql)
-            _logger.info("result: {}".format(result))
+            _logger.info(f"result: {result}")
             new_status = result["STATUS"]
             update_time = result["Row_Update_Time"]
 
@@ -321,14 +311,10 @@ class ProductTemplate(models.Model):
         val_dict["kardex_info_3"] = info3
         info4 = record.Info4.strip() if record.Info4 else ""
         val_dict["kardex_info_4"] = info4
-        val_dict["kardex_tracking"] = self._get_tracking(
-            record.ID, record.ChVerw, record.SnVerw
-        )
+        val_dict["kardex_tracking"] = self._get_tracking(record.ID, record.ChVerw, record.SnVerw)
         val_dict["default_code"] = record.Suchbegriff
         val_dict["categ_id"] = self._get_categ_id(record.Artikelgruppe.strip())
-        val_dict["uom_id"] = val_dict["uom_po_id"] = self._get_unit_id(
-            record.Einheit.strip()
-        )
+        val_dict["uom_id"] = val_dict["uom_po_id"] = self._get_unit_id(record.Einheit.strip())
         val_dict["kardex_row_create_time"] = record.Row_Create_Time
         val_dict["kardex_row_update_time"] = record.Row_Update_Time
         val_dict["kardex_is_fifo"] = record.isFIFO
@@ -377,7 +363,7 @@ class ProductTemplate(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             # record = super(ProductTemplate, self).create(vals)
-        # handle tracking
+            # handle tracking
             if "kardex_tracking" in vals:
                 self._update_variants_tracking(vals["kardex_tracking"])
             # fixing missing kardex values
@@ -385,10 +371,7 @@ class ProductTemplate(models.Model):
                 vals = self._update_record(vals)
                 # vals['kardex_row_create_time'], vals['kardex_row_update_time'] = self._get_dates(record, KARDEX_DATE_HANDLING)
 
-                if (
-                    not vals["kardex_done"]
-                    and SEND_KARDEX_PRODUCT_ON_CREATE
-                ):
+                if not vals["kardex_done"] and SEND_KARDEX_PRODUCT_ON_CREATE:
                     table = "PPG_Artikel"
                     new_id = self._create_external_object(
                         vals, table
@@ -415,4 +398,4 @@ class ProductTemplate(models.Model):
         #             #record.write(not_done)
         #             vals['kardex_done'] = False
 
-        return super(ProductTemplate, self).write(vals)
+        return super().write(vals)

@@ -1,9 +1,6 @@
 import logging
-import random
-import string
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -15,7 +12,7 @@ class PurchaseOrder(models.Model):
 
     kardex = fields.Boolean(string="Kardex", default=False, compute="_compute_kardex", store=True)
 
-    @api.depends('order_line.product_id.kardex')
+    @api.depends("order_line.product_id.kardex")
     def _compute_kardex(self):
         for order in self:
             order.kardex = any(line.product_id.kardex for line in order.order_line)
@@ -37,4 +34,3 @@ class PurchaseOrder(models.Model):
 #             if line.order_id:
 #                 line.order_id._compute_kardex()
 #         return res
-

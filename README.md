@@ -16,5 +16,7 @@ git clone git@github.com:mint-system/odoo-apps-connector.git ./addons/connector
 | --- | --- |
 | [base_kardex](base_kardex) |         Provides Basic Kardex Functionality. |
 | [git_base](git_base) |         Manage git repositories with Odoo. |
+| [kubectl](kubectl) |         Manage kubectl configuration. |
 | [product_kardex](product_kardex) |     """, |
+| [ssh](ssh) |         Manage SSH credentials. |
 | [stock_kardex](stock_kardex) |     """, |

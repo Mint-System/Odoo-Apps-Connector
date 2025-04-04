@@ -4,11 +4,7 @@ STOCK_PICKING_DIRECTION_FIXER = {
 }
 
 
-STOCK_PICKING_SEND_FLAG_FIXER = {
-    17: "0",
-    1: "",
-    5: ""
-}
+STOCK_PICKING_SEND_FLAG_FIXER = {17: "0", 1: "", 5: ""}
 
 PICKING_TYPE_FIXER = {
     17: "outgoing",
@@ -31,4 +27,3 @@ KARDEX_DESTINATION = "Kardex"
 USE_KARDEX_AS_DEFAULT_WAREHOUSE = False
 
 COMPANY_ID = 1
-

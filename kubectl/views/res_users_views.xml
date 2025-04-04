@@ -1,0 +1,36 @@
+<?xml version="1.0" ?>
+<odoo>
+    <record id="view_users_form" model="ir.ui.view">
+        <field name="name">git_base.view_users_form</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences']" position="after">
+                <page string="kubernetes" name="kubectl" groups="base.group_no_one">
+                    <group>
+                        <group>
+                            <field name="kubectl_config" />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_users_form_simple_modif" model="ir.ui.view">
+        <field name="name">git_base.view_users_form_simple_modif</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif" />
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='preferences_page']" position="after">
+                <page string="kubernetes" name="kubectl" groups="base.group_no_one">
+                    <group>
+                        <group>
+                            <field name="kubectl_config" />
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
