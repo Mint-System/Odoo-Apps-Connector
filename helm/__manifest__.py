@@ -20,4 +20,5 @@
     "auto_install": False,
     "images": ["images/screen.png"],
     "demo": ["demo/helm_repo_demo.xml"],
+    "external_dependencies": {"bin": ["helm"]},
 }

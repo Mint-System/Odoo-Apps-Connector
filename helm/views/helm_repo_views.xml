@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-
     <record id="helm_repo_form_view" model="ir.ui.view">
         <field name="name">helm.helm_repo_form_view</field>
         <field name="model">helm.repo</field>
@@ -9,13 +8,14 @@
                 <header>
                     <field name="state" widget="statusbar" select="1" readonly="1" />
                     <button name="add_repo" string="Add" type="object" />
+                    <button name="install_chart" string="Install" type="object" />
+                    <button name="uninstall_chart" string="Uninstall" type="object" />
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box">
-                    </div>
+                    <div class="oe_button_box" name="button_box" />
                     <div class="oe_title">
                         <h1>
-                            <field name="name"/>
+                            <field name="name" />
                         </h1>
                     </div>
                     <notebook>
@@ -61,14 +61,17 @@
         <field name="search_view_id" ref="helm_repo_search_view" />
     </record>
 
-    <menuitem id="helm.menu_root" name="Helm" web_icon="helm,static/description/icon.png" />
+    <menuitem
+        id="helm.menu_root"
+        name="Helm"
+        web_icon="helm,static/description/icon.png"
+    />
     <menuitem id="helm.menu_document" name="Helm" parent="helm.menu_root" />
-    <menuitem 
+    <menuitem
         id="helm.menu_helm_repo"
-        name="Repos" 
+        name="Repos"
         parent="helm.menu_document"
         action="helm.action_helm_repo_view"
         sequence="10"
     />
-
 </odoo>

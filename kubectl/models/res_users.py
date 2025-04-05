@@ -8,4 +8,4 @@ _logger = logging.getLogger(__name__)
 class ResUsers(models.Model):
     _inherit = "res.users"
 
-    kubectl_config = fields.Char("kubectl config")
+    kubectl_config = fields.Text("kubectl config")
