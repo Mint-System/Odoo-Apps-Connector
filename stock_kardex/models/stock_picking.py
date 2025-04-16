@@ -14,6 +14,8 @@ from .config import (
     ODOO_KARDEX_UNIT_FIXER,
     PICKING_TYPE_FIXER,
     STOCK_PICKING_SEND_FLAG_FIXER,
+    OVERRIDE_SERIAL_FOR_STORE,
+    CREATE_SERIAL_FOR_STORE
 )
 
 
@@ -344,6 +346,8 @@ class StockPicking(models.Model):
                 picking_vals["kardex_unit"] = self._get_unit(move_line.product_id.uom_id.name)
                 picking_vals["kardex_quantity"] = move_line.quantity
                 picking_vals["kardex_doc_number"] = picking.name
+                if move_line.lot_id:
+                    picking_vals["kardex_serial"] = move_line.lot_id.name
                 # picking_vals["kardex_destination"] = KARDEX_DESTINATION
 
                 picking_vals["kardex_direction"] = self._get_direction(picking_origin)
@@ -582,6 +586,18 @@ class StockPicking(models.Model):
                                 .mapped("id")
                             )
                             print("LOT :", lot)
+                            if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
+                                if lot:
+                                    move_line_vals["lot_id"] = lot[0]
+                                elif CREATE_SERIAL_FOR_STORE:
+                                    
+                                    new_lot = self.env["stock.lot"].create(
+                                        {
+                                            "name": lot_name,
+                                            "product_id": product_id[0],
+                                        }
+                                    )
+                                    move_line_vals["lot_id"] = new_lot.id
                             if direction == "4":
                                 print("LOT WILL BE CORRECTED")
                                 move_line_vals["lot_id"] = lot[0]
@@ -765,7 +781,8 @@ class StockMove(models.Model):
 
                     if picking_type_code == "incoming" and origin_type == "store":
                         last_location_id = product.last_location_id
-                        print("##### last location", last_location_id.name)
+                        if last_location_id:
+                            print("##### last location", last_location_id.name)
                         vals["location_final_id"] = last_location_id.id
 
                 # parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
@@ -837,7 +854,6 @@ class StockMoveLine(models.Model):
     #             if last_move:
     #                 record.last_location_id = last_move.location_dest_id
 
-    kardex_running_id = fields.Integer(string="BzId", required=True)
 
     @api.depends("location_id")
     @api.onchange("location_id")

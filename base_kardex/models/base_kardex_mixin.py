@@ -42,6 +42,8 @@ ODOO_KARDEX_PICKING_FIXER = {
     "kardex_search": "Suchbegriff",
     "kardex_running_id": "BzId",
     "kardex_send_flag": "Versandflag",
+    "kardex_charge": "Charge",
+    "kardex_serial": "Seriennummer",
 }
 
 
