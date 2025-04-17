@@ -318,7 +318,9 @@ class StockPicking(models.Model):
             if check_moves_counter > 0:
                 missing_products_message = f"The products {', '.join(check_moves_list)} were previously unknown in Kardex and were initially transferred."
 
-            kardex_move_lines = picking.move_line_ids
+            kardex_move_lines = picking.move_line_ids.filtered(
+                lambda m: not m.kardex_done and not m.kardex_running_id
+            )
             # if self._check_mp_picking(picking_type_id):
             # import pdb; pdb.set_trace()
             if self._check_picking_type() == "production":
@@ -346,8 +348,10 @@ class StockPicking(models.Model):
                 picking_vals["kardex_unit"] = self._get_unit(move_line.product_id.uom_id.name)
                 picking_vals["kardex_quantity"] = move_line.quantity
                 picking_vals["kardex_doc_number"] = picking.name
-                if move_line.lot_id:
+                if move_line.lot_id and move_line.product_id.tracking == "serial":
                     picking_vals["kardex_serial"] = move_line.lot_id.name
+                if move_line.lot_id and move_line.product_id.tracking == "lot":
+                    picking_vals["kardex_charge"] = move_line.lot_id.name
                 # picking_vals["kardex_destination"] = KARDEX_DESTINATION
 
                 picking_vals["kardex_direction"] = self._get_direction(picking_origin)
@@ -375,6 +379,17 @@ class StockPicking(models.Model):
             }
             picking.write(done_picking)
             self._update_picking_state()
+
+            # get all pickings belonging to the same group
+            pickings_with_same_group = self.env["stock.picking"].search(
+                [("group_id", "=", picking.group_id.id), ('kardex', '!=', False)]
+            )
+            done_picking_origin = {
+                "kardex_done": True,
+            }
+            pickings_with_same_group.write(done_picking_origin)
+            
+
             return self._create_notification(message)
 
     def update_status_from_kardex(self):
@@ -764,7 +779,7 @@ class StockMove(models.Model):
         for vals in vals_list:
             picking_id = vals.get("picking_id")
             product_id = vals.get("product_id")
-            location_final_id = vals.get("location_final_id")
+            location_final_id = vals.get("location_final_id") if vals.get("location_final_id") else self.env["product.template"].search([("id", "=", product_id)]).location_id
             print("location_final_id", location_final_id)
 
             if picking_id and product_id:
