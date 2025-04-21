@@ -6,12 +6,10 @@
         <field name="inherit_id" ref="base.view_users_form" />
         <field name="arch" type="xml">
             <xpath expr="//page[@name='preferences']" position="after">
-                <page string="Kubernetes" name="kubernetes" groups="base.group_no_one">
-                    <group>
-                        <group>
-                            <field colspan="10" name="kubectl_config" />
-                        </group>
-                    </group>
+                <page string="kubectl" name="kubectl" groups="base.group_no_one">
+                    <field name="kubectl_context_ids">
+                        <list />
+                    </field>
                 </page>
             </xpath>
         </field>
@@ -23,12 +21,10 @@
         <field name="inherit_id" ref="base.view_users_form_simple_modif" />
         <field name="arch" type="xml">
             <xpath expr="//page[@name='preferences_page']" position="after">
-                <page string="kubernetes" name="kubernetes" groups="base.group_no_one">
-                    <group>
-                        <group>
-                            <field name="kubectl_config" />
-                        </group>
-                    </group>
+                <page string="kubectl" name="kubectl" groups="base.group_no_one">
+                    <field name="kubectl_context_ids">
+                        <list />
+                    </field>
                 </page>
             </xpath>
         </field>
