@@ -302,29 +302,17 @@ class GitRepo(models.Model):
 
     def action_generate_deploy_keys(self):
         self.ensure_one()
-        ssh_keygen_command = [
-            "ssh-keygen",
-            "-t",
-            "ed25519",
-            "-C",
+        ssh_public_key, ssh_private_key_file = self.env["res.users.keychain"].generate_ssh_keys(
             f"{self.account_id.name}-{self.name}@{self.forge_id.hostname}",
-            "-f",
             f"{self.ssh_private_key_filename}",
-            "-N",
             self.ssh_private_key_password or "",
-        ]
-        run(ssh_keygen_command)
-
-        # Store public key
-        with open(f"{self.ssh_private_key_filename}.pub") as file:
-            self.write({"ssh_public_key": file.read()})
-
-        # Store private key
-        with open(f"{self.ssh_private_key_filename}", "rb") as file:
-            self.write({"ssh_private_key_file": base64.b64encode(file.read())})
-
-        os.remove(f"{self.ssh_private_key_filename}.pub")
-        os.remove(f"{self.ssh_private_key_filename}")
+        )
+        self.write(
+            {
+                "ssh_public_key": ssh_public_key,
+                "ssh_private_key_file": ssh_private_key_file,
+            }
+        )
 
     # Status Commands
 
