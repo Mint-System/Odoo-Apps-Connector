@@ -436,21 +436,60 @@ class GitRepo(models.Model):
         if not branch_name:
             raise UserError(_("Missing branch name."))
 
+        # Get list of local branches
+        git_branch_list = self._get_git_branch_list()
+
         # Get branch record
         branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
 
-        # Get list of branches
-        git_branch_list = self._get_git_branch_list()
-
-        if branch_id and branch_name in git_branch_list:
-            output = check_output(["git", "-C", self.local_path, "switch", branch_name], stderr=STDOUT, text=True)
-        if not branch_id:
-            branch_id = self.env["git.repo.branch"].create({"name": branch_name, "repo_id": self.id})
+        # Create branch if is not in list
         if branch_name not in git_branch_list:
             output = check_output(
                 ["git", "-C", self.local_path, "switch", "-c", branch_name],
                 stderr=STDOUT,
             )
+            branch_id = self.env["git.repo.branch"].create({"name": branch_name, "repo_id": self.id})
+
+        # Switch to branch if is in list
+        if branch_name in git_branch_list:
+            output = check_output(["git", "-C", self.local_path, "switch", branch_name], stderr=STDOUT, text=True)
+
+        self.write({"active_branch_id": branch_id})
+        self.cmd_message_post(branch_name)
+        return output
+
+    def cmd_checkout(self, branch_name):
+        self.ensure_one()
+        if not branch_name:
+            raise UserError(_("Missing branch name."))
+
+        # Get list of local branches
+        git_branch_list = self._get_git_branch_list()
+
+        # Check if branch record exists
+        branch_id = self.branch_ids.filtered(lambda b: b.name == branch_name)
+
+        # If branch is not in list, create it
+        if branch_name not in git_branch_list:
+            if branch_id and branch_id.upstream:
+                output = check_output(
+                    ["git", "-C", self.local_path, "checkout", "-b", branch_id.name, branch_id.upstream],
+                    stderr=STDOUT,
+                    text=True,
+                )
+            else:
+                output = check_output(
+                    ["git", "-C", self.local_path, "checkout", "-b", branch_name], stderr=STDOUT, text=True
+                )
+                branch_id = self.env["git.repo.branch"].create({"name": branch_name, "repo_id": self.id})
+
+        # Checkout branch if is list of branches
+        if branch_name in git_branch_list:
+            output = check_output(
+                ["git", "-C", self.local_path, "checkout", branch_name],
+                stderr=STDOUT,
+            )
+
         self.write({"active_branch_id": branch_id})
         self.cmd_message_post(branch_name)
         return output
@@ -531,8 +570,10 @@ class GitRepo(models.Model):
         self.cmd_message_post()
         return output
 
-    def cmd_fetch(self):
+    def cmd_fetch(self, branch_name):
         self.ensure_one()
+        if not branch_name:
+            branch_name = self.active_branch_id.name
         output = self.run_ssh_command(
             [
                 "git",
@@ -540,9 +581,15 @@ class GitRepo(models.Model):
                 self.local_path,
                 "fetch",
                 "origin",
-                self.active_branch_id.name,
+                branch_name,
             ]
         )
+        self.cmd_message_post()
+        return output
+
+    def cmd_fetch_all(self):
+        self.ensure_one()
+        output = self.run_ssh_command(["git", "-C", self.local_path, "fetch", "--all"])
         self.cmd_message_post()
         return output
 
@@ -660,6 +707,7 @@ class GitRepo(models.Model):
                 )
             else:
                 repo_branch.write({"upstream": f"origin/{branch}"})
+            self.cmd_checkout(branch)
         self.active_branch_id = self.branch_ids.filtered(lambda b: b.name == self._get_git_current_branch_name())
         self.cmd_message_post()
         return output
