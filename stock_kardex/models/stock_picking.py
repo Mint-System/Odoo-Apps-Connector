@@ -295,9 +295,11 @@ class StockPicking(models.Model):
             # get moves belonging to this picking
             moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("product_id.kardex", "=", True)])
             if not moves:
-                raise ValidationError("No moves found for this picking")
+                return
+                # raise ValidationError("No moves found for this picking")
             if not self._check_quantities(moves):
-                raise ValidationError("Not enough stock to send to Kardex (check quantities)")
+                return
+                # raise ValidationError("Not enough stock to send to Kardex (check quantities)")
             check_moves_counter = 0
             check_moves_list = []
             missing_products_message = ""
@@ -825,9 +827,14 @@ class StockMove(models.Model):
 
         for move in res:
             picking = move.picking_id
+            print("PICKING:", picking.id, "kardex:", picking.kardex,"origin:", picking.origin, "name/type/type_code:", picking.name, picking.picking_type_id, picking.picking_type_code)
             parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+            print("PARENT:", parent, parent.name, parent.id)
+            kardex_moves = picking.move_ids.filtered(lambda move: move.product_id.kardex)
+            for move_id in picking.move_ids:
+                print("MOVE ID:", move_id.name, move_id.product_id.name)
 
-            if parent and picking and picking.move_ids and not picking.kardex_done:
+            if parent and picking and kardex_moves and not picking.kardex_done:
                 picking.send_to_kardex(picking.origin)
                 print("PICKING:", picking, "MOVES:", picking.move_ids)
 
