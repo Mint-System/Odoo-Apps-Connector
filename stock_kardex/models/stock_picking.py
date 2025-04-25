@@ -16,7 +16,8 @@ from .config import (
     PICKING_TYPE_FIXER,
     STOCK_PICKING_SEND_FLAG_FIXER,
     OVERRIDE_SERIAL_FOR_STORE,
-    CREATE_SERIAL_FOR_STORE
+    CREATE_SERIAL_FOR_STORE,
+    CREATE_LOTS_AUTOMATICALLY,
 )
 
 
@@ -186,25 +187,26 @@ class StockPicking(models.Model):
 
     def button_validate(self):
         # auto generate lots
-        for picking in self:
-            #import pdb; pdb.set_trace()
-            if picking.picking_type_code == 'incoming':
-                new_lines = self.env['stock.move.line']
-                for move_line in picking.move_line_ids:
-                    product = move_line.product_id
-                    if product.tracking != 'none' and move_line.quantity > 0:
-                        for i in range(int(move_line.quantity)):
-                            lot = self.env['stock.lot'].create({
-                                'name': self.create_lot_name(product, i + 1),
-                                'product_id': product.id,
-                                'company_id': move_line.company_id.id
-                            })
-                            new_line = move_line.copy({
-                                'qty_done': 1,
-                                'lot_id': lot.id,
-                            })
-                            new_lines |= new_line
-                        move_line.unlink()
+        if CREATE_LOTS_AUTOMATICALLY:
+            for picking in self:
+                #import pdb; pdb.set_trace()
+                if picking.picking_type_code == 'incoming':
+                    new_lines = self.env['stock.move.line']
+                    for move_line in picking.move_line_ids:
+                        product = move_line.product_id
+                        if product.tracking != 'none' and move_line.quantity > 0:
+                            for i in range(int(move_line.quantity)):
+                                lot = self.env['stock.lot'].create({
+                                    'name': self.create_lot_name(product, i + 1),
+                                    'product_id': product.id,
+                                    'company_id': move_line.company_id.id
+                                })
+                                new_line = move_line.copy({
+                                    'qty_done': 1,
+                                    'lot_id': lot.id,
+                                })
+                                new_lines |= new_line
+                            move_line.unlink()
 
         res = super().button_validate()
         for picking in self:
