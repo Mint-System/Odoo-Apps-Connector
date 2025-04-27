@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="helm_chart_form_view" model="ir.ui.view">
+        <field name="name">helm.helm_chart_form_view</field>
+        <field name="model">helm.chart</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" />
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page string="General Information" name="general_info">
+                            <group>
+                                <group>
+                                    <field name="repo_id" />
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="helm_chart_list_view" model="ir.ui.view">
+        <field name="name">helm.helm_chart_list_view</field>
+        <field name="model">helm.chart</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name" />
+                <field name="repo_id" />
+            </list>
+        </field>
+    </record>
+
+    <record id="helm_chart_search_view" model="ir.ui.view">
+        <field name="name">helm.helm_chart_search_view</field>
+        <field name="model">helm.chart</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" />
+                <field name="repo_id" />
+            </search>
+        </field>
+    </record>
+
+    <record id="action_helm_chart_view" model="ir.actions.act_window">
+        <field name="name">Charts</field>
+        <field name="res_model">helm.chart</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="helm_chart_search_view" />
+    </record>
+
+    <menuitem
+        id="helm.menu_helm_chart"
+        name="Charts"
+        parent="helm.menu_helm"
+        action="helm.action_helm_chart_view"
+        sequence="20"
+    />
+</odoo>

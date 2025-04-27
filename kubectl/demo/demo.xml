@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
+    <record id="res_partner_vshn_demo" model="res.partner">
+        <field name="name">VSHN</field>
+    </record>
+
     <record id="kubectl_cluster_kind_demo" model="kubectl.cluster">
         <field name="name">kind-kind</field>
         <field name="server">https://127.0.0.1:35249</field>
+        <field name="provider_id" ref="kubectl.res_partner_vshn_demo" />
     </record>
+
     <record id="kubectl_context_kind_demo" model="kubectl.context">
         <field name="name">kind-kind</field>
         <field name="cluster_id" ref="kubectl.kubectl_cluster_kind_demo" />
     </record>
+
     <record id="base.user_admin" model="res.users">
         <field
             name="kubectl_context_ids"

@@ -7,9 +7,8 @@
             <form>
                 <header>
                     <field name="state" widget="statusbar" select="1" readonly="1" />
-                    <button name="add_repo" string="Add" type="object" />
-                    <button name="install_chart" string="Install" type="object" />
-                    <button name="uninstall_chart" string="Uninstall" type="object" />
+                    <button name="add" string="Add" type="object" />
+                    <button name="update" string="Update" type="object" />
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box" />
@@ -66,11 +65,11 @@
         name="Helm"
         web_icon="helm,static/description/icon.png"
     />
-    <menuitem id="helm.menu_document" name="Helm" parent="helm.menu_root" />
+    <menuitem id="helm.menu_helm" name="Helm" parent="helm.menu_root" />
     <menuitem
         id="helm.menu_helm_repo"
         name="Repos"
-        parent="helm.menu_document"
+        parent="helm.menu_helm"
         action="helm.action_helm_repo_view"
         sequence="10"
     />

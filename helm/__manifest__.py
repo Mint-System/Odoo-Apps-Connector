@@ -12,6 +12,8 @@
     "data": [
         "views/helm_repo_views.xml",
         "views/product_template.xml",
+        "views/helm_chart_views.xml",
+        "views/helm_release_views.xml",
         "security/security.xml",
         "security/ir.model.access.csv",
     ],
@@ -19,6 +21,6 @@
     "application": False,
     "auto_install": False,
     "images": ["images/screen.png"],
-    "demo": ["demo/helm_repo_demo.xml"],
+    "demo": ["demo/demo.xml"],
     "external_dependencies": {"bin": ["helm"]},
 }

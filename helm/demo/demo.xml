@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="res_partner_mint_system_demo" model="res.partner">
+        <field name="name">Mint System</field>
+    </record>
+
+    <record id="kubernetes_build_demo" model="helm.repo">
+        <field name="name">kubernetes-build</field>
+        <field name="url">https://kubernetes.build</field>
+    </record>
+
+    <record id="odoo_chart_demo" model="helm.chart">
+        <field name="name">odoo</field>
+        <field name="repo_id" ref="helm.kubernetes_build_demo" />
+    </record>
+
+    <record id="odoo_release_demo" model="helm.release">
+        <field name="name">odoo</field>
+        <field name="chart_id" ref="helm.odoo_chart_demo" />
+        <field name="partner_id" ref="helm.res_partner_mint_system_demo" />
+    </record>
+</odoo>

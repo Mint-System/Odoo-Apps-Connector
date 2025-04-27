@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<odoo>
-    <record id="helm.kubernetes_build_demo" model="helm.repo">
-        <field name="name">kubernetes-build</field>
-        <field name="url">https://kubernetes.build</field>
-    </record>
-</odoo>

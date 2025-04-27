@@ -6,47 +6,51 @@ from odoo import _, fields, models
 _logger = logging.getLogger(__name__)
 
 
-class HelmRepo(models.Model):
-    _name = "helm.repo"
-    _description = "Helm Repo"
+class HelmRelease(models.Model):
+    _name = "helm.release"
+    _description = "Helm Release"
 
     name = fields.Char()
-    url = fields.Char()
+    chart_id = fields.Many2one("helm.chart")
+    partner_id = fields.Many2one("res.partner")
     state = fields.Selection(
-        selection=[("draft", "Draft"), ("added", "Added")],
+        selection=[("draft", "Draft"), ("installed", "Installed")],
         default="draft",
     )
 
-    def add(self):
-        self.ensure_one()
+    def install(self):
         output = subprocess.run(
-            ["helm", "repo", "add", self.name, self.url],
+            ["helm", "install", f"{self.name}", f"{self.chart_id.repo_id.name}/{self.chart_id.name}"],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
         )
-        self.write({"state": "added"})
+        self.write({"state": "installed"})
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": _("Repo Added"),
+                "title": _("Chart Installed"),
                 "type": "success",
                 "message": output.stdout,
             },
         }
 
-    def update(self):
+    def uninstall(self):
         self.ensure_one()
         output = subprocess.run(
-            ["helm", "repo", "update", self.name], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            ["helm", "uninstall", self.name],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
+        self.write({"state": "draft"})
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
             "params": {
-                "title": _("Repo Updated"),
+                "title": _("Chart Uninstalled"),
                 "type": "success",
                 "message": output.stdout,
             },
