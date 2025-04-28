@@ -16,7 +16,6 @@
     "application": False,
     "auto_install": False,
     "images": ["images/screen.png"],
-    "qweb": ["static/src/xml/board.xml"],
     "demo": ["demo/document_demo.xml"],
     "assets": {
         "web.assets_backend": [

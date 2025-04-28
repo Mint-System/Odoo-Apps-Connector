@@ -10,7 +10,7 @@ class PurchaseOrder(models.Model):
     _inherit = ["purchase.order", "base.kardex.mixin"]
     _description = "Purchase Kardex Order"
 
-    kardex = fields.Boolean(string="Kardex", default=False, compute="_compute_kardex", store=True)
+    kardex = fields.Boolean(default=False, compute="_compute_kardex", store=True)
 
     @api.depends("order_line.product_id.kardex")
     def _compute_kardex(self):

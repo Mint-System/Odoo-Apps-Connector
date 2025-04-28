@@ -9,11 +9,7 @@ class MrpBom(models.Model):
     _inherit = ["mrp.bom"]
     _description = "Kardex BoM"
 
-    kardex = fields.Boolean(string="Kardex", compute="_compute_kardex", store=True)
-    # perhaps another option: override type field?
-    # type = fields.Selection(selection_add=[
-    #    ('kardex', 'Kardex')
-    # ], ondelete={'kardex': 'set default'})
+    kardex = fields.Boolean(compute="_compute_kardex", store=True)
 
     @api.depends("product_tmpl_id.kardex")
     def _compute_kardex(self):

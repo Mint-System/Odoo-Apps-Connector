@@ -90,16 +90,12 @@ class BaseKardexMixin(models.AbstractModel):
         if mssql_instance:
             # Call the execute method on the found instance
             result = mssql_instance.execute(query_type, query, *params)
-            # _logger.info("result: %s" % (result,))
+
             return result
         else:
-            raise ValidationError("No active MSSQL instance found with priority=True")
+            raise ValidationError(_("No active MSSQL instance found with priority=True"))
 
     def _check_already_in_kardex(self, record):
-        # if product.kardex_done:
-        #    return True
-        _logger.info("record._name: %s" % (record._name,))
-        # sql_query = f"SELECT ID, Artikelbezeichnung FROM PPG_Artikel WHERE ID={record.kardex_id}"
         sql_query = f"SELECT ID, Suchbegriff FROM PPG_Artikel WHERE Suchbegriff='{record.default_code}'"
         rows = self._execute_query_on_mssql("select", sql_query)
         if len(rows) > 0:
@@ -126,8 +122,7 @@ class BaseKardexMixin(models.AbstractModel):
             self._execute_query_on_mssql("update", sql)
             return True
 
-        raise ValidationError("The data contains no Kardex Article Id.")
-        return False
+        raise ValidationError(_("The data contains no Kardex Article Id."))
 
     def _get_dates(self, record, date_handling):
         if date_handling == "create":
@@ -152,7 +147,7 @@ class BaseKardexMixin(models.AbstractModel):
         ", ".join(["?"] * len(kardex_dict))
         columns = ", ".join(kardex_dict.keys())
         sql = f"INSERT INTO {table} ({columns}) VALUES {tuple(kardex_dict.values())}"
-        _logger.info("sql: %s" % (sql,))
+
         new_id = self._execute_query_on_mssql("insert", sql)
         # in case of inserting a record result is id of created object
         # getting dates from external database
@@ -161,9 +156,8 @@ class BaseKardexMixin(models.AbstractModel):
             columns = f"{columns}, BzId"
 
         sql = f"SELECT {columns} FROM {table} WHERE ID = {new_id}"
-        _logger.info("sql: %s" % (sql,))
         record = self._execute_query_on_mssql("select", sql)
-        _logger.info("record: %s" % (record,))
+
         running_id = ""
         if len(record) == 1:
             create_time = record[0]["Row_Create_Time"]
@@ -177,12 +171,10 @@ class BaseKardexMixin(models.AbstractModel):
 
         # Execute the query using the external MSSQL instance
         records = self._execute_query_on_mssql("select", query)
-        # _logger.info('RECORDS: %s' % (records,))
 
         if records:
             # records is a list of dictionaries/tuples with keys similar to kardex model
             for record in records:
-                _logger.info("RECORD: %s" % (record,))
                 record = SimpleNamespace(**record)
                 existing_product = self.search([("kardex_id", "=", record.ID)], limit=1)
 
@@ -198,4 +190,4 @@ class BaseKardexMixin(models.AbstractModel):
                     val_dict["kardex_product_id"] = record.Artikelid
                     self.create(val_dict)
         else:
-            raise ValidationError("No Records found in external Database")
+            raise ValidationError(_("No Records found in external Database"))

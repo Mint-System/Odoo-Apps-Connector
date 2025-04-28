@@ -17,7 +17,7 @@ class ProductCategory(models.Model):
     _name = "product.category"
     _inherit = ["product.category"]
 
-    kardex = fields.Boolean(string="Kardex", default=False)
+    kardex = fields.Boolean(default=False)
     kardex_tracking = fields.Selection(
         selection=[("none", "None"), ("serial", "Serial"), ("lot", "Lot")],
         default="none",
@@ -34,8 +34,8 @@ class ProductTemplate(models.Model):
 
     product_category_ids_domain = fields.Binary(compute="_compute_category_domain")
 
-    kardex = fields.Boolean(string="Kardex", default=False)
-    kardex_id = fields.Integer(string="Kardex Id")
+    kardex = fields.Boolean(default=False)
+    kardex_id = fields.Integer()
     kardex_product_id = fields.Integer(string="Kardex Artikel-Id")
     # kardex_product_name = fields.Char(string='Kardex Artikelbezeichnung')
     kardex_status = fields.Selection(
@@ -50,7 +50,6 @@ class ProductTemplate(models.Model):
     kardex_tracking = fields.Selection(
         selection=[("none", "None"), ("serial", "Serial"), ("lot", "Lot")],
         default="none",
-        string="Kardex Tracking",
     )
     # kardex_ch_verw = fields.Boolean(string="Kardex ChVerw", compute="_compute_kardex_ch_verw", store=True)
     # kardex_sn_verw = fields.Boolean(string="Kardex SnVerw", compute="_compute_kardex_sn_verw", store=True)
@@ -154,7 +153,7 @@ class ProductTemplate(models.Model):
                     message = "Kardex Articel was updated."
                     return self._create_notification(message)
 
-                raise ValidationError("Something went wrong.")
+                raise ValidationError(_("Something went wrong."))
 
             else:
                 new_article_id = self._get_kardex_article_id()
@@ -250,16 +249,13 @@ class ProductTemplate(models.Model):
 
     def _get_tracking(self, id, chverw, snverw):
         if chverw == "0" and snverw == "0":
-            print("#### TRACKING FKT #####", chverw, snverw)
             result = "none"
         elif chverw == "1" and snverw == "0":
             result = "lot"
         elif chverw == "0" and snverw == "1":
             result = "serial"
         elif chverw == "1" and snverw == "1":
-            raise ValidationError(
-                f"Kardex ID {id}: Both CH and SN have value 1. Tracking is set to none. Please correct."
-            )
+            _logger.info(f"Kardex ID {id}: Both CH and SN have value 1. Tracking is set to none.")
             result = "none"
         return result
 

@@ -11,7 +11,6 @@ class BaseKardexSettings(models.TransientModel):
     kardex_date_handling = fields.Selection(
         selection=[("send", "Send"), ("create", "Create")],
         default="send",
-        string="Kardex Date Handling",
     )
 
 

@@ -4,20 +4,20 @@ import string
 from datetime import datetime
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
 from .config import (
     COMPANY_ID,
+    CREATE_LOTS_AUTOMATICALLY,
+    CREATE_SERIAL_FOR_STORE,
     KARDEX_DESTINATION,
     KARDEX_WAREHOUSE,
     ODOO_KARDEX_UNIT_FIXER,
+    OVERRIDE_SERIAL_FOR_STORE,
     PICKING_TYPE_FIXER,
     STOCK_PICKING_SEND_FLAG_FIXER,
-    OVERRIDE_SERIAL_FOR_STORE,
-    CREATE_SERIAL_FOR_STORE,
-    CREATE_LOTS_AUTOMATICALLY,
 )
 
 
@@ -25,7 +25,7 @@ class StockPickingJournal(models.Model):
     _name = "stock.picking.journal"
     _description = "Stock Picking Journal"
 
-    journal_id = fields.Integer(string="Journal Id", required=True)
+    journal_id = fields.Integer(required=True)
     kardex_running_id = fields.Integer(string="BzId", required=True)
 
     _sql_constraints = [("unique_journal", "unique(journal_id)", "The Journal ID must be unique!")]
@@ -36,8 +36,8 @@ class StockPicking(models.Model):
     _inherit = ["stock.picking", "base.kardex.mixin"]
     _description = "Stock Kardex Picking"
 
-    kardex = fields.Boolean(string="Kardex", default=False, compute="_compute_kardex", store=True)
-    kardex_id = fields.Integer(string="Kardex Id")
+    kardex = fields.Boolean(default=False, compute="_compute_kardex", store=True)
+    kardex_id = fields.Integer()
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
@@ -52,7 +52,7 @@ class StockPicking(models.Model):
         default="0",
         string="Kardex STATUS",
     )
-    kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
+    kardex_sync = fields.Boolean(default=False)
     state = fields.Selection(selection_add=[("waiting_for_kardex", "Waiting for Kardex")])
 
     send_button_is_visible = fields.Boolean(
@@ -132,16 +132,13 @@ class StockPicking(models.Model):
             for move in moves:
                 sql = f"SELECT Suchbegriff, Row_Update_Time FROM PPG_Artikel WHERE Suchbegriff = '{move.product_id.default_code}'"
                 result = self._execute_query_on_mssql("select", sql)
-                print("Result: %s" % (result,))
+                _logger.info("Result: %s" % (result,))
                 if result and result[0]["Suchbegriff"] == move.product_id.default_code:
                     move.product_id.write({"kardex": True, "kardex_done": True})
                 else:
                     return
 
     def _get_kardex_running_id(self):
-        # Find the current maximum kardex_running_id
-        # max_kardex_product_id = self.env['product.template'].search([('kardex_product_id', '>', '0')], order='kardex_product_id desc', limit=1).kardex_product_id
-
         sql_query = "SELECT Max(BzId) AS maximum_running_id FROM PPG_Auftraege"
         res = self._execute_query_on_mssql("select_one", sql_query)
         max_kardex_running_id = res["maximum_running_id"]
@@ -151,34 +148,7 @@ class StockPicking(models.Model):
     def _check_mp_picking(self, picking_type_id):
         return picking_type_id in [17]
 
-    # @api.model
-    # def create(self, vals):
-    #     record = super().create(vals)
-
-    #     # kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_DESTINATION)], limit=1)
-    #     # if kardex_location:
-    #     #     record["location_dest_id"] = kardex_location.id
-
-    #     # print("VALS:", vals)
-    #     picking_type_id = vals["picking_type_id"]
-
-    #     if picking_type_id == 1: # purchase
-    #         model = "purchase.order"
-    #     elif picking_type_id == 17: # production
-    #         model = "mrp.production"
-
-    #     if picking_type_id in [1, 17]:
-    #         kardex = self.env[model].search([("name", "=", vals['origin'])]).mapped("kardex")
-
-    #         record["kardex"] = kardex[0]
-
-    #     return record
-
     def _check_send_to_kardex(self):
-        # import pdb; pdb.set_trace()
-        # if PICKING_TYPE_FIXER.get(self.picking_type_id.id, None) in ["outgoing", "store"] and not self.kardex_done:
-        #     return True
-        # check_kardex_destination = any([move.location_final_id.name == KARDEX_DESTINATION for move in self.move_ids])
         if self._check_picking_type() == "production" and self.kardex:
             return True
 
@@ -189,22 +159,25 @@ class StockPicking(models.Model):
         # auto generate lots
         if CREATE_LOTS_AUTOMATICALLY:
             for picking in self:
-                #import pdb; pdb.set_trace()
-                if picking.picking_type_code == 'incoming':
-                    new_lines = self.env['stock.move.line']
+                if picking.picking_type_code == "incoming":
+                    new_lines = self.env["stock.move.line"]
                     for move_line in picking.move_line_ids:
                         product = move_line.product_id
-                        if product.tracking != 'none' and move_line.quantity > 0:
+                        if product.tracking != "none" and move_line.quantity > 0:
                             for i in range(int(move_line.quantity)):
-                                lot = self.env['stock.lot'].create({
-                                    'name': self.create_lot_name(product, i + 1),
-                                    'product_id': product.id,
-                                    'company_id': move_line.company_id.id
-                                })
-                                new_line = move_line.copy({
-                                    'qty_done': 1,
-                                    'lot_id': lot.id,
-                                })
+                                lot = self.env["stock.lot"].create(
+                                    {
+                                        "name": self.create_lot_name(product, i + 1),
+                                        "product_id": product.id,
+                                        "company_id": move_line.company_id.id,
+                                    }
+                                )
+                                new_line = move_line.copy(
+                                    {
+                                        "qty_done": 1,
+                                        "lot_id": lot.id,
+                                    }
+                                )
                                 new_lines |= new_line
                             move_line.unlink()
 
@@ -214,11 +187,8 @@ class StockPicking(models.Model):
                 for move in picking.move_line_ids:
                     product = move.product_id
                     product.write({"last_location_id": move.location_dest_id})
-        # if res and self._check_send_to_kardex():
-        #    self.send_to_kardex(self.origin)
-        # self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
-        # self.send_to_kardex(self.origin)
-        print("res:", res)
+
+        _logger.info("res: %s" % (res,))
         return res
 
     def _check_is_kardex_store(self, id):
@@ -231,10 +201,6 @@ class StockPicking(models.Model):
 
     def action_next_transfer(self):
         next_transfers = super().action_next_transfer()
-        print("next_transfers:", next_transfers)
-        print("self.kardex:", self.kardex)
-        print("self.state:", self.state)
-        print("self.kardex_status:", self.kardex_status)
         if next_transfers:
             if "domain" in next_transfers:
                 pickings = self.env["stock.picking"].search(next_transfers["domain"])
@@ -242,41 +208,13 @@ class StockPicking(models.Model):
                 pickings = self.env["stock.picking"].search([("id", "=", next_transfers["res_id"])])
             for picking in pickings:
                 write_vals = {}
-                print("PICKING:", picking)
-                # if next_transfer and PICKING_TYPE_FIXER.get(next_transfer.picking_type_id.id, None) in ["store"] and USE_KARDEX_AS_DEFAULT_WAREHOUSE:
-                #     kardex_location = self.env['stock.location'].search([('name', '=', KARDEX_WAREHOUSE), ('usage', '=', 'internal')], limit=1)
-                #     write_vals["location_dest_id"] = kardex_location.id
-                print("KARDEX_STATE:", self.kardex_status)
-                # import pdb; pdb.set_trace()
+
                 if picking._check_is_kardex_store(picking.id):
                     picking.send_to_kardex(self.origin)
-                    # if move.kardex_status != 2:
-                    #     write_vals["state"] = 'waiting'
 
                 write_vals["kardex"] = self.kardex
                 picking.write(write_vals)
         return next_transfers
-
-    # def action_assign(self):
-    #     """ Check availability of picking moves.
-    #     This has the effect of changing the state and reserve quants on available moves, and may
-    #     also impact the state of the picking as it is computed based on move's states.
-    #     @return: True
-    #     """
-    #     self.mapped('package_level_ids').filtered(lambda pl: pl.state == 'draft' and not pl.move_ids)._generate_moves()
-    #     self.filtered(lambda picking: picking.state == 'draft').action_confirm()
-    #     moves = self.move_ids.filtered(lambda move: move.state not in ('draft', 'cancel', 'done')).sorted(
-    #         key=lambda move: (-int(move.priority), not bool(move.date_deadline), move.date_deadline, move.date, move.id)
-    #     )
-    #     if not moves:
-    #         raise UserError(_('Nothing to check the availability for.'))
-    #     moves._action_assign()
-    #     all_moves_assigned = all(move.state == 'assigned' for move in moves)
-    #     print("all_moves_assigned:", all_moves_assigned)
-    #     if all_moves_assigned and PICKING_AUTO:
-    #         self.send_to_kardex()
-
-    #     return True
 
     def send_to_kardex_picking(self):
         self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
@@ -289,11 +227,8 @@ class StockPicking(models.Model):
 
     def _update_picking_state(self):
         for picking in self:
-            print("PICKING_TYPE:", picking._check_picking_type())
-            print("#### PICKING NAME:", picking.name, picking.state)
             kardex_moves = [move for move in picking.move_line_ids if move.kardex_running_id]
             if picking._check_picking_type() == "production":
-                print("KARDEX MOVES:", kardex_moves)
                 any_kardex_move_is_not_synced = any([not move.kardex_sync for move in kardex_moves])
                 if any_kardex_move_is_not_synced:
                     picking.write({"state": "waiting_for_kardex"})
@@ -305,7 +240,6 @@ class StockPicking(models.Model):
                 )
 
                 any_move_has_no_sync = any([move.kardex_sync == False for move in kardex_moves])
-                print("any_move_has_no_sync:", any_move_has_no_sync)
                 if all_moves_have_kardex_destination and any_move_has_no_sync:
                     picking.write({"state": "waiting_for_kardex"})
 
@@ -330,11 +264,6 @@ class StockPicking(models.Model):
             check_moves_counter = 0
             check_moves_list = []
             missing_products_message = ""
-            # for move in moves:
-            #     print(f"Product: {move.product_id.name}")
-            #     if move.product_id.kardex and not move.product_id.kardex_done:
-            #         check_moves_counter += 1
-            #         check_moves_list.append(move.product_id.name)
 
             for move in moves:
                 if move.product_id.kardex and not self._check_already_in_kardex(move.product_id):
@@ -347,9 +276,7 @@ class StockPicking(models.Model):
             if check_moves_counter > 0:
                 missing_products_message = f"The products {', '.join(check_moves_list)} were previously unknown in Kardex and were initially transferred."
 
-            kardex_move_lines = picking.move_line_ids.filtered(
-                lambda m: not m.kardex_done and not m.kardex_running_id
-            )
+            kardex_move_lines = picking.move_line_ids.filtered(lambda m: not m.kardex_done and not m.kardex_running_id)
             # if self._check_mp_picking(picking_type_id):
             # import pdb; pdb.set_trace()
             if self._check_picking_type() == "production":
@@ -411,21 +338,18 @@ class StockPicking(models.Model):
 
             # get all pickings belonging to the same group
             pickings_with_same_group = self.env["stock.picking"].search(
-                [("group_id", "=", picking.group_id.id), ('kardex', '!=', False)]
+                [("group_id", "=", picking.group_id.id), ("kardex", "!=", False)]
             )
             done_picking_origin = {
                 "kardex_done": True,
             }
             pickings_with_same_group.write(done_picking_origin)
-            
 
             return self._create_notification(message)
 
     def update_status_from_kardex(self):
         message_list = []
-        print("############ PICKINGS:", self)
         for picking in self:
-            print("############# Picking Name:", picking.name)
             moves = self.env["stock.move.line"].search(
                 [
                     ("picking_id", "=", picking.id),
@@ -434,7 +358,7 @@ class StockPicking(models.Model):
                     ("kardex_sync", "!=", True),
                 ]
             )
-            print("#MOVES:", moves)
+
             for move in moves:
                 kardex_running_id = move.kardex_running_id
                 old_status = move.kardex_status
@@ -467,13 +391,12 @@ class StockPicking(models.Model):
                         message_list.append(f"Kardex Status for {move.product_id.name} was not updated.")
 
                 picking._update_picking_state()
-            message = ", ".join(message_list)
+        message = ", ".join(message_list)
         return self._create_notification(message)
 
     def sync_status(self):
         # pickings = self.env['stock.picking'].search([('state', '=', 'waiting_for_kardex')])
         pickings = self.env["stock.picking"].search([("move_line_ids.kardex_status", "=", "1")])
-        print("pickings:", pickings)
         pickings.update_status_from_kardex()
 
     def sync_pickings(self):
@@ -482,7 +405,6 @@ class StockPicking(models.Model):
             [("state", "!=", "done"), ("move_line_ids.kardex_status", "=", "2")]
         )
         for picking in pickings:
-            print("Picking:", picking.name)
             moves = self.env["stock.move.line"].search(
                 [("picking_id", "=", picking.id), ("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)]
             )
@@ -554,8 +476,6 @@ class StockPicking(models.Model):
                     result = self._execute_query_on_mssql("select_one", sql)
 
                     if result:
-                        print("MengeErledigt", result["MengeErledigt"])
-                        print("MaxKomplett:", result["MaxKomplett"])
                         new_journal_status = result["MaxKomplett"]
                         journal_ids = result["id_list"]
                         create_time = result["Row_Create_Time"]
@@ -583,43 +503,14 @@ class StockPicking(models.Model):
 
                         # get amounts for one move
                         qty_done = result["MengeErledigt"]
-                        print("MengeErledigt:", qty_done)
 
-                        # update qty_done for move lines
-                        # move_lines = self.env["stock.move.line"].search([("move_id", "=", move.id)])
-                        # for move_line in move_lines:
-                        #     print("#### Quantity done:", qty_done)
-                        #     #new_qty_done = move_line.qty_done #- qty_done
-                        #     new_qty_done = qty_done
-                        #     move_line_vals = {
-                        #         "qty_done": new_qty_done,
-                        #         "kardex_sync": True,
-                        #     }
-                        #     print("LOT_NAME:", lot_name)
-                        #     print("DIRECTION:", direction)
-                        #     if lot_name:
-                        #         product_id = self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
-                        #         lot = self.env["stock.lot"].search([("name", "=", lot_name), ("product_id", "=", product_id[0])]).mapped("id")
-                        #         print("LOT :", lot)
-                        #         if direction == "4":
-                        #             print("LOT WILL BE CORRECTED")
-                        #             move_line_vals["lot_id"] = lot[0]
-                        #         if not lot:
-                        #             move_line_vals["kardex_sync"] = False
-
-                        #     move_line.write(move_line_vals)
-
-                        # move.write({"kardex_sync": True})
-
-                        print("#### Quantity done:", qty_done)
                         # new_qty_done = move_line.qty_done #- qty_done
                         new_qty_done = qty_done
                         move_line_vals = {
                             "qty_done": new_qty_done,
                             "kardex_sync": True,
                         }
-                        print("LOT_NAME:", lot_name)
-                        print("DIRECTION:", direction)
+
                         if lot_name:
                             product_id = (
                                 self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
@@ -629,12 +520,11 @@ class StockPicking(models.Model):
                                 .search([("name", "=", lot_name), ("product_id", "=", product_id[0])])
                                 .mapped("id")
                             )
-                            print("LOT :", lot)
+
                             if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
                                 if lot:
                                     move_line_vals["lot_id"] = lot[0]
                                 elif CREATE_SERIAL_FOR_STORE:
-                                    
                                     new_lot = self.env["stock.lot"].create(
                                         {
                                             "name": lot_name,
@@ -643,7 +533,6 @@ class StockPicking(models.Model):
                                     )
                                     move_line_vals["lot_id"] = new_lot.id
                             if direction == "4":
-                                print("LOT WILL BE CORRECTED")
                                 move_line_vals["lot_id"] = lot[0]
                             if not lot:
                                 move_line_vals["kardex_sync"] = False
@@ -652,22 +541,6 @@ class StockPicking(models.Model):
 
                         move.write({"kardex_sync": True})
 
-            # if complete == 1:
-            #     # copy picking
-            #     new_pickings = self.copy(default={"kardex_sync": False})
-            #     if len(new_pickings) == 1:
-            #         new_picking = new_pickings[0]
-
-            #         for move in new_picking:
-            #             product_uom_qty = new_amounts_dict[move.kardex_running_id]
-            #             move.write(
-            #                 {
-            #                     "product_uom_qty": product_uom_qty,
-            #                     "kardex_running_id": "",
-            #                 }
-            #             )
-
-            # elif complete == 2:
             if complete == 2:
                 picking.write({"kardex_sync": True})
                 picking._update_picking_state()
@@ -681,14 +554,9 @@ class StockPicking(models.Model):
         return send_flag
 
     def _get_direction(self, picking_origin):
-        print("######### PICKING ORIGIN", picking_origin)
         if picking_origin and self.env["mrp.production"].search([("name", "=", picking_origin)]):
             return 4
         return 3
-
-        # direction = STOCK_PICKING_DIRECTION_FIXER.get(picking_type_id, 3)
-        # # direction = 4
-        # return direction
 
     def _get_search(self):
         search_term = "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -736,36 +604,10 @@ class StockMove(models.Model):
         store=True,
     )
     kardex_running_id = fields.Char(string="Picking BzId")
-    kardex_sync = fields.Boolean(string="Kardex Sync", default=False)
+    kardex_sync = fields.Boolean(default=False)
     kardex_journal_status = fields.Char(string="Komplett")
-    has_kardex_location = fields.Boolean(
-        string="Has Kardex Location", compute="_compute_has_kardex_location", store=False
-    )
+    has_kardex_location = fields.Boolean(compute="_compute_has_kardex_location", store=False)
     kardex_running_id_string = fields.Char(string="BzIds", compute="_compute_kardex_running_id_string", store=False)
-
-    # location_id = fields.Many2one(
-    #     'stock.location',
-    #     string="Source Location",
-    #     default=lambda self: self._default_location_id()
-    # )
-
-    # @api.model
-    # def _default_location_id(self):
-
-    #     print("######### CALLED ############")
-    #     """Find the last incoming location for the product."""
-    #     context = self.env.context
-    #     product_id = context.get('default_product_id')  # Get product from context
-    #     if product_id:
-    #         last_move = self.env['stock.move'].search([
-    #             ('product_id', '=', product_id),
-    #             ('location_dest_id.usage', '=', 'internal'),  # Only internal locations
-    #             ('state', '=', 'done')  # Only completed moves
-    #         ], order='date desc', limit=1)
-
-    #         if last_move:
-    #             return last_move.location_dest_id.id
-    #     return False
 
     @api.depends("move_line_ids.kardex_running_id")
     def _compute_kardex_running_id_string(self):
@@ -808,8 +650,11 @@ class StockMove(models.Model):
         for vals in vals_list:
             picking_id = vals.get("picking_id")
             product_id = vals.get("product_id")
-            location_final_id = vals.get("location_final_id") if vals.get("location_final_id") else self.env["product.template"].search([("id", "=", product_id)]).location_id
-            print("location_final_id", location_final_id)
+            location_final_id = (
+                vals.get("location_final_id")
+                if vals.get("location_final_id")
+                else self.env["product.template"].search([("id", "=", product_id)]).location_id
+            )
 
             if picking_id and product_id:
                 # Retrieve the stock.picking record, see browse docs of odoo
@@ -817,7 +662,7 @@ class StockMove(models.Model):
                 # Retirve the product
                 product = self.env["product.product"].browse(vals.get("product_id"))
                 if picking.kardex and not product.kardex:
-                    raise UserError("You can only add Kardex products.")
+                    raise UserError(_("You can only add Kardex products."))
 
                 if location_final_id:
                     picking_type_code = picking.picking_type_code
@@ -825,17 +670,10 @@ class StockMove(models.Model):
 
                     if picking_type_code == "incoming" and origin_type == "store":
                         last_location_id = product.last_location_id
-                        if last_location_id:
-                            print("##### last location", last_location_id.name)
                         vals["location_final_id"] = last_location_id.id
 
-                # parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
-                # print("#### Parent:", parent, "picking_type_code:", picking.picking_type_code)
-                # if parent and picking.picking_type_code == 'internal':
-                #     picking.send_to_kardex(picking.origin)
-
         records = super().create(vals_list)
-        print("###### RECORDS:", records)
+
         already_sent = []
         for move in records:
             picking = move.picking_id
@@ -849,21 +687,17 @@ class StockMove(models.Model):
     @api.model
     def _action_confirm(self, merge=True, merge_into=False):
         # Call super to create stock moves and pickings
-        print("ACTION CONFIRM CALLED")
+
         res = super()._action_confirm(merge, merge_into)
 
         for move in res:
             picking = move.picking_id
-            print("PICKING:", picking.id, "kardex:", picking.kardex,"origin:", picking.origin, "name/type/type_code:", picking.name, picking.picking_type_id, picking.picking_type_code)
             parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
-            print("PARENT:", parent, parent.name, parent.id)
+
             kardex_moves = picking.move_ids.filtered(lambda move: move.product_id.kardex)
-            for move_id in picking.move_ids:
-                print("MOVE ID:", move_id.name, move_id.product_id.name)
 
             if parent and picking and kardex_moves and not picking.kardex_done:
                 picking.send_to_kardex(picking.origin)
-                print("PICKING:", picking, "MOVES:", picking.move_ids)
 
         return res
 
@@ -876,7 +710,7 @@ class StockMoveLine(models.Model):
     )
     kardex_sync = fields.Boolean(string="Mit Kardex synchronisiert", default=False)
 
-    kardex_id = fields.Integer(string="Kardex Id")
+    kardex_id = fields.Integer()
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
@@ -903,7 +737,6 @@ class StockMoveLine(models.Model):
     #             if last_move:
     #                 record.last_location_id = last_move.location_dest_id
 
-
     @api.depends("location_id")
     @api.onchange("location_id")
     def _compute_has_kardex_location(self):
@@ -926,16 +759,14 @@ class StockQuant(models.Model):
 
     @api.model
     def sync_stocks(self):
-        print("SYNC STOCKS CALLED")
         # get stock quants of Kardex Warehouse
         location_ids = self._get_location_id(KARDEX_WAREHOUSE)
-        print("location_ids:", location_ids)
+        _logger.info("location_ids: %s" % (location_ids,))
         if not location_ids:
             return False
 
         location_id = location_ids[0]
-
-        print("location_id:", location_id)
+        _logger.info("location_id: %s" % (location_id,))
 
         # company id from settings
         company_id = COMPANY_ID
@@ -949,52 +780,18 @@ class StockQuant(models.Model):
         """)
         product_mapping = dict(self.env.cr.fetchall())
 
-        print("PRODUCT MAPPING:", product_mapping)
+        odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
 
-        # get quantities from stock quant for Kardex Warehouse
-        # location_condition = f"WHERE sq.location_id = {location_id}"
-        location_condition = f"WHERE location_id = {location_id}"
-        # odoo_sql = """
-        #     SELECT
-        #         sq.product_id,
-        #         sp.default_code AS product,
-        #         sq.location_id,
-        #         sq.lot_id,
-        #         sl.name AS lot,
-        #     FROM stock_quant sq
-        #     LEFT JOIN stock_lot sl ON sq.lot_id = sl.id
-        #     LEFT JOIN product_product sp ON sq.product_id = sp.id
-        #     {};
-        # """.format(location_condition)
-
-        odoo_sql = f"""
-            SELECT id, product_id, lot_id FROM stock_quant
-            {location_condition}
-        """
-
-        print("Odoo sql:", odoo_sql)
-
-        self.env.cr.execute(odoo_sql)
+        self.env.cr.execute(odoo_sql, (location_id,))
         stock_quants = self.env.cr.fetchall()
-        print("STOCK QUANTS:", stock_quants)
-        stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
-        print("STOCK QUANT MAPPING", stock_quant_mapping)
 
-        # create dict with lot ids and lot names
-        # lot_ids = tuple(set(q[3] for q in stock_quants if q[3] is not None))
-        # lot_mapping = {}
-        # if lot_ids:
-        #     self.env.cr.execute("SELECT id, name FROM stock_lot WHERE id IN %s", (lot_ids,))
-        #     lot_mapping = dict(self.env.cr.fetchall())  # {lot_id: lot_name}
+        stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
 
         # 2. Get existing lot_id mapping {lot_name → lot_id}
         self.env.cr.execute("SELECT name, id FROM stock_lot")
         lot_mapping = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
 
-        print("LOT MAPPING:", lot_mapping)
-
         products = tuple(set(q[1] for q in stock_quants if q[1]))
-        print("PRODUCTS:", products)
 
         if not products:
             return False  # No products to update
@@ -1024,7 +821,6 @@ class StockQuant(models.Model):
         """
 
         ppg_data = self._execute_query_on_mssql("select", ppg_sql)
-        print("PPG DATA:", ppg_data)
 
         # stock_dict = {
         #     product_mapping[Suchbegriff]: Bestand
@@ -1035,21 +831,16 @@ class StockQuant(models.Model):
         for row in ppg_data:
             default_code = row["Suchbegriff"]
             lot_name = row["Seriennummer"]
-            create_time = row["Row_Create_Time"]
             quantity = row["Bestand"]
 
             product_id = product_mapping.get(default_code)
-            print("PRODUCT_ID:", product_id)
+
             if not product_id:
                 continue
 
-            print("LOT MAPPING:", lot_mapping)
-            print("LOT NAME:", lot_name)
-            print("STOCK QUANT MAPPING:", stock_quant_mapping)
             lot_id = lot_mapping.get(lot_name) if lot_name else None
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
-                print("CASE 1")
                 # Case 1: Update existing stock_quant record with known lot
                 quant_id = stock_quant_mapping[(product_id, lot_id)]
                 self.env.cr.execute(
@@ -1061,13 +852,21 @@ class StockQuant(models.Model):
                     (quantity, quant_id),
                 )
             elif lot_name and lot_name not in lot_mapping:
-                print("LOT NAME NOT IN LOT MAPPING", lot_name not in lot_mapping)
                 # Case 2: Create a new lot if necessary
-                print("CASE 2")
                 self.env.cr.execute(
                     """
-                    INSERT INTO stock_lot (name, product_id, location_id, create_date)
-                    VALUES (%s, %s, %s, NOW())
+                    INSERT INTO stock_lot (
+                        name,
+                        product_id,
+                        location_id,
+                        create_date
+                    )
+                    VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        NOW()
+                    )
                     RETURNING id
                 """,
                     (lot_name, product_id, location_id),
@@ -1078,15 +877,33 @@ class StockQuant(models.Model):
                 # Insert new stock_quant record for product with this lot
                 self.env.cr.execute(
                     """
-                    INSERT INTO stock_quant (product_id, lot_id, quantity, reserved_quantity, location_id, company_id, in_date, create_date)
-                    VALUES (%s, %s, %s, 0, %s, %s, NOW(), NOW())
+                    INSERT INTO stock_quant (
+                        product_id,
+                        lot_id,
+                        quantity,
+                        reserved_quantity,
+                        location_id,
+                        company_id,
+                        in_date,
+                        create_date
+                    )
+                    VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        0,
+                        %s,
+                        %s,
+                        NOW(),
+                        NOW()
+                    )
                 """,
                     (product_id, lot_id, quantity, location_id, company_id),
                 )
             else:
                 if (product_id, None) in stock_quant_mapping:
                     # Case 3: Update stock_quant for product without lot
-                    print("CASE 3")
+
                     quant_id = stock_quant_mapping[(product_id, None)]
                     self.env.cr.execute(
                         """
@@ -1098,33 +915,32 @@ class StockQuant(models.Model):
                     )
                 else:
                     # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
-                    print("CASE 4")
+
                     self.env.cr.execute(
                         """
-                        INSERT INTO stock_quant (product_id, lot_id, quantity, reserved_quantity, location_id, company_id, in_date, create_date)
-                        VALUES (%s, NULL, %s, 0, %s, %s, NOW(), NOW())
+                        INSERT INTO stock_quant (
+                            product_id,
+                            lot_id,
+                            quantity,
+                            reserved_quantity,
+                            location_id,
+                            company_id,
+                            in_date,
+                            create_date
+                        )
+                        VALUES (
+                            %s,
+                            NULL,
+                            %s,
+                            0,
+                            %s,
+                            %s,
+                            NOW(),
+                            NOW()
+                        )
                     """,
                         (product_id, quantity, location_id, company_id),
                     )
-
-        # update
-        # for record in records:
-        #     self.env.cr.execute("""
-        #             UPDATE stock_quant
-        #             SET quantity = %s
-        #             WHERE id = %s
-        #         """, (bestand_dict[product_id], quant_id))
-
-        # for quant_id, product_id, lot_id in stock_quants:
-        #     if product_id in stock_dict:
-        #         quantity = bestand_dict[product_id]
-        #         lot_name = lot_mapping.get(lot_id, "No Lot")  # Lookup lot name or default "No Lot"
-
-        #         self.env.cr.execute("""
-        #             UPDATE stock_quant
-        #             SET quantity = %s
-        #             WHERE id = %s
-        #         """, (quantity, quant_id))
 
         return True
 

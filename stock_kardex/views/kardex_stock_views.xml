@@ -62,7 +62,7 @@
                         </header>
                         <sheet>
                             <group>
-                                <field name="kardex" readonly="0"/>
+                                <field name="kardex" readonly="0" />
                                 <field name="kardex_status" readonly="1" />
                                 <field name="kardex_row_create_time" />
                                 <field name="kardex_row_update_time" />

@@ -9,7 +9,7 @@ class MrpProduction(models.Model):
     _inherit = ["mrp.production"]
     _description = "Kardex MRP Production"
 
-    kardex = fields.Boolean(string="Kardex", compute="_compute_kardex", store=True)
+    kardex = fields.Boolean(compute="_compute_kardex", store=True)
 
     @api.depends("product_id.product_tmpl_id.kardex")
     def _compute_kardex(self):
