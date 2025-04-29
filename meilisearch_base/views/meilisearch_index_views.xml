@@ -145,7 +145,11 @@
         <field name="context">{'active_test': False}</field>
     </record>
 
-    <menuitem id="meilisearch_base.menu_root" name="Meilisearch" web_icon="meilisearch_base,static/description/icon.png" />
+    <menuitem
+        id="meilisearch_base.menu_root"
+        name="Meilisearch"
+        web_icon="meilisearch_base,static/description/icon.png"
+    />
     <menuitem
         id="menu_melisearch_index"
         name="Indexes"

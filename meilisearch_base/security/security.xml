@@ -3,9 +3,7 @@
 
     <record id="module_category_meilisearch" model="ir.module.category">
         <field name="name">Meilisearch</field>
-        <field
-            name="description"
-        >Manage Meilisearch indexes.</field>
+        <field name="description">Manage Meilisearch indexes.</field>
         <field name="sequence">3</field>
     </record>
 
