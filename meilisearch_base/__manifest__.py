@@ -11,8 +11,8 @@
     "depends": ["base_setup"],
     "data": [
         "data/cron.xml",
-        "security/ir.model.access.csv",
         "security/security.xml",
+        "security/ir.model.access.csv",
         "views/res_config_settings_view.xml",
         "views/meilisearch_index_views.xml",
         "views/meilisearch_task_views.xml",

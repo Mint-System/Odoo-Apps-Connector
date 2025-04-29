@@ -98,17 +98,10 @@
     </record>
 
     <menuitem
-        id="meilisearch_menu_main"
-        name="Meilisearch"
-        parent="base.menu_custom"
-        sequence="2"
-    />
-
-    <menuitem
-        id="melisearch_task_menu"
-        name="Meilisearch Tasks"
-        parent="meilisearch_base.meilisearch_menu_main"
-        sequence="3"
+        id="menu_melisearch_task"
+        name="Tasks"
+        parent="meilisearch_base.menu_root"
+        sequence="20"
         action="action_task_view"
     />
 

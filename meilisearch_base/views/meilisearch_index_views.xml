@@ -52,25 +52,25 @@
                         string="Check Index"
                         type="object"
                         class="btn-primary"
-                        groups="meilisearch_base.group_index_manager"
+                        groups="meilisearch_base.group_manager"
                     />
                     <button
                         name="button_create_index"
                         string="Create Index"
                         type="object"
-                        groups="meilisearch_base.group_index_manager"
+                        groups="meilisearch_base.group_manager"
                     />
                     <button
                         name="button_update_index"
                         string="Update Index"
                         type="object"
-                        groups="meilisearch_base.group_index_manager"
+                        groups="meilisearch_base.group_manager"
                     />
                     <button
                         name="button_delete_index"
                         string="Delete Index"
                         type="object"
-                        groups="meilisearch_base.group_index_manager"
+                        groups="meilisearch_base.group_manager"
                     />
                     <button
                         name="button_check_all_documents"
@@ -117,7 +117,7 @@
                             <field name="model_id" />
                             <field
                                 name="index_settings"
-                                groups="meilisearch_base.group_index_manager"
+                                groups="meilisearch_base.group_manager"
                             />
                             <field name="create_task" />
                         </group>
@@ -145,18 +145,12 @@
         <field name="context">{'active_test': False}</field>
     </record>
 
+    <menuitem id="meilisearch_base.menu_root" name="Meilisearch" web_icon="meilisearch_base,static/description/icon.png" />
     <menuitem
-        id="meilisearch_menu_main"
-        name="Meilisearch"
-        parent="base.menu_custom"
-        sequence="2"
-    />
-
-    <menuitem
-        id="melisearch_index_menu"
-        name="Meilisearch Indexes"
-        parent="meilisearch_base.meilisearch_menu_main"
-        sequence="2"
+        id="menu_melisearch_index"
+        name="Indexes"
+        parent="meilisearch_base.menu_root"
+        sequence="10"
         action="action_index_view"
     />
 
