@@ -128,6 +128,7 @@
                     class="oe_inline"
                     invisible="not kardex"
                 />
+                <field name="is_storable" string="Bestandsführung" />
             </xpath>
         </field>
     </record>
@@ -141,6 +142,7 @@
                 <field name="abbr" string="Abbreviation" />
                 <field name='kardex' string="Kardex" optional="show" />
                 <field name='kardex_tracking' string="Tracking" optional="show" />
+                <field name="is_storable" string="Bestandsführung" optional="show" />
             </xpath>
         </field>
     </record>

@@ -25,6 +25,7 @@ class ProductCategory(models.Model):
     )
     parent_id_name = fields.Char(related="parent_id.name")
     abbr = fields.Char(string="Abbreviation")
+    is_storable = fields.Boolean(default=True)
 
 
 class ProductTemplate(models.Model):
