@@ -18,6 +18,7 @@ from .config import (
     OVERRIDE_SERIAL_FOR_STORE,
     PICKING_TYPE_FIXER,
     STOCK_PICKING_SEND_FLAG_FIXER,
+    POST_PRODUCTION_LOCATION,
 )
 
 
@@ -188,6 +189,20 @@ class StockPicking(models.Model):
                     product = move.product_id
                     product.write({"last_location_id": move.location_dest_id})
 
+            _logger.info("### picking type: %s" % (self._check_picking_type(),))
+            _logger.info("### destination: %s" % (self._check_if_destination_is_kardex(picking.location_dest_id),))
+            _logger.info("### kardex_done: %s" % (picking.kardex_done,))
+
+            # if self._check_picking_type() == "production" and self._check_if_destination_is_kardex(picking.location_dest_id) and not picking.kardex_done:
+            if self._check_picking_type() == "production" and not picking.kardex_done:
+                self.send_to_kardex(picking.origin)
+
+            if self._check_picking_type() == "postproduction" and not picking.kardex_done:
+                for move in picking.move_line_ids:
+                    product = move.product_id
+                    product.write({"last_location_id": move.location_dest_id})
+                self.send_to_kardex(picking.origin)
+
         _logger.info("res: %s" % (res,))
         return res
 
@@ -222,6 +237,8 @@ class StockPicking(models.Model):
     def _check_picking_type(self):
         if self.origin and self.env["purchase.order"].search([("name", "=", self.origin)]):
             return "store"
+        elif self.origin and self.env["mrp.production"].search([("name", "=", self.origin)]) and self.location_id.name == POST_PRODUCTION_LOCATION:
+            return "postproduction"
         elif self.origin and self.env["mrp.production"].search([("name", "=", self.origin)]):
             return "production"
 
@@ -234,7 +251,8 @@ class StockPicking(models.Model):
                     picking.write({"state": "waiting_for_kardex"})
                 elif not any_kardex_move_is_not_synced and picking.state == "waiting_for_kardex":
                     picking.write({"state": "assigned"})
-            elif picking._check_picking_type() == "store":
+            # elif picking._check_picking_type() == "store":
+            elif picking._check_picking_type() in ["store", "postproduction"]:    
                 all_moves_have_kardex_destination = all(
                     [move.location_dest_id.name == KARDEX_DESTINATION for move in kardex_moves]
                 )
@@ -247,14 +265,19 @@ class StockPicking(models.Model):
                     # TODO : Validate Aktion ausfuehren
                     # picking.write({"state": "done"})
                     self.button_validate()
+            
+
 
     def send_to_kardex(self, picking_origin=None):
         for picking in self:
+            _logger.info("picking: %s" % (picking.name,))
             picking_vals = picking.read()[0]
             picking_type_id = picking_vals["picking_type_id"][0]
             picking_origin = picking_vals["origin"]
             # get moves belonging to this picking
             moves = self.env["stock.move"].search([("picking_id", "=", picking.id), ("product_id.kardex", "=", True)])
+            _logger.info("### moves: %s" % (moves,))
+            _logger.info("### quantity check: %s" % (self._check_quantities(moves),))
             if not moves:
                 return
                 # raise ValidationError("No moves found for this picking")
@@ -277,19 +300,19 @@ class StockPicking(models.Model):
                 missing_products_message = f"The products {', '.join(check_moves_list)} were previously unknown in Kardex and were initially transferred."
 
             kardex_move_lines = picking.move_line_ids.filtered(lambda m: not m.kardex_done and not m.kardex_running_id)
+            _logger.info("### kardex_move_lines before filter: %s" % (kardex_move_lines,))
             # if self._check_mp_picking(picking_type_id):
             # import pdb; pdb.set_trace()
+            kardex_location = self.env["stock.location"].search(
+                [("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1
+            )
             if self._check_picking_type() == "production":
-                kardex_location = self.env["stock.location"].search(
-                    [("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1
-                )
                 kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_id == kardex_location)
-            elif self._check_picking_type() == "store":
-                kardex_location = self.env["stock.location"].search(
-                    [("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1
-                )
+            elif self._check_picking_type() == "postproduction":
                 kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_dest_id == kardex_location)
-
+            elif self._check_picking_type() == "store":
+                kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_dest_id == kardex_location)
+            _logger.info("### kardex_move_lines after filter: %s" % (kardex_move_lines,))
             for move_line in kardex_move_lines:
                 table = "PPG_Auftraege"
 
@@ -310,7 +333,8 @@ class StockPicking(models.Model):
                     picking_vals["kardex_charge"] = move_line.lot_id.name
                 # picking_vals["kardex_destination"] = KARDEX_DESTINATION
 
-                picking_vals["kardex_direction"] = self._get_direction(picking_origin)
+                # picking_vals["kardex_direction"] = self._get_direction(picking_origin)
+                picking_vals["kardex_direction"] = self._get_direction()
                 picking_vals["kardex_search"] = move_line.product_id.default_code
                 if move_line.product_id.kardex:
                     new_id, create_time, update_time, running_id = self._create_external_object(picking_vals, table)
@@ -553,10 +577,15 @@ class StockPicking(models.Model):
         send_flag = STOCK_PICKING_SEND_FLAG_FIXER.get(picking_type_id, "0")
         return send_flag
 
-    def _get_direction(self, picking_origin):
-        if picking_origin and self.env["mrp.production"].search([("name", "=", picking_origin)]):
-            return 4
-        return 3
+    # def _get_direction(self, picking_origin):
+    def _get_direction(self):    
+        if self._check_picking_type() in ["store", "postproduction"]:
+            return 3
+        elif self._check_picking_type() == "production":
+            return 4 
+        # if picking_origin and self.env["mrp.production"].search([("name", "=", picking_origin)]):
+        #     return 4
+        # return 3
 
     def _get_search(self):
         search_term = "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
@@ -578,6 +607,23 @@ class StockPicking(models.Model):
                 picking.move_ids.write({"kardex_done": vals["kardex_done"]})
 
         return res
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            _logger.info("### vals in stock picking create %s " % (vals,))
+            origin = vals.get('origin')
+            location_dest_id = vals.get('location_dest_id')
+            location_id = vals.get('location_id')
+            location = self.env['stock.location'].browse(location_id)
+            if origin and location_dest_id and location.name == POST_PRODUCTION_LOCATION:
+                # Extract the MO name (same as origin)
+                mo = self.env['mrp.production'].search([('name', '=', origin)], limit=1)
+                if mo and mo.product_id and mo.product_id.last_location_id:
+                    # Override the default location_dest_id
+                    vals['location_dest_id'] = mo.product_id.last_location_id.id
+        return super().create(vals_list)
+        
 
 
 class StockMove(models.Model):
@@ -647,6 +693,8 @@ class StockMove(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         # Ensure that the product being added has kardex=True if picking has kardex=True
+        _logger.info("### create move vals list %s " % (vals_list,))
+
         for vals in vals_list:
             picking_id = vals.get("picking_id")
             product_id = vals.get("product_id")
@@ -661,6 +709,7 @@ class StockMove(models.Model):
                 picking = self.env["stock.picking"].browse(picking_id)
                 # Retirve the product
                 product = self.env["product.product"].browse(vals.get("product_id"))
+                _logger.info("### product last location %s " % (product.last_location_id.name,))
                 if picking.kardex and not product.kardex:
                     raise UserError(_("You can only add Kardex products."))
 
@@ -671,6 +720,11 @@ class StockMove(models.Model):
                     if picking_type_code == "incoming" and origin_type == "store":
                         last_location_id = product.last_location_id
                         vals["location_final_id"] = last_location_id.id
+
+                if picking._check_picking_type() == "postproduction":
+                    last_location_id = product.last_location_id
+                    vals["location_final_id"] = last_location_id.id
+                        
 
         records = super().create(vals_list)
 
@@ -701,6 +755,18 @@ class StockMove(models.Model):
 
         return res
 
+    # def _prepare_move_line_vals(self, quantity=None, reserved_quant=None):
+    #     _logger.info("### _prepare_move_line_vals")
+
+    #     vals = super()._prepare_move_line_vals(quantity, reserved_quant)
+        
+    #     _logger.info("### product %s " % (self.product_id.name,))
+    #     _logger.info("### product last location %s " % (self.product_id.last_location_id.name,))
+    #     if self.product_id.last_location_id:
+    #         vals['location_dest_id'] = self.product_id.last_location_id.id
+    #     _logger.info("### vals %s " % (vals,))
+    #     return vals
+
 
 class StockMoveLine(models.Model):
     _inherit = "stock.move.line"
@@ -723,6 +789,14 @@ class StockMoveLine(models.Model):
 
     kardex_journal_status = fields.Char(string="Komplett")
 
+    # location_dest_id = fields.Many2one('stock.location', 'To', domain="[('usage', '!=', 'view')]", check_company=True, required=True, compute="_compute_location_dest_id", store=True, readonly=False, precompute=True)
+
+    # @api.depends('move_id', 'move_id.location_id', 'move_id.location_dest_id', 'move_id.product_id.last_location_id')
+    # def _compute_location_dest_id(self):
+    #     for line in self:
+    #         if not line.location_dest_id and line.move_id.product_id.last_location_id:
+    #             line.location_dest_id = line.move_id.product_id.last_location_id
+
     # @api.depends('location_id', 'product_id')
     # def _compute_last_location_id(self):
     #     for record in self:
@@ -736,6 +810,8 @@ class StockMoveLine(models.Model):
 
     #             if last_move:
     #                 record.last_location_id = last_move.location_dest_id
+
+    
 
     @api.depends("location_id")
     @api.onchange("location_id")
