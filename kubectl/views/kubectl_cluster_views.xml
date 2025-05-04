@@ -60,11 +60,10 @@
         name="kubectl"
         web_icon="kubectl,static/description/icon.png"
     />
-    <menuitem id="kubectl.menu_kubectl" name="kubectl" parent="kubectl.menu_root" />
     <menuitem
         id="kubectl.menu_kubectl_cluster"
         name="Clusters"
-        parent="kubectl.menu_kubectl"
+        parent="kubectl.menu_root"
         action="kubectl.action_kubectl_cluster_view"
         sequence="10"
     />

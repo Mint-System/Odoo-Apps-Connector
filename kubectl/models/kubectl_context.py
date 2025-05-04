@@ -1,6 +1,10 @@
 import logging
+import os
+import subprocess
+import tempfile
+from contextlib import contextmanager
 
-from odoo import fields, models
+from odoo import _, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -21,3 +25,60 @@ class KubectlContext(models.Model):
     def action_use_context(self):
         self.ensure_one()
         self.env.user.current_context_id = self
+
+    @contextmanager
+    def _with_config(self):
+        """
+        Context manager that creates a temporary file with kubectl config.
+
+        Yields:
+            str: Path to the temporary config file
+        """
+        self.ensure_one()
+
+        # Write config to temporary file
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
+            temp_file.write(self.config)
+            temp_file_path = temp_file.name
+
+        try:
+            yield temp_file_path
+        finally:
+            # Clean up the temporary file
+            os.unlink(temp_file_path)
+
+    def action_test_connection(self):
+        """
+        Test connection to the kubernetes cluster using this context.
+        """
+        self.ensure_one()
+
+        with self._with_config() as config_path:
+            try:
+                output = subprocess.run(
+                    ["kubectl", "--kubeconfig", config_path, "cluster-info"],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Connection Success"),
+                        "type": "success",
+                        "message": output.stdout,
+                    },
+                }
+            except subprocess.CalledProcessError as e:
+                return {
+                    "type": "ir.actions.client",
+                    "tag": "display_notification",
+                    "params": {
+                        "title": _("Connection Failed"),
+                        "type": "danger",
+                        "message": e.stderr,
+                    },
+                }

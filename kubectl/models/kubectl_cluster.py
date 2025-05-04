@@ -11,4 +11,4 @@ class KubectlCluster(models.Model):
 
     name = fields.Char()
     server = fields.Char()
-    provider_id = fields.Many2one("res.partner")
+    provider_id = fields.Many2one("res.partner", domain="[('is_provider','=', True)]")

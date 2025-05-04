@@ -2,6 +2,7 @@
 <odoo>
     <record id="res_partner_vshn_demo" model="res.partner">
         <field name="name">VSHN</field>
+        <field name="is_provider" eval="True" />
     </record>
 
     <record id="kubectl_cluster_kind_demo" model="kubectl.cluster">
