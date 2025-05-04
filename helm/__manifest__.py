@@ -16,6 +16,7 @@
         "views/helm_release_views.xml",
         "security/security.xml",
         "security/ir.model.access.csv",
+        "wizards/helm_chart_install.xml",
     ],
     "installable": True,
     "application": False,

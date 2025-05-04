@@ -1,0 +1,27 @@
+<odoo>
+    <record id="helm_chart_install_wizard" model="ir.ui.view">
+        <field name="name">helm.helm_chart_install_wizard</field>
+        <field name="model">helm.chart.install</field>
+        <field name="arch" type="xml">
+            <form string="Create Release">
+                <sheet>
+                    <group>
+                        <field name="chart_id" readonly="1" />
+                        <field name="name" />
+                        <field name="context_id" />
+                        <field name="partner_id" />
+                    </group>
+                </sheet>
+                <footer>
+                    <button
+                        name="action_confirm"
+                        string="Confirm"
+                        type="object"
+                        class="btn-primary"
+                    />
+                    <button string="Cancel" class="btn-secondary" special="cancel" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -7,8 +7,18 @@
             <form>
                 <header>
                     <field name="state" widget="statusbar" select="1" readonly="1" />
-                    <button name="install" string="Install" type="object" />
-                    <button name="uninstall" string="Uninstall" type="object" />
+                    <button
+                        name="install"
+                        string="Install"
+                        type="object"
+                        invisible="state == 'installed'"
+                    />
+                    <button
+                        name="uninstall"
+                        string="Uninstall"
+                        type="object"
+                        invisible="state == 'draft'"
+                    />
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -21,6 +31,7 @@
                             <group>
                                 <group>
                                     <field name="chart_id" />
+                                    <field name="context_id" />
                                     <field name="partner_id" />
                                 </group>
                             </group>
@@ -38,7 +49,9 @@
             <list>
                 <field name="name" />
                 <field name="chart_id" />
+                <field name="context_id" />
                 <field name="partner_id" />
+                <field name="state" />
             </list>
         </field>
     </record>
@@ -64,8 +77,8 @@
     <menuitem
         id="helm.menu_helm_release"
         name="Releases"
-        parent="helm.menu_helm"
+        parent="helm.menu_root"
         action="helm.action_helm_release_view"
-        sequence="30"
+        sequence="10"
     />
 </odoo>

@@ -5,6 +5,9 @@
         <field name="model">helm.chart</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button string="Release" name="action_release" type="object" />
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>
@@ -18,6 +21,11 @@
                                     <field name="repo_id" />
                                 </group>
                             </group>
+                        </page>
+                        <page string="Products" name="products">
+                            <field name="product_ids">
+                                <list />
+                            </field>
                         </page>
                     </notebook>
                 </sheet>
@@ -57,7 +65,7 @@
     <menuitem
         id="helm.menu_helm_chart"
         name="Charts"
-        parent="helm.menu_helm"
+        parent="helm.menu_root"
         action="helm.action_helm_chart_view"
         sequence="20"
     />

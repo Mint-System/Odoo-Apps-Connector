@@ -11,6 +11,19 @@ class HelmChart(models.Model):
 
     name = fields.Char()
     repo_id = fields.Many2one("helm.repo")
+    product_ids = fields.Many2many("product.template")
 
-    def install(self):
-        return
+    def action_release(self):
+        """
+        Opens the release wizard when the Release button is clicked.
+        """
+        return {
+            "name": "Create Release",
+            "type": "ir.actions.act_window",
+            "res_model": "kubectl.chart.install",
+            "view_mode": "form",
+            "target": "new",
+            "context": {
+                "default_chart_id": self.id,
+            },
+        }

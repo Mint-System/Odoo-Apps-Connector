@@ -65,12 +65,11 @@
         name="Helm"
         web_icon="helm,static/description/icon.png"
     />
-    <menuitem id="helm.menu_helm" name="Helm" parent="helm.menu_root" />
     <menuitem
         id="helm.menu_helm_repo"
         name="Repos"
-        parent="helm.menu_helm"
+        parent="helm.menu_root"
         action="helm.action_helm_repo_view"
-        sequence="10"
+        sequence="30"
     />
 </odoo>
