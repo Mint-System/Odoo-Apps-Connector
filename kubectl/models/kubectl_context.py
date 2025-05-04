@@ -15,7 +15,7 @@ class KubectlContext(models.Model):
 
     name = fields.Char()
     cluster_id = fields.Many2one("kubectl.cluster")
-    config = fields.Text("config")
+    config = fields.Text()
     is_current = fields.Boolean(compute="_compute_is_current")
 
     def _compute_is_current(self):

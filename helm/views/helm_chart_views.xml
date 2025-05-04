@@ -19,6 +19,7 @@
                             <group>
                                 <group>
                                     <field name="repo_id" />
+                                    <field name="values" class="terminal-screen" />
                                 </group>
                             </group>
                         </page>

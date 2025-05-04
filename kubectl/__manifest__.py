@@ -23,4 +23,5 @@
     "images": ["images/screen.png"],
     "external_dependencies": {"bin": ["kubectl"]},
     "demo": ["demo/demo.xml"],
+    "assets": {"web.assets_backend": ["kubectl/static/src/css/style.css"]},
 }

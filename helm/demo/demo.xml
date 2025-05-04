@@ -4,13 +4,13 @@
         <field name="name">Mint System</field>
     </record>
 
-    <record id="product_odoo_community_edition_demo" model="product.template">
+    <record id="product_odoo_community_edition_demo" model="product.product">
         <field name="name">Odoo Community Edition</field>
         <field name="type">consu</field>
         <field name="list_price">50</field>
     </record>
 
-    <record id="product_odoo_enterprise_edition_demo" model="product.template">
+    <record id="product_odoo_enterprise_edition_demo" model="product.product">
         <field name="name">Odoo Enterprise Edition</field>
         <field name="type">consu</field>
         <field name="list_price">80</field>
@@ -32,6 +32,7 @@
 
     <record id="odoo_release_demo" model="helm.release">
         <field name="name">odoo</field>
+        <field name="product_id" ref="helm.product_odoo_community_edition_demo" />
         <field name="chart_id" ref="helm.odoo_chart_demo" />
         <field name="context_id" ref="kubectl.kubectl_context_kind_demo" />
         <field name="partner_id" ref="helm.res_partner_mint_system_demo" />

@@ -7,8 +7,24 @@
             <form>
                 <header>
                     <field name="state" widget="statusbar" select="1" readonly="1" />
-                    <button name="add" string="Add" type="object" />
-                    <button name="update" string="Update" type="object" />
+                    <button
+                        name="action_add"
+                        string="Add"
+                        type="object"
+                        invisible="state == 'added'"
+                    />
+                    <button
+                        name="action_update"
+                        string="Update"
+                        type="object"
+                        invisible="state == 'draft'"
+                    />
+                    <button
+                        name="action_remove"
+                        string="Remove"
+                        type="object"
+                        invisible="state == 'draft'"
+                    />
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box" />
@@ -38,6 +54,7 @@
             <list>
                 <field name="name" />
                 <field name="url" />
+                <field name="state" />
             </list>
         </field>
     </record>
@@ -49,6 +66,7 @@
             <search>
                 <field name="name" />
                 <field name="url" />
+                <filter name="added" string="Added" domain="[('state','=', 'added')]" />
             </search>
         </field>
     </record>

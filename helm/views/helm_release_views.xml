@@ -8,14 +8,20 @@
                 <header>
                     <field name="state" widget="statusbar" select="1" readonly="1" />
                     <button
-                        name="install"
+                        name="action_install"
                         string="Install"
                         type="object"
                         invisible="state == 'installed'"
                     />
                     <button
-                        name="uninstall"
+                        name="action_uninstall"
                         string="Uninstall"
+                        type="object"
+                        invisible="state == 'draft'"
+                    />
+                    <button
+                        name="action_upgrade"
+                        string="Upgrade"
                         type="object"
                         invisible="state == 'draft'"
                     />
@@ -30,6 +36,7 @@
                         <page string="General Information" name="general_info">
                             <group>
                                 <group>
+                                    <field name="product_id" />
                                     <field name="chart_id" />
                                     <field name="context_id" />
                                     <field name="partner_id" />
@@ -63,6 +70,11 @@
             <search>
                 <field name="name" />
                 <field name="partner_id" />
+                <filter
+                    name="installed"
+                    string="Installed"
+                    domain="[('state','=', 'installed')]"
+                />
             </search>
         </field>
     </record>

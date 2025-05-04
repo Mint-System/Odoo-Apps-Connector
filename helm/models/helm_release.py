@@ -2,6 +2,7 @@ import logging
 import subprocess
 
 from odoo import _, fields, models
+from .ir_actions_client import display_notification
 
 _logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class HelmRelease(models.Model):
     _description = "Helm Release"
 
     name = fields.Char()
+    product_id = fields.Many2one("product.product")
     chart_id = fields.Many2one("helm.chart")
     context_id = fields.Many2one("kubectl.context")
     partner_id = fields.Many2one("res.partner", string="Customer")
@@ -19,7 +21,7 @@ class HelmRelease(models.Model):
         default="draft",
     )
 
-    def install(self):
+    def action_install(self):
         """
         Install the Helm chart using the current context configuration.
         """
@@ -41,31 +43,37 @@ class HelmRelease(models.Model):
                     text=True,
                 )
                 self.write({"state": "installed"})
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "title": _("Chart Installed"),
-                        "type": "success",
-                        "message": output.stdout,
-                        "next": {
-                            "type": "ir.actions.client",
-                            "tag": "reload",
-                        },
-                    },
-                }
+                return display_notification(_("Chart Installed"), output.stdout, "success")
             except subprocess.CalledProcessError as e:
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "title": _("Installation Failed"),
-                        "type": "danger",
-                        "message": e.stderr,
-                    },
-                }
+                return display_notification(_("Installing Chart Failed"), e.stderr, "danger")
 
-    def uninstall(self):
+    def action_upgrade(self):
+        """
+        Upgrade the Helm chart using the current context configuration.
+        """
+        self.ensure_one()
+        with self.context_id.get_config_path() as config_path:
+            try:
+                output = subprocess.run(
+                    [
+                        "helm",
+                        "--kubeconfig",
+                        config_path,
+                        "upgrade",
+                        self.name,
+                        f"{self.chart_id.repo_id.name}/{self.chart_id.name}",
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                self.write({"state": "draft"})
+                return display_notification(_("Chart Upgraded"), output.stdout, "success")
+            except subprocess.CalledProcessError as e:
+                return display_notification(_("Upgrading Chart Failed"), e.stderr, "danger")
+
+    def action_uninstall(self):
         """
         Uninstall the Helm chart using the current context configuration.
         """
@@ -80,26 +88,6 @@ class HelmRelease(models.Model):
                     text=True,
                 )
                 self.write({"state": "draft"})
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "title": _("Chart Uninstalled"),
-                        "type": "success",
-                        "message": output.stdout,
-                        "next": {
-                            "type": "ir.actions.client",
-                            "tag": "reload",
-                        },
-                    },
-                }
+                return display_notification(_("Chart Uninstalled"), output.stdout, "success")
             except subprocess.CalledProcessError as e:
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "title": _("Uninstallation Failed"),
-                        "type": "danger",
-                        "message": e.stderr,
-                    },
-                }
+                return display_notification(_("Uninstalling Chart Failed"), e.stderr, "danger")

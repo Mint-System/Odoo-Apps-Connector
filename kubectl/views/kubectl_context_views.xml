@@ -23,7 +23,7 @@
                         <page string="General Information" name="general_info">
                             <group>
                                 <group>
-                                    <field name="config" />
+                                    <field name="config" class="terminal-screen" />
                                 </group>
                             </group>
                         </page>

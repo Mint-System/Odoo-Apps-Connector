@@ -6,8 +6,8 @@
             <form string="Create Release">
                 <sheet>
                     <group>
-                        <field name="chart_id" readonly="1" />
                         <field name="name" />
+                        <field name="chart_id" readonly="1" />
                         <field name="context_id" />
                         <field name="partner_id" />
                     </group>
