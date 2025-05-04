@@ -21,6 +21,17 @@
                                     <field name="repo_id" />
                                     <field name="values" class="terminal-screen" />
                                 </group>
+                                <group>
+                                    <field
+                                        name="value_ids"
+                                        context="{'default_chart_id': id}"
+                                    >
+                                        <list editable="bottom">
+                                            <field name="path" />
+                                            <field name="code" />
+                                        </list>
+                                    </field>
+                                </group>
                             </group>
                         </page>
                         <page string="Products" name="products">

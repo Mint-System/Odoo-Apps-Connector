@@ -1,7 +1,8 @@
 import logging
 import subprocess
 
-from odoo import _, fields, models
+from odoo import _, api, fields, models
+
 from .ir_actions_client import display_notification
 
 _logger = logging.getLogger(__name__)
@@ -20,6 +21,13 @@ class HelmRelease(models.Model):
         selection=[("draft", "Draft"), ("installed", "Installed")],
         default="draft",
     )
+    values = fields.Text(compute="_compute_values", store=True)
+
+    @api.depends("chart_id")
+    def _compute_values(self):
+        for release in self:
+            if release.state == "draft":
+                release.values = release.chart_id.values
 
     def action_install(self):
         """

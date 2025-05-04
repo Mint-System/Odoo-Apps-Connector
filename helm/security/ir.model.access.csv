@@ -6,3 +6,5 @@ access_helm_chart_manager,access.helm.chart.manager,model_helm_chart,helm.group_
 access_helm_release_user,access.helm.release.user,model_helm_release,helm.group_user,1,0,0,0
 access_helm_release_manager,access.helm.release.manager,model_helm_release,helm.group_manager,1,1,1,1
 access_helm_chart_install_user,access.helm.chart.install.user,model_helm_chart_install,helm.group_user,1,1,1,1
+access_helm_chart_value_user,access.helm.chart.value.user,model_helm_chart_value,helm.group_user,1,0,0,0
+access_helm_chart_value_manager,access.helm.chart.value.manager,model_helm_chart_value,helm.group_manager,1,1,1,1

@@ -41,6 +41,9 @@
                                     <field name="context_id" />
                                     <field name="partner_id" />
                                 </group>
+                                <group>
+                                    <field name="values" class="terminal-screen" />
+                                </group>
                             </group>
                         </page>
                     </notebook>

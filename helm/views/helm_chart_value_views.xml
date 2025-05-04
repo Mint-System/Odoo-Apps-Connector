@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="helm_chart_value_list_view" model="ir.ui.view">
+        <field name="name">helm.helm_chart_value_list_view</field>
+        <field name="model">helm.chart.value</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="path" />
+            </list>
+        </field>
+    </record>
+</odoo>

@@ -2,7 +2,6 @@ import logging
 import subprocess
 
 from odoo import fields, models
-from .ir_actions_client import display_notification
 
 _logger = logging.getLogger(__name__)
 
@@ -14,6 +13,7 @@ class HelmChart(models.Model):
     name = fields.Char()
     repo_id = fields.Many2one("helm.repo")
     values = fields.Text(compute="_compute_values")
+    value_ids = fields.One2many("helm.chart.value", "chart_id")
     product_ids = fields.Many2many("product.product")
 
     def _compute_values(self):

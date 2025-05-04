@@ -1,7 +1,5 @@
-
-
 def display_notification(title, message, type):
-	return {
+    return {
         "type": "ir.actions.client",
         "tag": "display_notification",
         "params": {

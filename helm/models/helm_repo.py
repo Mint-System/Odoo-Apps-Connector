@@ -2,7 +2,6 @@ import logging
 import subprocess
 
 from odoo import _, fields, models
-from .ir_actions_client import display_notification
 
 _logger = logging.getLogger(__name__)
 
@@ -29,29 +28,9 @@ class HelmRepo(models.Model):
                 text=True,
             )
             self.write({"state": "added"})
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Repo Added"),
-                    "type": "success",
-                    "message": output.stdout,
-                    "next": {
-                        "type": "ir.actions.client",
-                        "tag": "reload",
-                    },
-                },
-            }
+            return display_notification(_("Repo Added"), output.stdout, "success")
         except subprocess.CalledProcessError as e:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Adding Repo Failed"),
-                    "type": "danger",
-                    "message": e.stderr,
-                },
-            }
+            return display_notification(_("Adding Repo Failed"), e.stderr, "danger")
 
     def action_update(self):
         self.ensure_one()
@@ -63,29 +42,9 @@ class HelmRepo(models.Model):
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Repo Updated"),
-                    "type": "success",
-                    "message": output.stdout,
-                    "next": {
-                        "type": "ir.actions.client",
-                        "tag": "reload",
-                    },
-                },
-            }
+            return display_notification(_("Repo Updated"), output.stdout, "success")
         except subprocess.CalledProcessError as e:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Updating Repo Failed"),
-                    "type": "danger",
-                    "message": e.stderr,
-                },
-            }
+            return display_notification(_("Updating Repo Failed"), e.stderr, "danger")
 
     def action_remove(self):
         self.ensure_one()
@@ -103,26 +62,6 @@ class HelmRepo(models.Model):
                 text=True,
             )
             self.write({"state": "draft"})
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Repo Removed"),
-                    "type": "success",
-                    "message": output.stdout,
-                    "next": {
-                        "type": "ir.actions.client",
-                        "tag": "reload",
-                    },
-                },
-            }
+            return display_notification(_("Repo Removed"), output.stdout, "success")
         except subprocess.CalledProcessError as e:
-            return {
-                "type": "ir.actions.client",
-                "tag": "display_notification",
-                "params": {
-                    "title": _("Removing Repo Failed"),
-                    "type": "danger",
-                    "message": e.stderr,
-                },
-            }
+            return display_notification(_("Removing Repo Failed"), e.stderr, "danger")
