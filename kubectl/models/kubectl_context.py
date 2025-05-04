@@ -27,7 +27,7 @@ class KubectlContext(models.Model):
         self.env.user.current_context_id = self
 
     @contextmanager
-    def _with_config(self):
+    def get_config_path(self):
         """
         Context manager that creates a temporary file with kubectl config.
 
@@ -53,7 +53,7 @@ class KubectlContext(models.Model):
         """
         self.ensure_one()
 
-        with self._with_config() as config_path:
+        with self.get_config_path() as config_path:
             try:
                 output = subprocess.run(
                     ["kubectl", "--kubeconfig", config_path, "cluster-info"],
