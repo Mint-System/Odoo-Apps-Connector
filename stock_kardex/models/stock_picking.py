@@ -116,16 +116,19 @@ class StockPicking(models.Model):
                 not all_moves_have_status_success and rec.kardex_done and any_move_has_kardex_destination
             )
 
-    @api.depends()
+    @api.depends("send_button_is_visible")
+    # def _compute_validate_button_is_invisible(self):
+    #     for rec in self:
+    #         if rec.move_line_ids:
+    #             all_moves_has_kardex_destination = all(
+    #                 self._check_if_destination_is_kardex(move.location_dest_id) for move in rec.move_line_ids
+    #             )
+    #         else:
+    #             all_moves_has_kardex_destination = False
+    #         rec.validate_button_is_invisible = not all_moves_has_kardex_destination
     def _compute_validate_button_is_invisible(self):
         for rec in self:
-            if rec.move_line_ids:
-                all_moves_has_kardex_destination = all(
-                    self._check_if_destination_is_kardex(move.location_dest_id) for move in rec.move_line_ids
-                )
-            else:
-                all_moves_has_kardex_destination = False
-            rec.validate_button_is_invisible = not all_moves_has_kardex_destination
+            rec.validate_button_is_invisible = rec.send_button_is_visible
 
     def check_kardex(self):
         for picking in self:
@@ -184,12 +187,14 @@ class StockPicking(models.Model):
 
         res = super().button_validate()
         for picking in self:
-            if self._check_picking_type() == "store":
-                for move in picking.move_line_ids:
-                    product = move.product_id
-                    product.write({"last_location_id": move.location_dest_id})
+            # if self._check_picking_type() == "store":
+            #     for move in picking.move_line_ids:
+            #         product = move.product_id
+            #         product.write({"last_location_id": move.location_dest_id})
+
 
             _logger.info("### picking type: %s" % (self._check_picking_type(),))
+            _logger.info("### location dest: %s" % (picking.location_dest_id,))
             _logger.info("### destination: %s" % (self._check_if_destination_is_kardex(picking.location_dest_id),))
             _logger.info("### kardex_done: %s" % (picking.kardex_done,))
 
@@ -216,6 +221,7 @@ class StockPicking(models.Model):
 
     def action_next_transfer(self):
         next_transfers = super().action_next_transfer()
+        #import pdb; pdb.set_trace()
         if next_transfers:
             if "domain" in next_transfers:
                 pickings = self.env["stock.picking"].search(next_transfers["domain"])
@@ -352,6 +358,9 @@ class StockPicking(models.Model):
                     }
                     # move_line.move_id.write(done_move)
                     move_line.write(done_move)
+                    # update product last location id
+                    product = move_line.product_id
+                    product.write({"last_location_id": move_line.location_dest_id})
             message = missing_products_message + "\n Kardex Picking was sent to Kardex."
 
             done_picking = {
@@ -710,7 +719,8 @@ class StockMove(models.Model):
                 picking = self.env["stock.picking"].browse(picking_id)
                 # Retirve the product
                 product = self.env["product.product"].browse(vals.get("product_id"))
-                _logger.info("### product last location %s " % (product.last_location_id.name,))
+                if product.last_location_id:
+                    _logger.info("### product last location %s " % (product.last_location_id.name,))
                 if picking.kardex and not product.kardex:
                     raise UserError(_("You can only add Kardex products."))
 
@@ -821,6 +831,8 @@ class StockMoveLine(models.Model):
             record.has_kardex_location = (
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
+
+    
 
 
 class StockQuant(models.Model):

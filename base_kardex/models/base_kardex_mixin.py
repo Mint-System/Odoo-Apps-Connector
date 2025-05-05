@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytz
 
-from odoo import models
+from odoo import _, models
 from odoo.exceptions import ValidationError
 
 # from odoo.tools import pytz
@@ -22,6 +22,9 @@ ODOO_KARDEX_PRODUCT_FIXER = {
     "kardex_ch_verw": "ChVerw",
     "kardex_sn_verw": "SnVerw",
     "kardex_search": "Suchbegriff",
+    "default_code": "Suchbegriff",
+    "kardex_search_term_one": "Info1",
+    "kardex_search_term_two": "Info2",
     "kardex_product_group": "Artikelgruppe",
     "kardex_unit": "Einheit",
     #'kardex_row_create_time': 'Row_Create_Time',
@@ -102,27 +105,28 @@ class BaseKardexMixin(models.AbstractModel):
             return True
 
     def _update_external_object(self, vals):
-        # translate vals dictionary to external database scheme
-        fixer = ODOO_KARDEX_PRODUCT_FIXER
-        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
-        # building list
-        kardex_list = []
-        for key, value in kardex_dict.items():
-            if type(value) is int:  # Handle Integers
-                kardex_list.append(f"{key} = {value}")
-            else:  # Default Handler
-                kardex_list.append(f"{key} = '{value}'")
-            # generate string from key-value-pair list
-        data = ", ".join(kardex_list)
-        # building sql query
         table = "PPG_Artikel"
-        id = vals.get("kardex_product_id", None)
-        if id:
-            sql = f"UPDATE {table} SET {data} WHERE Artikelid = {id}"
+        default_code = vals.pop("default_code", None)
+        # translate vals dictionary to external database scheme
+        if default_code:
+            fixer = ODOO_KARDEX_PRODUCT_FIXER
+            kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
+            # building list
+            kardex_list = []
+            for key, value in kardex_dict.items():
+                if type(value) is int:  # Handle Integers
+                    kardex_list.append(f"{key} = {value}")
+                else:  # Default Handler
+                    kardex_list.append(f"{key} = '{value}'")
+                # generate string from key-value-pair list
+            data = ", ".join(kardex_list)
+            # building sql query
+        
+            sql = f"UPDATE {table} SET {data} WHERE Suchbegriff = '{default_code}'"
             self._execute_query_on_mssql("update", sql)
             return True
 
-        raise ValidationError(_("The data contains no Kardex Article Id."))
+        raise ValidationError(_("The data contains no default code."))
 
     def _get_dates(self, record, date_handling):
         if date_handling == "create":
