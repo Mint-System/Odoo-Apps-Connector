@@ -390,6 +390,12 @@ class ProductTemplate(models.Model):
             re.sub(r"<.*?>", "", vals["description"]) if vals["description"] else ""
         )
 
+        # handle length of info fields
+        max_length = 50
+        vals["kardex_search_term_one"] =  (vals["kardex_search_term_one"] or "")[:max_length]
+        vals["kardex_search_term_two"] =  (vals["kardex_search_term_two"] or "")[:max_length]
+
+
         # handle tracking
         if "tracking" in vals.keys():
             tracking_val = self._get_tracking_values(vals["tracking"])
