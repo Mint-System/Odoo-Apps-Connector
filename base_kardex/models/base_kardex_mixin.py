@@ -142,17 +142,45 @@ class BaseKardexMixin(models.AbstractModel):
 
     def _create_external_object(self, vals, table):
         # translate vals dictionary to external database scheme
+        # if table == "PPG_Artikel":
+        #     fixer = ODOO_KARDEX_PRODUCT_FIXER
+        # elif table == "PPG_Auftraege":
+        #     fixer = ODOO_KARDEX_PICKING_FIXER
+        # kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
+        # # building sql query
+        # ", ".join(["?"] * len(kardex_dict))
+        # columns = ", ".join(kardex_dict.keys())
+        # sql = f"INSERT INTO {table} ({columns}) VALUES {tuple(kardex_dict.values())}"
+
+        # get the db driver
+
+        db_driver = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
+        db_driver = db_driver._get_db_driver()
+        _logger.info("Database driver: %s", db_driver)
+
+        # Pick the fixer based on table
         if table == "PPG_Artikel":
             fixer = ODOO_KARDEX_PRODUCT_FIXER
         elif table == "PPG_Auftraege":
             fixer = ODOO_KARDEX_PICKING_FIXER
-        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
-        # building sql query
-        ", ".join(["?"] * len(kardex_dict))
-        columns = ", ".join(kardex_dict.keys())
-        sql = f"INSERT INTO {table} ({columns}) VALUES {tuple(kardex_dict.values())}"
+        else:
+            raise ValueError(f"Unsupported table: {table}")
 
-        new_id = self._execute_query_on_mssql("insert", sql)
+        # Clean and prepare dictionary
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
+
+        # Extract columns and values
+        columns = ", ".join(kardex_dict.keys())
+        if db_driver == "pymssql":
+            placeholders = ", ".join(["%s"] * len(kardex_dict))
+        elif db_driver == "pyodbc":
+            placeholders = ", ".join(["?"] * len(kardex_dict))
+        values = tuple(kardex_dict.values())
+
+        # Construct SQL safely
+        sql = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+
+        new_id = self._execute_query_on_mssql("insert", sql, values)
         # in case of inserting a record result is id of created object
         # getting dates from external database
         columns = "Row_Create_Time, Row_Update_Time"
