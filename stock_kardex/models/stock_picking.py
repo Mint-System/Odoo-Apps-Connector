@@ -16,6 +16,8 @@ from .config import (
     KARDEX_WAREHOUSE,
     ODOO_KARDEX_UNIT_FIXER,
     OVERRIDE_SERIAL_FOR_STORE,
+    OVERRIDE_SERIAL_FOR_PRODUCTION,
+    CREATE_SERIAL_FOR_PRODUCTION,
     PICKING_TYPE_FIXER,
     POST_PRODUCTION_LOCATION,
     STOCK_PICKING_SEND_FLAG_FIXER,
@@ -444,13 +446,16 @@ class StockPicking(models.Model):
         pickings = self.env["stock.picking"].search(
             [("state", "!=", "done"), ("move_line_ids.kardex_status", "=", "2")]
         )
+        _logger.info(f"pickings: {pickings}")
         for picking in pickings:
             moves = self.env["stock.move.line"].search(
                 [("picking_id", "=", picking.id), ("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)]
             )
+            _logger.info(", ".join(map(str, moves.mapped("kardex_running_id"))))
 
             complete = 1
             for move in moves:
+                
                 # if move.kardex_running_id and not move.kardex_sync:
                 if move.kardex_running_id:
                     picking_journal_ids = (
@@ -565,15 +570,38 @@ class StockPicking(models.Model):
                                 if lot:
                                     move_line_vals["lot_id"] = lot[0]
                                 elif CREATE_SERIAL_FOR_STORE:
-                                    new_lot = self.env["stock.lot"].create(
-                                        {
-                                            "name": lot_name,
-                                            "product_id": product_id[0],
-                                        }
-                                    )
-                                    move_line_vals["lot_id"] = new_lot.id
-                            if direction == "4":
-                                move_line_vals["lot_id"] = lot[0]
+                                    try:
+                                        new_lot = self.env["stock.lot"].create(
+                                            {
+                                                "name": lot_name,
+                                                "product_id": product_id[0],
+                                            }
+                                        )
+                                        move_line_vals["lot_id"] = new_lot.id
+                                    except ValidationError as e:
+                                        _logger.error("Could not complete lot handling: %s", e.name)
+                                        
+                                        pass
+
+                            if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
+                                if lot:
+                                    move_line_vals["lot_id"] = lot[0]
+                                elif CREATE_SERIAL_FOR_PRODUCTION:
+                                    try:
+                                        new_lot = self.env["stock.lot"].create(
+                                            {
+                                                "name": lot_name,
+                                                "product_id": product_id[0],
+                                            }
+                                        )
+                                        move_line_vals["lot_id"] = new_lot.id
+                                    except:
+                                    # except ValidationError as e:
+                                    #     _logger.error("Could not complete lot handling: %s", e.name)
+                                        
+                                        pass
+                                        
+
                             if not lot:
                                 move_line_vals["kardex_sync"] = False
 
