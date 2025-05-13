@@ -73,6 +73,7 @@
                                 <field name="kardex_row_update_time" />
                                 <field name="kardex_is_fifo" />
                                 <field name="kardex_done" />
+                                <field name="last_location_id" />
                             </group>
                         </sheet>
                     </form>

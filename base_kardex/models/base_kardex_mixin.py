@@ -223,3 +223,24 @@ class BaseKardexMixin(models.AbstractModel):
                     self.create(val_dict)
         else:
             raise ValidationError(_("No Records found in external Database"))
+
+    # def _get_destination_location_for_product(self, product):
+    #     """Determine the appropriate destination location for a product."""
+    #     if not product:
+    #         return False
+
+    #     # First preference: product's last_location_id
+    #     location = product.last_location_id
+    #     if location:
+    #         return location
+
+    #     # Second: last location with quantity > 0
+    #     quant = self.env['stock.quant'].search([
+    #         ('product_id', '=', product.id),
+    #         ('quantity', '>', 0)
+    #     ], order='write_date desc', limit=1)
+
+    #     return quant.location_id if quant else False
+
+
+

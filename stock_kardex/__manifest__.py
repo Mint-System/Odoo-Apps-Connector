@@ -15,6 +15,7 @@
         "views/kardex_bom_views.xml",
         "views/kardex_production_views.xml",
         "views/kardex_purchase_views.xml",
+        "views/kardex_sale_views.xml",
     ],
     "installable": True,
     "application": False,
