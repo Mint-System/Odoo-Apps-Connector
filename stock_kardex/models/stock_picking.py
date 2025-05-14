@@ -303,9 +303,13 @@ class StockPicking(models.Model):
             if picking._check_picking_type() == "production":
                 any_kardex_move_is_not_synced = any([not move.kardex_sync for move in kardex_moves])
                 if any_kardex_move_is_not_synced:
+                    _logger.info(f"### set picking {picking.name} state to waiting_for_kardex")
                     picking.write({"state": "waiting_for_kardex"})
                 elif not any_kardex_move_is_not_synced and picking.state == "waiting_for_kardex":
-                    picking.write({"state": "assigned"})
+                    _logger.info(f"### set picking {picking.name} state to assigned")
+                    picking.write({"state": "assigned",})
+                    for move in kardex_moves:
+                        move.write({"picked": False})
             # elif picking._check_picking_type() == "store":
             elif picking._check_picking_type() in ["store", "postproduction"]:
                 all_moves_have_kardex_destination = all(
@@ -865,6 +869,10 @@ class StockMove(models.Model):
         for move in records:
             picking = move.picking_id
             parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+            # NEU 14.5.2025 uk
+            # if not parent:
+            #     parent = self.env["sale.order"].search([("name", "=", picking.origin)], limit=1)
+            # _logger.info("### parent %s" % (parent.name,))
             if parent and picking.picking_type_code == "internal" and picking.id not in already_sent:
                 picking.send_to_kardex(picking.origin)
                 already_sent.append(picking.id)
