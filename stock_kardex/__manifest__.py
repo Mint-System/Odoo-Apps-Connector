@@ -8,7 +8,7 @@
     "category": "Stock",
     "version": "18.0.1.0.0",
     "license": "AGPL-3",
-    "depends": ["stock", "mrp", "purchase"],
+    "depends": ["stock", "mrp", "purchase", "sale"],
     "data": [
         "security/ir.model.access.csv",
         "views/kardex_stock_views.xml",
