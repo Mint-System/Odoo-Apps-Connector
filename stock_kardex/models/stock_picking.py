@@ -418,7 +418,7 @@ class StockPicking(models.Model):
                 if move_line.lot_id and move_line.product_id.tracking == "lot":
                     picking_vals["kardex_charge"] = move_line.lot_id.name
                     picking_vals["kardex_serial"] = None
-                if move_line.lot_id and move_line.product_id.tracking == "none":
+                if move_line.product_id.tracking == "none":
                     picking_vals["kardex_charge"] = None
                     picking_vals["kardex_serial"] = None
                 # picking_vals["kardex_destination"] = KARDEX_DESTINATION
@@ -790,6 +790,18 @@ class StockMove(models.Model):
     has_kardex_location = fields.Boolean(compute="_compute_has_kardex_location", store=False)
     kardex_running_id_string = fields.Char(string="BzIds", compute="_compute_kardex_running_id_string", store=False)
 
+    # tracking_type_code = fields.Char(
+    #     string='Tracking Code',
+    #     compute='_compute_tracking_type_code',
+    #     store=False 
+    # )
+    tracking_type_badge = fields.Html(
+        string='Tracking',
+        compute='_compute_tracking_type_badge',
+        sanitize=False,  # Only use if you're 100% sure your HTML is safe
+        store=False
+    )
+
     @api.depends("move_line_ids.kardex_running_id")
     def _compute_kardex_running_id_string(self):
         for move in self:
@@ -824,6 +836,28 @@ class StockMove(models.Model):
                 domain = []
 
             obj.products_domain = domain
+
+    @api.depends('product_id')
+    def _compute_tracking_type_code(self):
+        for line in self:
+            tracking = line.product_id.tracking
+            if tracking == 'serial':
+                line.tracking_type_code = 'S'
+            elif tracking == 'lot':
+                line.tracking_type_code = 'L'
+            else:
+                line.tracking_type_code = ''
+
+    @api.depends('product_id')
+    def _compute_tracking_type_badge(self):
+        for line in self:
+            tracking = line.product_id.tracking
+            badge = ''
+            if tracking == 'serial':
+                badge = '<span style="background-color:#007bff;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">S</span>'
+            elif tracking == 'lot':
+                badge = '<span style="background-color:#28a745;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">L</span>'
+            line.tracking_type_badge = badge
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -932,6 +966,10 @@ class StockMoveLine(models.Model):
 
     kardex_journal_status = fields.Char(string="Komplett")
 
+   
+
+    
+
     # location_dest_id = fields.Many2one('stock.location', 'To', domain="[('usage', '!=', 'view')]", check_company=True, required=True, compute="_compute_location_dest_id", store=True, readonly=False, precompute=True)
 
     # @api.depends('move_id', 'move_id.location_id', 'move_id.location_dest_id', 'move_id.product_id.last_location_id')
@@ -964,6 +1002,8 @@ class StockMoveLine(models.Model):
             record.has_kardex_location = (
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
+
+    
 
     
 

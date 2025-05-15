@@ -67,7 +67,6 @@
                                 <field name="kardex_row_create_time" />
                                 <field name="kardex_row_update_time" />
                                 <field name="kardex_done" />
-                                <field name="state" />
                             </group>
                         </sheet>
                     </form>
@@ -114,7 +113,10 @@
                 <field name="kardex_running_id_string" string="BzId" optional="hide" />
                 <field name="kardex_journal_status" string="Kompl." optional="hide" />
                 <field name="kardex_sync" string="JSync" optional="hide" />
-                <field name="state" />
+            </xpath>
+            <xpath expr="//list/field[@name='product_id']" position="before">
+                <field name="tracking_type_badge" widget="html" string="T" />
+                <!-- <field name="tracking_type_code" string="T" /> -->
             </xpath>
 
             <!--dlist/field[@name='product_id']" position="replace">
