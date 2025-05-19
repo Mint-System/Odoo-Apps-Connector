@@ -128,6 +128,19 @@ class ProductTemplate(models.Model):
     #                     f"Expected pattern: '{category_abbr}.[alphanumeric or dot]'"
     #                 )
 
+    def get_info_from_kardex(self):
+        message_list = []
+        for product in self:
+            product_default_code = product.default_code
+            data = self._read_external_object_from_proddb(product_default_code)
+            if data:
+                for key, value in data.items():
+                    message_list.append(f"{key}: {value}")
+
+        message = "\n".join(message_list)
+         
+        return self._create_notification(message)
+
     def update_to_kardex(self):
         for product in self:
             product_vals = product.read()[0]

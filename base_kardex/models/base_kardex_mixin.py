@@ -1,3 +1,4 @@
+import pymssql
 import logging
 from datetime import datetime
 from types import SimpleNamespace
@@ -98,11 +99,27 @@ class BaseKardexMixin(models.AbstractModel):
         else:
             raise ValidationError(_("No active MSSQL instance found with priority=True"))
 
+    def _execute_query_on_proddb(self, default_code=None):
+        if default_code:
+            con = pymssql.connect(server='10.100.10.18', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
+            cur = con.cursor()
+        
+            cur.execute("SELECT * FROM Materialbase WHERE MaterialName = %s", (default_code,))
+            rows = cur.fetchall()
+            return rows
+        else:
+            raise ValidationError(_("No default code provided"))
+
+
     def _check_already_in_kardex(self, record):
         sql_query = f"SELECT ID, Suchbegriff FROM PPG_Artikel WHERE Suchbegriff='{record.default_code}'"
         rows = self._execute_query_on_mssql("select", sql_query)
         if len(rows) > 0:
             return True
+
+    def _read_external_object_from_proddb(self, default_code):
+        rows = self._execute_query_on_proddb(default_code)
+        return rows
 
     def _update_external_object(self, vals):
         table = "PPG_Artikel"
@@ -241,6 +258,8 @@ class BaseKardexMixin(models.AbstractModel):
     #     ], order='write_date desc', limit=1)
 
     #     return quant.location_id if quant else False
+
+
 
 
 
