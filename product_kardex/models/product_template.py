@@ -134,8 +134,9 @@ class ProductTemplate(models.Model):
             product_default_code = product.default_code
             data = self._read_external_object_from_proddb(product_default_code)
             if data:
-                for key, value in data.items():
-                    message_list.append(f"{key}: {value}")
+                for row in data:
+                    for key, value in row.items():
+                        message_list.append(f"{key}: {value}")
 
         message = "\n".join(message_list)
          
