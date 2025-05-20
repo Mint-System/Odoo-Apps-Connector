@@ -129,16 +129,18 @@ class ProductTemplate(models.Model):
     #                 )
 
     def get_info_from_kardex(self):
-        message_list = []
         for product in self:
             product_default_code = product.default_code
             data = self._read_external_object_from_proddb(product_default_code)
             if data:
+                message_list = []
                 for row in data:
                     for key, value in row.items():
                         message_list.append(f"{key}: {value}")
 
-        message = "\n".join(message_list)
+                message = ("\n").join(message_list)
+            else:
+                message = "This Article was not found in Kardex."
          
         return self._create_notification(message)
 

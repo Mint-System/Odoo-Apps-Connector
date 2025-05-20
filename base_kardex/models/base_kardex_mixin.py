@@ -103,8 +103,21 @@ class BaseKardexMixin(models.AbstractModel):
         if default_code:
             con = pymssql.connect(server='10.100.10.18', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
             cur = con.cursor()
+            query = """
+            SELECT
+                Materialbase.MaterialName as Produktnr,
+                LocContentbreakdown.QuantityCurrent,
+                LocContentbreakdown.Serialnumber,
+                Location.LocationName
+            FROM
+                LocContentbreakdown
+                LEFT JOIN LocContent on LocContentbreakdown.LocContentId = LocContent.LocContentId
+                LEFT JOIN Materialbase on LocContent.MaterialId = MaterialBase.MaterialId
+                LEFT JOIN Location on LocContent.LocationId = Location.LocationId 
+            WHERE Materialbase.MaterialName = %s
+            """
         
-            cur.execute("SELECT * FROM Materialbase WHERE MaterialName = %s", (default_code,))
+            cur.execute(query, (default_code,))
             rows = cur.fetchall()
             return rows
         else:
