@@ -418,7 +418,7 @@ class StockPicking(models.Model):
                 if move_line.lot_id and move_line.product_id.tracking == "lot":
                     picking_vals["kardex_charge"] = move_line.lot_id.name
                     picking_vals["kardex_serial"] = None
-                if move_line.product_id.tracking == "none":
+                if move_line.product_id.tracking == "none" or self._get_direction() == 4:
                     picking_vals["kardex_charge"] = None
                     picking_vals["kardex_serial"] = None
                 # picking_vals["kardex_destination"] = KARDEX_DESTINATION
