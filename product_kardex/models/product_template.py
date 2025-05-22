@@ -137,7 +137,8 @@ class ProductTemplate(models.Model):
     def get_info_from_kardex(self):
         for product in self:
             product_default_code = product.default_code
-            data = self._read_external_object_from_proddb(product_default_code)
+            data = self._read_external_object_from_proddb(default_code=product_default_code)
+            _logger.info("data from ppg called %s " % (data,))
             if data:
                 message_list = []
                 for row in data:

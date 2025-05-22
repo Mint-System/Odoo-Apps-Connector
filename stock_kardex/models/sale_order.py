@@ -19,3 +19,17 @@ class SaleOrder(models.Model):
 
 
 
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    @api.onchange('product_id')
+    def _onchange_product_id_custom(self):
+        if self.product_id:
+            # Access the product.template
+            product_template = self.product_id.product_tmpl_id
+            self.env['stock.quant'].sync_stocks(product_template.default_code)
+
+
+
+
+

@@ -1,3 +1,4 @@
+import re
 import logging
 import random
 import string
@@ -22,6 +23,7 @@ from .config import (
     PICKING_TYPE_FIXER,
     POST_PRODUCTION_LOCATION,
     STOCK_PICKING_SEND_FLAG_FIXER,
+    USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS,
 )
 
 
@@ -82,6 +84,9 @@ class StockPicking(models.Model):
 
     def _check_if_destination_is_kardex(self, location_id):
         return location_id.name == KARDEX_DESTINATION
+
+    def _check_if_location_is_kardex(self, location_id):
+        return location_id.name == KARDEX_WAREHOUSE
 
     @api.depends("origin")
     def _compute_kardex(self):
@@ -232,8 +237,8 @@ class StockPicking(models.Model):
             #     if self._check_if_destination_is_kardex(picking.location_dest_id):
             #         self.send_to_kardex(picking.origin)
 
-            if self._check_picking_type() == "sale":
-                self.send_to_kardex(picking.origin)
+            # if self._check_picking_type() == "sale":
+            #     self.send_to_kardex(picking.origin)
 
             
 
@@ -338,7 +343,7 @@ class StockPicking(models.Model):
 
                 if all_moves_have_kardex_location and not any_move_has_no_sync:
                     # TODO : Validate Aktion ausfuehren
-                    picking.write({"state": "done"})
+                    picking.write({"state": "assigned"})
                     # self.button_validate()
 
     def send_to_kardex(self, picking_origin=None):
@@ -1006,6 +1011,8 @@ class StockMoveLine(models.Model):
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
 
+            
+
     @api.model_create_multi
     def create(self, vals_list):
         res = super().create(vals_list)
@@ -1021,6 +1028,8 @@ class StockMoveLine(models.Model):
             location_dest_obj = self.env["stock.location"].browse(location_dest_id)
             _logger.warning("### move: %s " % (move_obj.name,))
             _logger.warning("### picking: %s " % (picking_obj.name,))
+            _logger.warning("### picking type: %s " % (picking_obj._check_picking_type()))
+            _logger.warning("### kardex done: %s " % (picking_obj.kardex_done))
             _logger.warning("### location_id: %s " % (location_obj.name,))
             _logger.warning("### location_dest_id: %s " % (location_dest_obj.name,))
            
@@ -1032,10 +1041,43 @@ class StockMoveLine(models.Model):
                     picking_obj.kardex_done = True
                     picking_obj.send_to_kardex(picking_obj.origin)
 
+            if picking_obj._check_picking_type() == "sale" and not picking_obj.kardex_done:
+                
+                if picking_obj._check_if_location_is_kardex(location_obj):
+                    _logger.warning("### send to kardex %s " % (picking_obj.name,))
+                    picking_obj.kardex_done = True
+                    picking_obj.send_to_kardex(picking_obj.origin)
+
+            
+
         return res
     
 
-    
+def _get_location_base(s):
+        if s:
+            match = re.match(r"^[^\s-]+", s)
+            return match.group(0) if match else s
+        return None
+
+
+def _transform_location(location):
+    if _get_location_base(location) == "Shuttle":
+        return "Shuttle"
+    # elif get_location_base(location) == "Palette":
+    #     return "Palette"
+    return location
+
+def _update_locations(data, transform_func):
+    for item in data:
+        item["LocationName"] = transform_func(item["LocationName"])
+    return data  
+
+def _harmonize_empty_values(data):
+    for item in data:
+        for key, value in item.items():
+            if value == "" or value is None or value == '---':
+                item[key] = None
+    return data
 
 
 class StockQuant(models.Model):
@@ -1047,7 +1089,60 @@ class StockQuant(models.Model):
         location_id = self.env["stock.location"].search([("name", "=", location_name)]).mapped("id")
         return location_id
 
+
     
+    def _get_data_from_bestandsabgleich(self, default_code, product_mapping):
+        if default_code:
+            conditions = f"WHERE Suchbegriff IN ('{default_code}')"
+        else:   
+            #conditions = f"WHERE Suchbegriff IN ('ZUS.P020.0000.A')" # for testing
+        # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
+            conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
+        # conditions = f"WHERE ID > {START_STOCK_SYNC}"
+        # get data from PPG_Bestandsabgleich
+        ppg_sql = f"""
+            WITH RankedRows AS (
+                SELECT
+                    Suchbegriff,
+                    Seriennummer,
+                    Charge,
+                    Row_Create_Time,
+                    Bestand,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY Suchbegriff, COALESCE(Seriennummer, 'NO_SN'), COALESCE(Charge, 'NO_LOT')
+                        ORDER BY Row_Create_Time DESC
+                    ) AS rn
+                FROM PPG_Bestandsabgleich
+                {conditions}
+            )
+            SELECT Suchbegriff, Seriennummer, Charge, Row_Create_Time, Bestand
+            FROM RankedRows
+            WHERE rn = 1
+            ORDER BY Suchbegriff, Seriennummer, Charge;
+        """
+
+        ppg_data = self._execute_query_on_mssql("select", ppg_sql)
+
+        return ppg_data
+
+
+
+    def _get_data_direct_call(self, default_code=None, products=None):
+        replace_dict = {
+            "Produktnr": "Suchbegriff",
+            "Lot": "Charge",
+            "Serialnumber": "Seriennummer",
+            "QuantityCurrent": "Bestand",
+        }
+        
+        data = self._read_external_object_from_proddb(default_code, products)
+        updated_data = [
+            {replace_dict.get(k, k): v for k, v in item.items()}
+            for item in data
+        ]
+            
+        return updated_data
+
 
     @api.model
     def sync_stocks(self, default_code=None):
@@ -1080,60 +1175,74 @@ class StockQuant(models.Model):
 
         stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
 
-        # 2. Get existing lot_id mapping {lot_name → lot_id}
-        self.env.cr.execute("SELECT name, id FROM stock_lot")
+        # 2. Get existing lot_id mapping {lot_name → lot_id} for lots with location
+        self.env.cr.execute("SELECT name, id FROM stock_lot WHERE location_id IS NOT NULL")
         lot_mapping = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
 
         products = tuple(set(q[1] for q in stock_quants if q[1]))
 
-        if not products:
+        if not products and not default_code:
             return False  # No products to update
+        
+
+        if USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS:
+            kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
+        else:
+            kardex_data = self._get_data_direct_call(default_code=default_code, products=product_mapping)
+
+        _logger.info("### kardex_data: %s" % (kardex_data,))
+
+        # update locations
+        kardex_data = _update_locations(kardex_data, _transform_location)
+
+        # harmonize empty values
+        kardex_data = _harmonize_empty_values(kardex_data)
+
+        _logger.info("### kardex_data: %s" % (kardex_data,))
+        
+        # aggregate and grouping data
+        grouped = {}
+        unaggregated = []
+
+        for item in kardex_data:
+            charge = item['Charge']
+            if charge is None:
+                unaggregated.append(item)  # Don't group, preserve as-is
+                continue
+
+            # Group by charge and Suchbegriff, to avoid merging unrelated products
+            key = (charge, item['Suchbegriff'])
+
+            if key not in grouped:
+                grouped[key] = {
+                    'Charge': charge,
+                    'Suchbegriff': item['Suchbegriff'],
+                    'Seriennummer': item['Seriennummer'],
+                    'Bestand': 0,
+                    'LocationNames': [],
+                }
+
+            grouped[key]['Bestand'] += item['Bestand']
+            grouped[key]['LocationNames'].append(item['LocationName'])
+
+        # Convert to list if needed
+        kardex_data = list(grouped.values()) + unaggregated
+        _logger.info("kardex_data after grouping: %s" % (kardex_data,))
 
             
-        if default_code:
-            conditions = f"WHERE Suchbegriff IN ('{default_code}')"
-        else:   
-            conditions = f"WHERE Suchbegriff IN ('ZUS.P020.0000.A')" # for testing
-        # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
-        # conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
-        # conditions = f"WHERE ID > {START_STOCK_SYNC}"
-        # get data from PPG_Bestandsabgleich
-        ppg_sql = f"""
-            WITH RankedRows AS (
-                SELECT
-                    Suchbegriff,
-                    Seriennummer,
-                    Charge,
-                    Row_Create_Time,
-                    Bestand,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY Suchbegriff, COALESCE(Seriennummer, 'NO_SN'), COALESCE(Charge, 'NO_LOT')
-                        ORDER BY Row_Create_Time DESC
-                    ) AS rn
-                FROM PPG_Bestandsabgleich
-                {conditions}
-            )
-            SELECT Suchbegriff, Seriennummer, Charge, Row_Create_Time, Bestand
-            FROM RankedRows
-            WHERE rn = 1
-            ORDER BY Suchbegriff, Seriennummer, Charge;
-        """
-
-        ppg_data = self._execute_query_on_mssql("select", ppg_sql)
 
         # stock_dict = {
         #     product_mapping[Suchbegriff]: Bestand
         #     for Suchbegriff, Bestand in self.env.cr.fetchall()
         #     if Suchbegriff in product_mapping
         # }
-        _logger.info("### ppg_data: %s" % (ppg_data,))
 
         # create report for sync actions
         report = self.env['kardex.sync.report'].create({"name": "Sync Bestandsabgleich"})
 
         existing_quant_map = defaultdict(list)
 
-        for row in ppg_data:
+        for row in kardex_data:
             changes = []
             default_code = row["Suchbegriff"]
             # if row["Seriennummer"] not in ("", None):
@@ -1158,7 +1267,6 @@ class StockQuant(models.Model):
             # )
             # _logger.info(f"### existing_kardex_quants_for_product: {existing_kardex_quants_for_product}")
 
-            kardex_quants = []
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
                 # Case 1: Update existing stock_quant record with known lot
@@ -1221,10 +1329,14 @@ class StockQuant(models.Model):
                         NOW(),
                         NOW()
                     )
+                    RETURNING id
                 """,
                     (product_id, lot_id, quantity, location_id, company_id),
                 )
+                _logger.info(f"### data provided: product_id: {product_id}, lot_id: {lot_id}, quantity: {quantity}, location_id: {location_id}, company_id: {company_id}")
+                quant_id = self.env.cr.fetchone()[0]
                 changes.append(f"new lot: {lot_name}, location: {location_name} ({location_id}), qty:  → {quantity}")
+                existing_quant_map[product_id].append(quant_id)
                 
             else:
                 if (product_id, None) in stock_quant_mapping:
@@ -1267,9 +1379,12 @@ class StockQuant(models.Model):
                             NOW(),
                             NOW()
                         )
+                        RETURNING id
                     """,
                         (product_id, quantity, location_id, company_id),
                     )
+                    quant_id = self.env.cr.fetchone()[0]
+                    existing_quant_map[product_id].append(quant_id)
                     changes.append(f"no lot, location: {location_name} ({location_id}), qty:  → {quantity} (new)")
 
             if changes:

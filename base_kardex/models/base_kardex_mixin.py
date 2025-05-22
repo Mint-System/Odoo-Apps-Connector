@@ -99,30 +99,35 @@ class BaseKardexMixin(models.AbstractModel):
         else:
             raise ValidationError(_("No active MSSQL instance found with priority=True"))
 
-    def _execute_query_on_proddb(self, default_code=None):
+    def _execute_query_on_proddb(self, default_code=None, products=None):
         if default_code:
-            con = pymssql.connect(server='10.101.16.3', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
-            cur = con.cursor()
-            query = """
-            SELECT
-                Materialbase.MaterialName as Produktnr,
-                LocContentbreakdown.QuantityCurrent,
-                LocContentbreakdown.Serialnumber,
-                LocContentbreakdown.Lot,
-                Location.LocationName
-            FROM
-                LocContentbreakdown
-                LEFT JOIN LocContent on LocContentbreakdown.LocContentId = LocContent.LocContentId
-                LEFT JOIN Materialbase on LocContent.MaterialId = MaterialBase.MaterialId
-                LEFT JOIN Location on LocContent.LocationId = Location.LocationId 
-            WHERE Materialbase.MaterialName = %s
-            """
-        
-            cur.execute(query, (default_code,))
-            rows = cur.fetchall()
-            return rows
+            params = ([default_code],)
+        elif products:
+            params = (tuple(products.keys()),)
         else:
-            raise ValidationError(_("No default code provided"))
+            raise ValidationError(_("No products provided"))
+
+        con = pymssql.connect(server='10.101.16.3', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
+        cur = con.cursor()
+        query = """
+        SELECT
+            Materialbase.MaterialName as Produktnr,
+            LocContentbreakdown.QuantityCurrent,
+            LocContentbreakdown.Serialnumber,
+            LocContentbreakdown.Lot,
+            Location.LocationName
+        FROM
+            LocContentbreakdown
+            LEFT JOIN LocContent on LocContentbreakdown.LocContentId = LocContent.LocContentId
+            LEFT JOIN Materialbase on LocContent.MaterialId = MaterialBase.MaterialId
+            LEFT JOIN Location on LocContent.LocationId = Location.LocationId 
+        WHERE Materialbase.MaterialName IN %s
+            """
+           
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        return rows
+       
 
 
     def _check_already_in_kardex(self, record):
@@ -131,8 +136,8 @@ class BaseKardexMixin(models.AbstractModel):
         if len(rows) > 0:
             return True
 
-    def _read_external_object_from_proddb(self, default_code):
-        rows = self._execute_query_on_proddb(default_code)
+    def _read_external_object_from_proddb(self, default_code=None, products=None):
+        rows = self._execute_query_on_proddb(default_code, products)
         return rows
 
     def _update_external_object(self, vals):
