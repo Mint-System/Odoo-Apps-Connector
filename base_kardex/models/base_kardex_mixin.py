@@ -101,13 +101,14 @@ class BaseKardexMixin(models.AbstractModel):
 
     def _execute_query_on_proddb(self, default_code=None):
         if default_code:
-            con = pymssql.connect(server='10.100.10.18', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
+            con = pymssql.connect(server='10.101.16.3', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
             cur = con.cursor()
             query = """
             SELECT
                 Materialbase.MaterialName as Produktnr,
                 LocContentbreakdown.QuantityCurrent,
                 LocContentbreakdown.Serialnumber,
+                LocContentbreakdown.Lot,
                 Location.LocationName
             FROM
                 LocContentbreakdown

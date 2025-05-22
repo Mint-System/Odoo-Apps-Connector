@@ -2,6 +2,7 @@ import logging
 import random
 import string
 from datetime import datetime
+from collections import defaultdict
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -224,12 +225,12 @@ class StockPicking(models.Model):
                 self.send_to_kardex(picking.origin)
                 
 
-            if self._check_picking_type() == "postproduction" and not picking.kardex_done:
-                for move in picking.move_line_ids:
-                    product = move.product_id
-                    product.write({"last_location_id": move.location_dest_id})
-                if self._check_if_destination_is_kardex(picking.location_dest_id):
-                    self.send_to_kardex(picking.origin)
+            # if self._check_picking_type() == "postproduction" and not picking.kardex_done:
+            #     for move in picking.move_line_ids:
+            #         product = move.product_id
+            #         product.write({"last_location_id": move.location_dest_id})
+            #     if self._check_if_destination_is_kardex(picking.location_dest_id):
+            #         self.send_to_kardex(picking.origin)
 
             if self._check_picking_type() == "sale":
                 self.send_to_kardex(picking.origin)
@@ -353,8 +354,9 @@ class StockPicking(models.Model):
             if not moves:
                 return
                 # raise ValidationError("No moves found for this picking")
-            if not self._check_quantities(moves):
-                return
+            # quantity check moved to building kardex_move_lines
+            # if not self._check_quantities(moves):
+            #     return
                 # raise ValidationError("Not enough stock to send to Kardex (check quantities)")
             check_moves_counter = 0
             check_moves_list = []
@@ -374,7 +376,6 @@ class StockPicking(models.Model):
             kardex_move_lines = picking.move_line_ids.filtered(lambda m: not m.kardex_done and not m.kardex_running_id)
             _logger.info("### kardex_move_lines before filter: %s" % (kardex_move_lines,))
 
-            Quant = self.env['stock.quant']
             for ml in picking.move_line_ids:
                 if ml.lot_id:
                     quant = self.env['stock.quant'].search([
@@ -730,6 +731,7 @@ class StockPicking(models.Model):
 
     def _check_quantities(self, moves):
         quantities_list = [move.quantity for move in moves]
+        _logger.info(f"### quantities_list: {quantities_list}")
         return all(q > 0 for q in quantities_list)
 
     @api.model
@@ -919,6 +921,7 @@ class StockMove(models.Model):
         _logger.info("### _action_confirm called")
 
         res = super()._action_confirm(merge, merge_into)
+        _logger.info("### action confirm res %s " % (res,))
 
         for move in res:
             picking = move.picking_id
@@ -926,7 +929,7 @@ class StockMove(models.Model):
 
             kardex_moves = picking.move_ids.filtered(lambda move: move.product_id.kardex)
 
-            if parent and picking and kardex_moves and not picking.kardex_done:
+            if parent and picking and kardex_moves and not picking.kardex_done and not picking._check_picking_type() == "postproduction":
                 _logger.info("### kardex outgoing called")
                 picking.send_to_kardex(picking.origin)
 
@@ -1003,21 +1006,51 @@ class StockMoveLine(models.Model):
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        res = super().create(vals_list)
+        for vals in vals_list:
+            _logger.warning("### vals in stock move line create %s " % (vals,))
+            move_id = vals.get("move_id")
+            move_obj = self.env["stock.move"].browse(move_id)
+            picking_id = vals.get("picking_id")
+            picking_obj = self.env["stock.picking"].browse(picking_id)
+            location_id = vals.get("location_id")
+            location_obj = self.env["stock.location"].browse(location_id)
+            location_dest_id = vals.get("location_dest_id")
+            location_dest_obj = self.env["stock.location"].browse(location_dest_id)
+            _logger.warning("### move: %s " % (move_obj.name,))
+            _logger.warning("### picking: %s " % (picking_obj.name,))
+            _logger.warning("### location_id: %s " % (location_obj.name,))
+            _logger.warning("### location_dest_id: %s " % (location_dest_obj.name,))
+           
+
+            if picking_obj._check_picking_type() == "postproduction" and not picking_obj.kardex_done:
+                
+                if picking_obj._check_if_destination_is_kardex(location_dest_obj):
+                    _logger.warning("### send to kardex %s " % (picking_obj.name,))
+                    picking_obj.kardex_done = True
+                    picking_obj.send_to_kardex(picking_obj.origin)
+
+        return res
     
 
     
 
 
 class StockQuant(models.Model):
-    # _inherit = ["stock.quant", "base.kardex.mixin"]
-    _inherit = "stock.quant"
+    _name = "stock.quant"
+    _inherit = ["stock.quant", "base.kardex.mixin"]
+    #_inherit = "stock.quant"
 
     def _get_location_id(self, location_name):
         location_id = self.env["stock.location"].search([("name", "=", location_name)]).mapped("id")
         return location_id
 
+    
+
     @api.model
-    def sync_stocks(self):
+    def sync_stocks(self, default_code=None):
         # get stock quants of Kardex Warehouse
         location_ids = self._get_location_id(KARDEX_WAREHOUSE)
         _logger.info("location_ids: %s" % (location_ids,))
@@ -1025,6 +1058,7 @@ class StockQuant(models.Model):
             return False
 
         location_id = location_ids[0]
+        location_name = self.env["stock.location"].browse(location_id).name
         _logger.info("location_id: %s" % (location_id,))
 
         # company id from settings
@@ -1055,8 +1089,13 @@ class StockQuant(models.Model):
         if not products:
             return False  # No products to update
 
+            
+        if default_code:
+            conditions = f"WHERE Suchbegriff IN ('{default_code}')"
+        else:   
+            conditions = f"WHERE Suchbegriff IN ('ZUS.P020.0000.A')" # for testing
         # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
-        conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
+        # conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
         # conditions = f"WHERE ID > {START_STOCK_SYNC}"
         # get data from PPG_Bestandsabgleich
         ppg_sql = f"""
@@ -1064,19 +1103,20 @@ class StockQuant(models.Model):
                 SELECT
                     Suchbegriff,
                     Seriennummer,
+                    Charge,
                     Row_Create_Time,
                     Bestand,
                     ROW_NUMBER() OVER (
-                        PARTITION BY Suchbegriff, COALESCE(Seriennummer, 'NO_SN')
+                        PARTITION BY Suchbegriff, COALESCE(Seriennummer, 'NO_SN'), COALESCE(Charge, 'NO_LOT')
                         ORDER BY Row_Create_Time DESC
                     ) AS rn
                 FROM PPG_Bestandsabgleich
                 {conditions}
             )
-            SELECT Suchbegriff, Seriennummer, Row_Create_Time, Bestand
+            SELECT Suchbegriff, Seriennummer, Charge, Row_Create_Time, Bestand
             FROM RankedRows
             WHERE rn = 1
-            ORDER BY Suchbegriff, Seriennummer;
+            ORDER BY Suchbegriff, Seriennummer, Charge;
         """
 
         ppg_data = self._execute_query_on_mssql("select", ppg_sql)
@@ -1086,18 +1126,39 @@ class StockQuant(models.Model):
         #     for Suchbegriff, Bestand in self.env.cr.fetchall()
         #     if Suchbegriff in product_mapping
         # }
+        _logger.info("### ppg_data: %s" % (ppg_data,))
+
+        # create report for sync actions
+        report = self.env['kardex.sync.report'].create({"name": "Sync Bestandsabgleich"})
+
+        existing_quant_map = defaultdict(list)
 
         for row in ppg_data:
+            changes = []
             default_code = row["Suchbegriff"]
-            lot_name = row["Seriennummer"]
+            # if row["Seriennummer"] not in ("", None):
+            #     lot_name = row["Seriennummer"]
+            # elif row["Charge"] not in ("", None):
+            #     lot_name = row["Charge"]
+            # else:
+            #     lot_name = None
+            lot_name = row.get("Seriennummer") or row.get("Charge") or None
             quantity = row["Bestand"]
 
             product_id = product_mapping.get(default_code)
+            product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
+            
 
             if not product_id:
                 continue
 
             lot_id = lot_mapping.get(lot_name) if lot_name else None
+            # existing_kardex_quants_for_product = self.env["stock.quant"].search(
+            #     [("product_id", "=", product_id), ("location_id", "=", location_id)]                
+            # )
+            # _logger.info(f"### existing_kardex_quants_for_product: {existing_kardex_quants_for_product}")
+
+            kardex_quants = []
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
                 # Case 1: Update existing stock_quant record with known lot
@@ -1110,6 +1171,10 @@ class StockQuant(models.Model):
                 """,
                     (quantity, quant_id),
                 )
+                changes.append(f"lot: {lot_name}, qty:  → {quantity}")
+                existing_quant_map[product_id].append(quant_id)
+                
+                
             elif lot_name and lot_name not in lot_mapping:
                 # Case 2: Create a new lot if necessary
                 self.env.cr.execute(
@@ -1159,6 +1224,8 @@ class StockQuant(models.Model):
                 """,
                     (product_id, lot_id, quantity, location_id, company_id),
                 )
+                changes.append(f"new lot: {lot_name}, location: {location_name} ({location_id}), qty:  → {quantity}")
+                
             else:
                 if (product_id, None) in stock_quant_mapping:
                     # Case 3: Update stock_quant for product without lot
@@ -1172,6 +1239,9 @@ class StockQuant(models.Model):
                     """,
                         (quantity, quant_id),
                     )
+                    changes.append(f"no lot, qty:  → {quantity}")
+                    existing_quant_map[product_id].append(quant_id)
+
                 else:
                     # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
 
@@ -1200,6 +1270,35 @@ class StockQuant(models.Model):
                     """,
                         (product_id, quantity, location_id, company_id),
                     )
+                    changes.append(f"no lot, location: {location_name} ({location_id}), qty:  → {quantity} (new)")
+
+            if changes:
+                self.env['kardex.sync.report.line'].create({
+                    'report_id': report.id,
+                    'product_id': product.id,
+                    'changes': '\n'.join(changes),
+                })    
+
+        # quants not found in data coming from kardex
+        _logger.info("existing quant map: %s" % (existing_quant_map,))
+        for product_id, quant_ids in existing_quant_map.items():
+            quants_without_kardex_data = self.env["stock.quant"].search([("id", "not in", quant_ids), ("product_id", "=", product_id)])
+            _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
+
+            # set quantity to zero for these quants
+            quants_without_kardex_data.write({'quantity': 0})
+
+
+        # quants_without_kardex_data = existing_kardex_quants_for_product.filtered(lambda q: q.id not in kardex_quants)
+        # _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
+
+        # set quantity to zero for these quants
+        # quants_without_kardex_data.write({'quantity': 0})
+
+
+
+
+        # self._cr.commit()
 
         return True
 

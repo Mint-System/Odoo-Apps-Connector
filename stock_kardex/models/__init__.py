@@ -1,1 +1,1 @@
-from . import stock_picking, mrp_bom, mrp_production, purchase_order, sale_order
+from . import stock_picking, mrp_bom, mrp_production, purchase_order, sale_order, sync_report

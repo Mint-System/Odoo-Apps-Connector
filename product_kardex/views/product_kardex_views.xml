@@ -22,6 +22,11 @@
                         string=""
                         class="btn-primary"
                         icon="fa-info"/>
+                <button name="sync_stock_of_single_product"
+                        type="object"
+                        string=""
+                        class="btn-primary"
+                        icon="fa-arrows-h"/>
             </xpath>
             <xpath
                 expr="//page[@name='general_information']//group[@name='group_general']"

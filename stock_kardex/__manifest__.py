@@ -16,6 +16,7 @@
         "views/kardex_production_views.xml",
         "views/kardex_purchase_views.xml",
         "views/kardex_sale_views.xml",
+        "views/kardex_sync_report.xml",
     ],
     "installable": True,
     "application": False,

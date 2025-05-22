@@ -128,6 +128,12 @@ class ProductTemplate(models.Model):
     #                     f"Expected pattern: '{category_abbr}.[alphanumeric or dot]'"
     #                 )
 
+    def sync_stock_of_single_product(self):
+        for product in self:
+            if product.default_code:
+                self.env['stock.quant'].sync_stocks(product.default_code)
+
+
     def get_info_from_kardex(self):
         for product in self:
             product_default_code = product.default_code
@@ -135,10 +141,11 @@ class ProductTemplate(models.Model):
             if data:
                 message_list = []
                 for row in data:
-                    for key, value in row.items():
-                        message_list.append(f"{key}: {value}")
+                    message_list.extend(
+                        f"{key}: {value}" for key, value in row.items() if value not in (None, "")
+                    )
 
-                message = ("\n").join(message_list)
+                message = (" | ").join(message_list)
             else:
                 message = "This Article was not found in Kardex."
          
