@@ -27,7 +27,7 @@ class SaleOrderLine(models.Model):
         if self.product_id:
             # Access the product.template
             product_template = self.product_id.product_tmpl_id
-            self.env['stock.quant'].sync_stocks(product_template.default_code)
+            self.env['stock.quant'].sync_stocks(product_template.default_code, source_sale_order=True)
 
 
 

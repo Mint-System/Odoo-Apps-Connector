@@ -6,7 +6,7 @@ from datetime import datetime
 from collections import defaultdict
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ from .config import (
     CREATE_SERIAL_FOR_STORE,
     KARDEX_DESTINATION,
     KARDEX_WAREHOUSE,
+    PALETTEN_WAREHOUSE,
     ODOO_KARDEX_UNIT_FIXER,
     OVERRIDE_SERIAL_FOR_STORE,
     OVERRIDE_SERIAL_FOR_PRODUCTION,
@@ -275,14 +276,15 @@ class StockPicking(models.Model):
                 write_vals = {}
 
                 if picking._check_is_kardex_store(picking.id) and not picking.kardex_done:
-                    picking.send_to_kardex(self.origin)
+                    #picking.send_to_kardex(self.origin)
+                    pass
            
 
                 _logger.info("### kardex outgoing: %s" % (picking._check_is_kardex_outgoing(picking.id),))
 
 
                 write_vals["kardex"] = self.kardex
-                picking.write(write_vals)
+                # picking.write(write_vals)
         return next_transfers
 
     def send_to_kardex_picking(self):
@@ -937,6 +939,7 @@ class StockMove(models.Model):
             if parent and picking and kardex_moves and not picking.kardex_done and not picking._check_picking_type() == "postproduction":
                 _logger.info("### kardex outgoing called")
                 picking.send_to_kardex(picking.origin)
+                # pass
 
         return res
 
@@ -1048,6 +1051,24 @@ class StockMoveLine(models.Model):
                     picking_obj.kardex_done = True
                     picking_obj.send_to_kardex(picking_obj.origin)
 
+            # if picking_obj._check_picking_type() == "production" and not picking_obj.kardex_done:
+                
+            #     if picking_obj._check_if_location_is_kardex(location_obj):
+            #         _logger.warning("### send to kardex %s " % (picking_obj.name,))
+            #         picking_obj.kardex_done = True
+            #         picking_obj.send_to_kardex(picking_obj.origin)
+
+            if picking_obj._check_picking_type() == "store" and not picking_obj.kardex_done:
+                
+                if picking_obj._check_if_destination_is_kardex(location_dest_obj):
+                    _logger.warning("### send to kardex %s " % (picking_obj.name,))
+                    picking_obj.kardex_done = True
+                    picking_obj.send_to_kardex(picking_obj.origin)
+
+            if picking_obj._check_is_kardex_store(picking_obj.id):
+                picking_obj.write({"kardex": True})
+                
+
             
 
         return res
@@ -1063,8 +1084,8 @@ def _get_location_base(s):
 def _transform_location(location):
     if _get_location_base(location) == "Shuttle":
         return "Shuttle"
-    # elif get_location_base(location) == "Palette":
-    #     return "Palette"
+    elif _get_location_base(location) == "Palette":
+        return "Palette"
     return location
 
 def _update_locations(data, transform_func):
@@ -1145,7 +1166,7 @@ class StockQuant(models.Model):
 
 
     @api.model
-    def sync_stocks(self, default_code=None):
+    def sync_stocks(self, default_code=None, source_sale_order=False):
         # get stock quants of Kardex Warehouse
         location_ids = self._get_location_id(KARDEX_WAREHOUSE)
         _logger.info("location_ids: %s" % (location_ids,))
@@ -1155,6 +1176,15 @@ class StockQuant(models.Model):
         location_id = location_ids[0]
         location_name = self.env["stock.location"].browse(location_id).name
         _logger.info("location_id: %s" % (location_id,))
+
+        location_paletten_ids = self._get_location_id(PALETTEN_WAREHOUSE)
+        _logger.info("location_paletten_ids: %s" % (location_paletten_ids,))
+        if not location_paletten_ids:
+            return False
+
+        location_paletten_id = location_paletten_ids[0]
+        location_paletten_name = self.env["stock.location"].browse(location_paletten_id).name
+        _logger.info("location_paletten_id: %s" % (location_paletten_id,))
 
         # company id from settings
         company_id = COMPANY_ID
@@ -1168,9 +1198,16 @@ class StockQuant(models.Model):
         """)
         product_mapping = dict(self.env.cr.fetchall())
 
-        odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
+        location_ids = (location_id, location_paletten_id)
+        placeholders = ','.join(['%s'] * len(location_ids))        
 
-        self.env.cr.execute(odoo_sql, (location_id,))
+        # odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
+
+        # self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
+
+        odoo_sql = f"SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN ({placeholders})"
+
+        self.env.cr.execute(odoo_sql, location_ids)
         stock_quants = self.env.cr.fetchall()
 
         stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
@@ -1202,32 +1239,87 @@ class StockQuant(models.Model):
         
         # aggregate and grouping data
         grouped = {}
+        grouped2 = {} # will contain all Locations for product
         unaggregated = []
+
+        palette_counter = 0
 
         for item in kardex_data:
             charge = item['Charge']
-            if charge is None:
+            serial = item['Seriennummer']
+            suchbegriff = item['Suchbegriff']
+            location = item.get('LocationName')
+            if location == 'Palette':
+                palette_counter += 1
+            bestand = item.get('Bestand')
+
+            if charge is None and serial is not None:
                 unaggregated.append(item)  # Don't group, preserve as-is
                 continue
 
             # Group by charge and Suchbegriff, to avoid merging unrelated products
-            key = (charge, item['Suchbegriff'])
 
-            if key not in grouped:
-                grouped[key] = {
-                    'Charge': charge,
-                    'Suchbegriff': item['Suchbegriff'],
-                    'Seriennummer': item['Seriennummer'],
-                    'Bestand': 0,
-                    'LocationNames': [],
-                }
+            if charge:
+                key = ('charge', charge, location, suchbegriff)
+                if key not in grouped:
+                    grouped[key] = {
+                        'Charge': charge,
+                        'Seriennummer': None,
+                        'Suchbegriff': suchbegriff,
+                        'LocationName': location,
+                        'Bestand': 0.0,
+                    }
+                grouped[key]['Bestand'] += bestand
+            
+            else:
+                key = ('no_charge', location, suchbegriff)
+                if key not in grouped:
+                    grouped[key] = {
+                        'Charge': None,
+                        'Seriennummer': None,
+                        'Suchbegriff': suchbegriff,
+                        'LocationName': location,
+                        'Bestand': 0.0,
+                    }
+                grouped[key]['Bestand'] += bestand
 
-            grouped[key]['Bestand'] += item['Bestand']
-            grouped[key]['LocationNames'].append(item['LocationName'])
+
+            # if key not in grouped:
+            #     grouped[key] = {
+            #         'Charge': charge,
+            #         'Suchbegriff': suchbegriff,
+            #         'Seriennummer': serial,
+            #         'Bestand': 0,
+            #         'LocationName': location,
+            #         'LocationNames': [],
+            #     }
+
+            # grouped[key]['Bestand'] += item['Bestand']
+            # grouped[key]['LocationNames'].append(item['LocationName'])
+
+            # group only by Suchbegriff
+            key2 = (suchbegriff)
+            if key2 not in grouped2:
+                grouped2[key2] = []
+                
+            grouped2[key2].append(item['LocationName'])
+
+            _logger.info("grouped: %s" % (grouped,))
+            _logger.info("grouped2: %s" % (grouped2,))
+            _logger.info("unaggregated: %s" % (unaggregated,))
+
+            for key in grouped2.keys():
+                if all(x == "Shuttle" for x in grouped2[key]):
+                    product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
+                    product.write({"last_location_id": location_id})
 
         # Convert to list if needed
         kardex_data = list(grouped.values()) + unaggregated
         _logger.info("kardex_data after grouping: %s" % (kardex_data,))
+
+
+        if palette_counter == 0 and source_sale_order and default_code:
+            pass
 
             
 
@@ -1260,6 +1352,8 @@ class StockQuant(models.Model):
 
             if not product_id:
                 continue
+
+            # loc_id = 
 
             lot_id = lot_mapping.get(lot_name) if lot_name else None
             # existing_kardex_quants_for_product = self.env["stock.quant"].search(
