@@ -321,8 +321,6 @@ class ProductTemplate(models.Model):
             )
         return unit.id
 
-    
-
     @api.model
     def _create_record_val(self, record):
         val_dict = {}
@@ -502,9 +500,6 @@ class ProductTemplate(models.Model):
 
         if update_kardex_set or vals_are_empty:
             for product in self:
-                _logger.warning("### product: %s " % (product.name,))
-                _logger.warning("### vals: %s " % (vals,))
-                _logger.warning("### product.read()[0]: %s " % (product.read()[0],))
                 product_vals = product.read()[0]
                 default_code = product_vals.get("default_code")
                 if product_vals["kardex"] and default_code and SEND_KARDEX_PRODUCT_ON_CREATE:
