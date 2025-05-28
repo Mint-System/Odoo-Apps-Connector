@@ -3,9 +3,9 @@ from .kardex_transfer_mixin import KardexTransferMixin
 
     
 
-class StockMoveLine(KardexTransferMixin, models.Model):
-    _inherit = "stock.move.line"
-    #_inherits = {"kardex.transfer.mixin": "kardex_transfer_mixin"}
+class StockMoveLine(models.Model):
+    _inherit = ["stock.move.line", "base.kardex.mixin", "kardex.transfer.mixin"]
+    _description = "Stock Move Line"
 
     has_kardex_location = fields.Boolean(
         string="Is Kardex Location", compute="_compute_has_kardex_location", store=False
@@ -25,9 +25,6 @@ class StockMoveLine(KardexTransferMixin, models.Model):
 
     kardex_journal_status = fields.Char(string="Komplett")
 
-   
-
-    
 
     # location_dest_id = fields.Many2one('stock.location', 'To', domain="[('usage', '!=', 'view')]", check_company=True, required=True, compute="_compute_location_dest_id", store=True, readonly=False, precompute=True)
 
@@ -67,40 +64,43 @@ class StockMoveLine(KardexTransferMixin, models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         res = super().create(vals_list)
-        _logger.warning("################ STOCK MOVE LINE CREATE ################")
-        _logger.info("### vals_list in stock move line create %s " % (vals_list,))
-        for vals in vals_list:
-            move_id = vals.get("move_id")
-            move_obj = self.env["stock.move"].browse(move_id)
-            picking_id = vals.get("picking_id")
-            picking_obj = self.env["stock.picking"].browse(picking_id)
-            location_id = vals.get("location_id")
-            location_obj = self.env["stock.location"].browse(location_id)
-            location_dest_id = vals.get("location_dest_id")
-            location_dest_obj = self.env["stock.location"].browse(location_dest_id)
-            _logger.warning("### move: %s " % (move_obj.name,))
-            _logger.warning("### picking: %s " % (picking_obj.name,))
-            _logger.warning("### picking type: %s " % (picking_obj._check_picking_type()))
-            _logger.warning("### kardex done: %s " % (picking_obj.kardex_done))
-            _logger.warning("### location_id: %s " % (location_obj.name,))
-            _logger.warning("### location_dest_id: %s " % (location_dest_obj.name,))
+        res.post(lambda rec: rec.send_to_kardex())
+        return res
+
+        # _logger.warning("################ STOCK MOVE LINE CREATE ################")
+        # _logger.info("### vals_list in stock move line create %s " % (vals_list,))
+        # for vals in vals_list:
+        #     move_id = vals.get("move_id")
+        #     move_obj = self.env["stock.move"].browse(move_id)
+        #     picking_id = vals.get("picking_id")
+        #     picking_obj = self.env["stock.picking"].browse(picking_id)
+        #     location_id = vals.get("location_id")
+        #     location_obj = self.env["stock.location"].browse(location_id)
+        #     location_dest_id = vals.get("location_dest_id")
+        #     location_dest_obj = self.env["stock.location"].browse(location_dest_id)
+        #     _logger.warning("### move: %s " % (move_obj.name,))
+        #     _logger.warning("### picking: %s " % (picking_obj.name,))
+        #     _logger.warning("### picking type: %s " % (picking_obj._check_picking_type()))
+        #     _logger.warning("### kardex done: %s " % (picking_obj.kardex_done))
+        #     _logger.warning("### location_id: %s " % (location_obj.name,))
+        #     _logger.warning("### location_dest_id: %s " % (location_dest_obj.name,))
            
 
-            if picking_obj._check_picking_type() == "postproduction" and not picking_obj.kardex_done:
+        #     if picking_obj._check_picking_type() == "postproduction" and not picking_obj.kardex_done:
                 
-                if picking_obj._check_if_destination_is_kardex(location_dest_obj):
-                    _logger.warning("### send to kardex %s " % (picking_obj.name,))
-                    picking_obj.kardex_done = True
-                    picking_obj.send_to_kardex(picking_obj.origin)
+        #         if picking_obj._check_if_destination_is_kardex(location_dest_obj):
+        #             _logger.warning("### send to kardex %s " % (picking_obj.name,))
+        #             picking_obj.kardex_done = True
+        #             picking_obj.send_to_kardex(picking_obj.origin)
 
-            if picking_obj._check_picking_type() == "sale" and not picking_obj.kardex_done:
+        #     if picking_obj._check_picking_type() == "sale" and not picking_obj.kardex_done:
                 
-                if picking_obj._check_if_location_is_kardex(location_obj):
-                    _logger.warning("### send to kardex %s " % (picking_obj.name,))
-                    picking_obj.kardex_done = True
-                    picking_obj.send_to_kardex(picking_obj.origin)
+        #         if picking_obj._check_if_location_is_kardex(location_obj):
+        #             _logger.warning("### send to kardex %s " % (picking_obj.name,))
+        #             picking_obj.kardex_done = True
+        #             picking_obj.send_to_kardex(picking_obj.origin)
 
             
-        _logger.warning("################ END OF STOCK MOVE LINE CREATE ################")
-        return res
+        # _logger.warning("################ END OF STOCK MOVE LINE CREATE ################")
+        # return res
     

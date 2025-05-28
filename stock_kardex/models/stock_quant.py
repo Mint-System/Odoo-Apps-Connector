@@ -3,6 +3,7 @@ from odoo import api, fields, models
 class StockQuant(models.Model):
     _name = "stock.quant"
     _inherit = ["stock.quant", "base.kardex.mixin"]
+    _description = "Stock Quant"
     #_inherit = "stock.quant"
 
     def _get_location_id(self, location_name):
