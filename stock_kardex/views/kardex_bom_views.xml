@@ -8,13 +8,36 @@
             <xpath expr="//field[@name='product_id']" position="after">
                 <field readonly="True" name="kardex" />
             </xpath>
-
-            <!--
-dlist/field[@name='product_id']" position="replace">
-                <field name="products_domain" column_invisible="True"/>
-                <field name="product_id" domain="products_domain" context="{'default_detailed_type': 'product'}"/>
-            </xpath>
-            -->
         </field>
     </record>
+
+    <record id="mrp_bom_tree_view_kardex" model="ir.ui.view">
+        <field name="name">mrp.bom.tree.view.kardex</field>
+        <field name="model">mrp.bom</field>
+        <field
+            name="inherit_id"
+            ref="mrp.mrp_bom_tree_view"
+        />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='type']" position="after">
+                <field name="bom_line_count" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+
+    <record id="mrp_bom_form_view_kardex" model="ir.ui.view">
+        <field name="name">mrp.bom.form.view.kardex</field>
+        <field name="model">mrp.bom</field>
+        <field
+            name="inherit_id"
+            ref="mrp.mrp_bom_form_view"
+        />
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='bom_line_ids']//list//field[@name='product_qty']" position="before">
+                <field name="product_kardex_location" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
 </odoo>

@@ -1,11 +1,20 @@
-from odoo import api, fields, models
-from .kardex_transfer_mixin import KardexTransferMixin
+import logging
 
-    
+from odoo import api, fields, models
+
+from .config import (
+    KARDEX_WAREHOUSE,
+    KARDEX_DESTINATION
+)
+
+
+_logger = logging.getLogger(__name__)
 
 class StockMoveLine(models.Model):
-    _inherit = ["stock.move.line", "base.kardex.mixin", "kardex.transfer.mixin"]
+    _name = "stock.move.line"
+    _inherit = ["kardex.transfer.mixin", "stock.move.line", "base.kardex.mixin"]
     _description = "Stock Move Line"
+    #_depends = ["kardex.transfer.mixin"]
 
     has_kardex_location = fields.Boolean(
         string="Is Kardex Location", compute="_compute_has_kardex_location", store=False
@@ -17,7 +26,7 @@ class StockMoveLine(models.Model):
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
     kardex_status = fields.Selection(
-        selection=[("0", "Ready"), ("1", "Pending"), ("2", "Success"), ("3", "Error")],
+        selection=[("0", "Ready"), ("1", "Pending"), ("2", "Success"), ("3", "Error"), ("4", "Synced")],
         default="0",
         string="Kardex STATUS",
     )
@@ -63,8 +72,12 @@ class StockMoveLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        _logger.warning("################ STOCK MOVE LINE CREATE ################")
         res = super().create(vals_list)
-        res.post(lambda rec: rec.send_to_kardex())
+        # res.post(lambda rec: rec.send_to_kardex())
+        for rec in res:
+            rec.send_to_kardex()
+        _logger.warning("################ END OF STOCK MOVE LINE CREATE ################")
         return res
 
         # _logger.warning("################ STOCK MOVE LINE CREATE ################")

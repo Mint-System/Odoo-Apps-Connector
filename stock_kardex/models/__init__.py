@@ -1,4 +1,5 @@
 from . import (
+    kardex_transfer_mixin,
     stock_picking,
     stock_move,
     stock_move_line,
@@ -6,7 +7,8 @@ from . import (
     purchase_order,
     sale_order,
     sync_report,
-    kardex_transfer_mixin,
     stock_picking_journal,
-    stock_quant
+    stock_quant,
+    stock_picking_type,
+    res_config_settings,
 )

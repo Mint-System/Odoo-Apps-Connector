@@ -6,10 +6,19 @@ _logger = logging.getLogger(__name__)
 
 
 class MrpBom(models.Model):
+    _name = "mrp.bom"
     _inherit = ["mrp.bom"]
     _description = "Kardex BoM"
 
     kardex = fields.Boolean(compute="_compute_kardex", store=True)
+
+    bom_line_count = fields.Integer(
+        string="BoM Line Count",
+        compute='_compute_bom_line_count',
+        store=False
+    )
+
+    
 
     @api.depends("product_tmpl_id.kardex")
     def _compute_kardex(self):
@@ -19,9 +28,38 @@ class MrpBom(models.Model):
     def send_to_kardex(self):
         pass
 
+    def _compute_bom_line_count(self):
+        for bom in self:
+            bom.bom_line_count = len(bom.bom_line_ids)
 
-# class MrpBomLine(models.Model):
-#     _inherit = ["mrp.bom.line"]
+    
+
+
+class MrpBomLine(models.Model):
+    _name = "mrp.bom.line"
+    _inherit = ["mrp.bom.line"]
+
+    product_kardex_location = fields.Char(compute='_compute_product_kardex_location', store=False)
+
+    def _compute_product_kardex_location(self):
+        
+        for bom in self:
+            product_default_code = bom.product_tmpl_id.default_code
+            data_material, data = self.env["product.template"]._read_external_object_from_proddb(default_code=product_default_code)
+            location_list = []
+            for row in data:
+                if row["LocationName"].startswith('Shuttle'):
+                    location_list.append("S")
+                elif row["LocationName"].startswith('Pallete'):
+                    location_list.append("P")
+                else:
+                    location_list.append("O")
+
+            bom.product_kardex_location = ", ".join(set(location_list))
+
+
+
+
 #     # not needed
 #     # TODO: delete this field
 #     products_domain = fields.Binary(

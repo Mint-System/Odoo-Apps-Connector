@@ -1,4 +1,25 @@
+import logging
+from collections import defaultdict
+
+
 from odoo import api, fields, models
+
+from .config import (
+    KARDEX_WAREHOUSE,
+    PALETTEN_WAREHOUSE,
+    COMPANY_ID,
+    USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS
+)
+
+from .helper import (
+    _get_location_base,
+    _transform_location,
+    _update_locations,
+    _harmonize_empty_values
+)
+
+_logger = logging.getLogger(__name__)
+
 
 class StockQuant(models.Model):
     _name = "stock.quant"
@@ -56,7 +77,7 @@ class StockQuant(models.Model):
             "QuantityCurrent": "Bestand",
         }
         
-        data = self._read_external_object_from_proddb(default_code, products)
+        data_material, data = self._read_external_object_from_proddb(default_code, products)
         updated_data = [
             {replace_dict.get(k, k): v for k, v in item.items()}
             for item in data
@@ -66,7 +87,7 @@ class StockQuant(models.Model):
 
 
     @api.model
-    def sync_stocks(self, default_code=None):
+    def sync_stocks(self, default_code=None, source_sale_order=False):
         # get stock quants of Kardex Warehouse
         location_ids = self._get_location_id(KARDEX_WAREHOUSE)
         _logger.info("location_ids: %s" % (location_ids,))
@@ -76,6 +97,15 @@ class StockQuant(models.Model):
         location_id = location_ids[0]
         location_name = self.env["stock.location"].browse(location_id).name
         _logger.info("location_id: %s" % (location_id,))
+
+        location_paletten_ids = self._get_location_id(PALETTEN_WAREHOUSE)
+        _logger.info("location_paletten_ids: %s" % (location_paletten_ids,))
+        if not location_paletten_ids:
+            return False
+
+        location_paletten_id = location_paletten_ids[0]
+        location_paletten_name = self.env["stock.location"].browse(location_paletten_id).name
+        _logger.info("location_paletten_id: %s" % (location_paletten_id,))
 
         # company id from settings
         company_id = COMPANY_ID
@@ -89,9 +119,17 @@ class StockQuant(models.Model):
         """)
         product_mapping = dict(self.env.cr.fetchall())
 
-        odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
+        location_ids = (location_id, location_paletten_id)
+        placeholders = ','.join(['%s'] * len(location_ids))   
 
-        self.env.cr.execute(odoo_sql, (location_id,))
+        odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
+        self.env.cr.execute(odoo_sql, (location_id,))     
+
+        #odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
+        #self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
+
+        # odoo_sql = f"SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN ({placeholders})"
+        # self.env.cr.execute(odoo_sql, location_ids)
         stock_quants = self.env.cr.fetchall()
 
         stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
@@ -123,32 +161,88 @@ class StockQuant(models.Model):
         
         # aggregate and grouping data
         grouped = {}
+        grouped2 = {} # will contain all Locations for product
         unaggregated = []
+
+        palette_counter = 0
 
         for item in kardex_data:
             charge = item['Charge']
-            if charge is None:
+            serial = item['Seriennummer']
+            suchbegriff = item['Suchbegriff']
+            location = item.get('LocationName')
+            if location == 'Palette':
+                palette_counter += 1
+            bestand = item.get('Bestand')
+
+            if charge is None and serial is not None:
                 unaggregated.append(item)  # Don't group, preserve as-is
                 continue
 
             # Group by charge and Suchbegriff, to avoid merging unrelated products
-            key = (charge, item['Suchbegriff'])
 
-            if key not in grouped:
-                grouped[key] = {
-                    'Charge': charge,
-                    'Suchbegriff': item['Suchbegriff'],
-                    'Seriennummer': item['Seriennummer'],
-                    'Bestand': 0,
-                    'LocationNames': [],
-                }
+            if charge:
+                key = ('charge', charge, location, suchbegriff)
+                if key not in grouped:
+                    grouped[key] = {
+                        'Charge': charge,
+                        'Seriennummer': None,
+                        'Suchbegriff': suchbegriff,
+                        'LocationName': location,
+                        'Bestand': 0.0,
+                    }
+                grouped[key]['Bestand'] += bestand
+            
+            else:
+                key = ('no_charge', location, suchbegriff)
+                if key not in grouped:
+                    grouped[key] = {
+                        'Charge': None,
+                        'Seriennummer': None,
+                        'Suchbegriff': suchbegriff,
+                        'LocationName': location,
+                        'Bestand': 0.0,
+                    }
+                grouped[key]['Bestand'] += bestand
 
-            grouped[key]['Bestand'] += item['Bestand']
-            grouped[key]['LocationNames'].append(item['LocationName'])
+
+            # if key not in grouped:
+            #     grouped[key] = {
+            #         'Charge': charge,
+            #         'Suchbegriff': suchbegriff,
+            #         'Seriennummer': serial,
+            #         'Bestand': 0,
+            #         'LocationName': location,
+            #         'LocationNames': [],
+            #     }
+
+            # grouped[key]['Bestand'] += item['Bestand']
+            # grouped[key]['LocationNames'].append(item['LocationName'])
+
+            # group only by Suchbegriff
+        for item in kardex_data:
+            key2 = (suchbegriff)
+            if key2 not in grouped2:
+                grouped2[key2] = []
+                
+            grouped2[key2].append(item['LocationName'])
+
+            _logger.info("grouped: %s" % (grouped,))
+            _logger.info("grouped2: %s" % (grouped2,))
+            _logger.info("unaggregated: %s" % (unaggregated,))
+
+            for key in grouped2.keys():
+                if all(x == "Shuttle" or x == "Palette" for x in grouped2[key]):
+                    product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
+                    product.write({"last_location_id": location_id})
 
         # Convert to list if needed
         kardex_data = list(grouped.values()) + unaggregated
         _logger.info("kardex_data after grouping: %s" % (kardex_data,))
+
+
+        if palette_counter == 0 and source_sale_order and default_code:
+            pass
 
             
 
@@ -173,14 +267,22 @@ class StockQuant(models.Model):
             # else:
             #     lot_name = None
             lot_name = row.get("Seriennummer") or row.get("Charge") or None
+            _logger.info(f"### lot_name: {lot_name}")
+            _logger.info(f"### lot_name not in lot_mapping: {lot_name not in lot_mapping}")
             quantity = row["Bestand"]
 
             product_id = product_mapping.get(default_code)
+            _logger.info("### default_code: %s" % (default_code,))
             product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
+            # product_id = product.id
+
+            _logger.info("### product_id: %s" % (product_id,))
             
 
             if not product_id:
                 continue
+
+            # loc_id = 
 
             lot_id = lot_mapping.get(lot_name) if lot_name else None
             # existing_kardex_quants_for_product = self.env["stock.quant"].search(
@@ -190,6 +292,7 @@ class StockQuant(models.Model):
 
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
+                _logger.info("### Case 1")
                 # Case 1: Update existing stock_quant record with known lot
                 quant_id = stock_quant_mapping[(product_id, lot_id)]
                 self.env.cr.execute(
@@ -204,8 +307,9 @@ class StockQuant(models.Model):
                 existing_quant_map[product_id].append(quant_id)
                 
                 
-            elif lot_name and lot_name not in lot_mapping:
+            elif lot_name and (lot_name not in lot_mapping):
                 # Case 2: Create a new lot if necessary
+                _logger.info("### Case 2")
                 self.env.cr.execute(
                     """
                     INSERT INTO stock_lot (
@@ -262,6 +366,7 @@ class StockQuant(models.Model):
             else:
                 if (product_id, None) in stock_quant_mapping:
                     # Case 3: Update stock_quant for product without lot
+                    _logger.info("### Case 3")
 
                     quant_id = stock_quant_mapping[(product_id, None)]
                     self.env.cr.execute(
@@ -277,6 +382,7 @@ class StockQuant(models.Model):
 
                 else:
                     # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
+                    _logger.info("### Case 4")
 
                     self.env.cr.execute(
                         """

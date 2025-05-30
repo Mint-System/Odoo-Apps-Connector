@@ -107,8 +107,21 @@ class BaseKardexMixin(models.AbstractModel):
         else:
             raise ValidationError(_("No products provided"))
 
-        con = pymssql.connect(server='10.101.16.3', user='externro', password='externro', database='prodDB', as_dict=True, tds_version=r'7.0')
-        cur = con.cursor()
+        proddb_instance = self.env["base.external.mssql"].search([("name", "=", "proddb")], limit=1)
+
+        if not proddb_instance:
+            raise ValidationError(_("No active SQL instance found with name 'proddb'"))
+
+        query_material = """
+        SELECT
+           MaterialName
+        FROM
+           Materialbase
+        WHERE MaterialName IN %s
+        """
+        result_material = proddb_instance.execute("select", query_material, params)
+        
+
         query = """
         SELECT
             Materialbase.MaterialName as Produktnr,
@@ -123,10 +136,9 @@ class BaseKardexMixin(models.AbstractModel):
             LEFT JOIN Location on LocContent.LocationId = Location.LocationId 
         WHERE Materialbase.MaterialName IN %s
             """
-           
-        cur.execute(query, params)
-        rows = cur.fetchall()
-        return rows
+
+        result = proddb_instance.execute("select", query, params)
+        return result_material, result
        
 
 
@@ -137,8 +149,8 @@ class BaseKardexMixin(models.AbstractModel):
             return True
 
     def _read_external_object_from_proddb(self, default_code=None, products=None):
-        rows = self._execute_query_on_proddb(default_code, products)
-        return rows
+        rows_material, rows = self._execute_query_on_proddb(default_code.lower(), products)
+        return rows_material, rows
 
     def _update_external_object(self, vals):
         table = "PPG_Artikel"
@@ -190,9 +202,9 @@ class BaseKardexMixin(models.AbstractModel):
 
         # get the db driver
 
-        db_driver = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
-        db_driver = db_driver._get_db_driver()
-        _logger.info("Database driver: %s", db_driver)
+        sqldb = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
+        db_driver = sqldb._get_db_driver()
+        # _logger.info("Database driver: %s", db_driver)
 
         # Pick the fixer based on table
         if table == "PPG_Artikel":

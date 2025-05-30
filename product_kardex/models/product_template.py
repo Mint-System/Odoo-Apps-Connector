@@ -137,16 +137,20 @@ class ProductTemplate(models.Model):
     def get_info_from_kardex(self):
         for product in self:
             product_default_code = product.default_code
-            data = self._read_external_object_from_proddb(default_code=product_default_code)
+            data_material, data = self._read_external_object_from_proddb(default_code=product_default_code)
+            _logger.info("data_material from ppg called %s " % (data_material,))
             _logger.info("data from ppg called %s " % (data,))
-            if data:
+            if data_material:
                 message_list = []
-                for row in data:
-                    message_list.extend(
-                        f"{key}: {value}" for key, value in row.items() if value not in (None, "")
-                    )
+                if data:
+                    for row in data:
+                        message_list.extend(
+                            f"{key}: {value}" for key, value in row.items() if value not in (None, "")
+                        )
 
-                message = (" | ").join(message_list)
+                    message = (" | ").join(message_list)
+                else: 
+                    message = "No quantity for this article in Kardex."
             else:
                 message = "This Article was not found in Kardex."
          

@@ -1,4 +1,8 @@
+import logging
+
 from odoo import api, fields, models
+
+_logger = logging.getLogger(__name__)
 
 class StockMove(models.Model):
     _inherit = ["stock.move"]
@@ -120,8 +124,8 @@ class StockMove(models.Model):
                 product = self.env["product.product"].browse(vals.get("product_id"))
                 if product.last_location_id:
                     _logger.info("### product last location %s " % (product.last_location_id.name,))
-                if picking.kardex and not product.kardex:
-                    raise UserError(_("You can only add Kardex products."))
+                # if picking.kardex and not product.kardex:
+                #     raise UserError(_("You can only add Kardex products."))
 
                 if location_final_id:
                     picking_type_code = picking.picking_type_code
@@ -148,7 +152,7 @@ class StockMove(models.Model):
             #     parent = self.env["sale.order"].search([("name", "=", picking.origin)], limit=1)
             # _logger.info("### parent %s" % (parent.name,))
             if parent and picking.picking_type_code == "internal" and picking.id not in already_sent:
-                picking.send_to_kardex(picking.origin)
+                # picking.send_to_kardex(picking.origin)
                 already_sent.append(picking.id)
 
         _logger.warning("################ END OF STOCK MOVE CREATE ################")
@@ -171,7 +175,7 @@ class StockMove(models.Model):
 
             if parent and picking and kardex_moves and not picking.kardex_done and not picking._check_picking_type() == "postproduction":
                 _logger.info("### kardex outgoing called")
-                picking.send_to_kardex(picking.origin)
+                #picking.send_to_kardex(picking.origin)
 
         return res
 

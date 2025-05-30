@@ -130,19 +130,5 @@ dlist/field[@name='product_id']" position="replace">
         </field>
     </record>
 
-    <record id="view_stock_move_line_detailed_operation_tree" model="ir.ui.view">
-        <field name="name">stock.move.line.detailed.operation.kardex.tree</field>
-        <field name="model">stock.move.line</field>
-        <field
-            name="inherit_id"
-            ref="stock.view_stock_move_line_detailed_operation_tree"
-        />
-        <field name="arch" type="xml">
-            <xpath expr="//list/field[@name='quant_id']" position="after">
-                <field name="kardex_running_id" string="BzId" />
-                <field name="kardex_status" string="KStatus" />
-                <field name="kardex_sync" string="KSync" />
-            </xpath>
-        </field>
-    </record>
+    
 </odoo>

@@ -15,7 +15,7 @@ from .config import (
 class Transfer(models.AbstractModel):
 
     transfer_type = fields.Char()
-    
+
     def __init__(self, env, cr, uid, context=None, transfer_type=None):
         self.transfer_type = transfer_type
         super(Transfer, self).__init__(env, cr, uid, context)
@@ -57,7 +57,7 @@ class Transfer(models.AbstractModel):
     def _get_direction(self, move_line):
         if move_line._check_picking_type() in ["store", "postproduction"]:
             return 3
-        elif move_line._check_picking_type() in ["production", "sale"]:
+        elif move_line._check_picking_type() in ["production", "get"]:
             return 4
 
 
@@ -104,5 +104,5 @@ class Transfer(models.AbstractModel):
         # update product last location id
         product = move_line.product_id
         # write last location to product if it is not sale
-        if self._check_picking_type() != "sale":
+        if self._check_picking_type() != "get":
             product.write({"last_location_id": move_line.location_dest_id})

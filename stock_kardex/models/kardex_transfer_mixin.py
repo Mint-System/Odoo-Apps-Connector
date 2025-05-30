@@ -1,55 +1,75 @@
+import logging
+from collections import defaultdict
+
+
 from odoo import api, fields, models
 
-from .config import POST_PRODUCTION_LOCATION
+from .config import (
+    POST_PRODUCTION_LOCATION,
+    KARDEX_WAREHOUSE,
+    ENTRANCE_LOCATION,
+    STOCK_PICKING_SEND_FLAG_FIXER,
+    ODOO_KARDEX_UNIT_FIXER
+)
+
+_logger = logging.getLogger(__name__)
 
 class KardexTransferMixin(models.AbstractModel):
     _name = "kardex.transfer.mixin"
     _description = "Kardex Transfer Mixin"
 
-    @property
-    def kardex_location(self):
+    def _get_kardex_location(self):
         return self.env["stock.location"].search(
             [("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1
         )
 
-    _kardex_location = None
-
-    @classmethod
-    def get_kardex_location(cls):
-        if not cls._kardex_location is None:
-            cls._kardex_location = cls.env["stock.location"].search(
-                [("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1
-            )
-        return cls._kardex_location
-
+    
     def _determine_picking_type(self):
-        if self.origin and self.env["purchase.order"].search([("name", "=", self.origin)]):
+        if self.picking_type_id.kardex_picking_type == "kardex_store":
+        # if self.origin and self.env["purchase.order"].search([("name", "=", self.origin)]) and self.location_id.name == ENTRANCE_LOCATION:
             return "store"
-        elif (
-            self.origin
-            and self.env["mrp.production"].search([("name", "=", self.origin)])
-            and self.location_id.name == POST_PRODUCTION_LOCATION
-        ):
+        # elif (
+        #     self.origin
+        #     and self.env["mrp.production"].search([("name", "=", self.origin)])
+        #     and self.location_id.name == POST_PRODUCTION_LOCATION
+        # ):
+        elif self.picking_type_id.kardex_picking_type == "kardex_postprod":
             return "postproduction"
-        elif self.origin and self.env["mrp.production"].search([("name", "=", self.origin)]):
+        # elif self.origin and self.env["mrp.production"].search([("name", "=", self.origin)]):
+        elif self.picking_type_id.kardex_picking_type == "kardex_prod":
             return "production"
-        elif self.origin and self.env["sale.order"].search([("name", "=", self.origin)]):
-            return "sale"
+        # elif self.origin and self.env["sale.order"].search([("name", "=", self.origin)]):
+        elif self.picking_type_id.kardex_picking_type == "kardex_get":
+            return "get"
 
+    
+
+    def _update_picking_state(self):
+        picking_id = self.picking_id
+        if picking_id and self.kardex_running_id and self.kardex_status != "4":
+            picking_id.write({"kardex_picking_state": "waiting_for_kardex"})
+ 
 
     def send_to_kardex(self, picking_origin=None):
 
-        kardex_location = self.get_kardex_location()
+        _logger.info("########### SEND TO KARDEX CALLED ############")
+
+        kardex_location = self._get_kardex_location()
 
         make_transfer = not self.kardex_done and not self.kardex_running_id
 
+        _logger.info("### picking type: %s " % (self._determine_picking_type(),))
+        _logger.info("### last location: %s " % (self.product_id.last_location_id,))
+        _logger.info("### kardex_location: %s " % (kardex_location,))
+        _logger.info("### picking_type_id: %s" % (self.picking_type_id,))
+
         if self._determine_picking_type() == "production" and make_transfer and self.location_id == kardex_location:
             self.transfer("production")
-        elif self._determine_picking_type() == "sale" and make_transfer and self.location_id == kardex_location:    
-            self.transfer("sale")
+        elif self._determine_picking_type() == "get" and make_transfer and self.location_id == kardex_location:    
+            self.transfer("get")
         elif self._determine_picking_type() == "postproduction" and make_transfer and self.location_dest_id == kardex_location:
             self.transfer("postproduction")
-        elif self._determine_picking_type() == "store" and make_transfer and self.location_dest_id == kardex_location:
+        elif self._determine_picking_type() == "store" and make_transfer and self.product_id.last_location_id == kardex_location:
             self.transfer("store")
         else:
             return
@@ -104,7 +124,7 @@ class KardexTransferMixin(models.AbstractModel):
         #     )
         #     if self._check_picking_type() == "production":
         #         kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_id == kardex_location)
-        #     elif self._check_picking_type() == "sale":
+        #     elif self._check_picking_type() == "get":
         #         _logger.info("### quant_id: %s" % (kardex_move_lines[0].quant_id,))
         #         kardex_move_lines = kardex_move_lines.filtered(lambda m: m.location_id == kardex_location)
         #     elif self._check_picking_type() == "postproduction":
@@ -157,7 +177,7 @@ class KardexTransferMixin(models.AbstractModel):
         #             # update product last location id
         #             product = move_line.product_id
         #             # write last location to product if it is not sale
-        #             if self._check_picking_type() != "sale":
+        #             if self._check_picking_type() != "get":
         #                 product.write({"last_location_id": move_line.location_dest_id})
         #     message = missing_products_message + "\n Kardex Picking was sent to Kardex."
 
@@ -204,9 +224,9 @@ class KardexTransferMixin(models.AbstractModel):
         return fixer.get(unit, unit)
 
     def _get_direction(self, move_line):
-        if move_line._check_picking_type() in ["store", "postproduction"]:
+        if move_line._determine_picking_type() in ["store", "postproduction"]:
             return 3
-        elif move_line._check_picking_type() in ["production", "sale"]:
+        elif move_line._determine_picking_type() in ["production", "get"]:
             return 4
 
 
@@ -214,11 +234,13 @@ class KardexTransferMixin(models.AbstractModel):
         move_line = self
 
         table = "PPG_Auftraege"
+        picking_vals = {}
+        
 
         # add ID of products zo picking vals
         picking_vals["kardex_product_id"] = move_line.product_id.kardex_product_id
         picking_vals["kardex_status"] = "1"
-        picking_vals["kardex_send_flag"] = self._get_send_flag()
+        picking_vals["kardex_send_flag"] = self._get_send_flag(move_line)
         picking_vals["kardex_running_id"] = self._get_kardex_running_id(move_line)
         picking_vals["kardex_unit"] = self._get_unit(move_line)
         picking_vals["kardex_quantity"] = move_line.quantity
@@ -229,30 +251,34 @@ class KardexTransferMixin(models.AbstractModel):
         if move_line.lot_id and move_line.product_id.tracking == "lot":
             picking_vals["kardex_charge"] = move_line.lot_id.name
             picking_vals["kardex_serial"] = None
-        if move_line.product_id.tracking == "none" or self._get_direction() == 4:
+        if move_line.product_id.tracking == "none" or self._get_direction(move_line) == 4:
             picking_vals["kardex_charge"] = None
             picking_vals["kardex_serial"] = None
         
 
-        picking_vals["kardex_direction"] = self._get_direction()
+        picking_vals["kardex_direction"] = self._get_direction(move_line)
         picking_vals["kardex_search"] = move_line.product_id.default_code
         
         new_id, create_time, update_time, running_id = move_line._create_external_object(picking_vals, table)
         _logger.info(f"new_id: {new_id}")
 
-        done_move = {
-            "kardex_done": True,
-            "kardex_id": new_id,
-            "kardex_status": "1",
-            "kardex_row_create_time": create_time,
-            "kardex_row_update_time": update_time,
-            "kardex_running_id": running_id,
-        }
+        if new_id:
+
+            done_move = {
+                "kardex_done": True,
+                "kardex_id": new_id,
+                "kardex_status": "1",
+                "kardex_row_create_time": create_time,
+                "kardex_row_update_time": update_time,
+                "kardex_running_id": running_id,
+            }
        
-        move_line.write(done_move)
+            move_line.write(done_move)
+            move_line._update_picking_state()
+
         # update product last location id
         product = move_line.product_id
         # write last location to product if it is not sale
-        if self._check_picking_type() != "sale":
-            product.write({"last_location_id": move_line.location_dest_id})
+        # if self._determine_picking_type() != "get":
+        #     product.write({"last_location_id": move_line.location_dest_id})
 
