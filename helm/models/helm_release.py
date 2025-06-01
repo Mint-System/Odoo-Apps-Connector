@@ -1,7 +1,10 @@
 import logging
 import subprocess
 
-from odoo import _, api, fields, models
+import yaml
+
+from odoo import _, api, exceptions, fields, models
+from odoo.tools import safe_eval
 
 from .ir_actions_client import display_notification
 
@@ -21,81 +24,95 @@ class HelmRelease(models.Model):
         selection=[("draft", "Draft"), ("installed", "Installed")],
         default="draft",
     )
-    values = fields.Text(compute="_compute_values", store=True)
+    values = fields.Text(compute="_compute_values", store=True, help="Shows Chart values with applied rules.")
 
-    @api.depends("chart_id")
+    @api.depends("name", "chart_id", "chart_id.edit_ids", "context_id", "partner_id")
     def _compute_values(self):
         for release in self:
             if release.state == "draft":
-                release.values = release.chart_id.values
+                release.values = self._apply_edits()
+
+    def _apply_edits(self):
+        """
+        Apply the value edits to the Chart values template using YAML.
+        """
+        for release in self:
+            values = release.chart_id.values  # This is a YAML string
+            edits = release.chart_id.edit_ids
+
+            try:
+                dict_values = yaml.safe_load(values) or {}
+            except yaml.YAMLError as e:
+                raise exceptions.ValidationError(f"Invalid YAML: {str(e)}")
+
+            for edit in edits:
+                try:
+                    eval_context = {"release": release}
+                    new_value = safe_eval.safe_eval(edit.code, eval_context, dict_values)
+
+                    path_parts = edit.path.split(".")
+                    target = dict_values
+                    for part in path_parts[:-1]:
+                        target = target.setdefault(part, {})
+                    target[path_parts[-1]] = new_value
+
+                except Exception as e:
+                    raise exceptions.ValidationError(f"Invalid expression {edit.code}: {str(e)}")
+
+            try:
+                release.values = yaml.safe_dump(dict_values, sort_keys=False)
+            except yaml.YAMLError as e:
+                raise exceptions.ValidationError(f"Error converting to YAML: {str(e)}")
+
+            return release.values
 
     def action_install(self):
         """
         Install the Helm chart using the current context configuration.
         """
         self.ensure_one()
-        with self.context_id.get_config_path() as config_path:
-            try:
-                output = subprocess.run(
-                    [
-                        "helm",
-                        "--kubeconfig",
-                        config_path,
-                        "install",
-                        self.name,
-                        f"{self.chart_id.repo_id.name}/{self.chart_id.name}",
-                    ],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-                self.write({"state": "installed"})
-                return display_notification(_("Chart Installed"), output.stdout, "success")
-            except subprocess.CalledProcessError as e:
-                return display_notification(_("Installing Chart Failed"), e.stderr, "danger")
+        try:
+            result = self.context_id.run(
+                ["helm", "install", self.name, f"{self.chart_id.repo_id.name}/{self.chart_id.name}"]
+            )
+            self.write({"state": "installed"})
+            return display_notification(_("Chart Installed"), result.stdout, "success")
+        except subprocess.CalledProcessError as e:
+            return display_notification(_("Installing Chart Failed"), e.stderr, "danger")
 
     def action_upgrade(self):
         """
         Upgrade the Helm chart using the current context configuration.
         """
         self.ensure_one()
-        with self.context_id.get_config_path() as config_path:
-            try:
-                output = subprocess.run(
-                    [
-                        "helm",
-                        "--kubeconfig",
-                        config_path,
-                        "upgrade",
-                        self.name,
-                        f"{self.chart_id.repo_id.name}/{self.chart_id.name}",
-                    ],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-                self.write({"state": "draft"})
-                return display_notification(_("Chart Upgraded"), output.stdout, "success")
-            except subprocess.CalledProcessError as e:
-                return display_notification(_("Upgrading Chart Failed"), e.stderr, "danger")
+        try:
+            result = self.context_id.run(
+                [
+                    "helm",
+                    "upgrade",
+                    self.name,
+                    f"{self.chart_id.repo_id.name}/{self.chart_id.name}",
+                ]
+            )
+            self.write({"state": "draft"})
+            return display_notification(_("Chart Upgraded"), result.stdout, "success")
+        except subprocess.CalledProcessError as e:
+            return display_notification(_("Upgrading Chart Failed"), e.stderr, "danger")
 
     def action_uninstall(self):
         """
         Uninstall the Helm chart using the current context configuration.
         """
         self.ensure_one()
-        with self.context_id.get_config_path() as config_path:
-            try:
-                output = subprocess.run(
-                    ["helm", "--kubeconfig", config_path, "uninstall", self.name],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-                self.write({"state": "draft"})
-                return display_notification(_("Chart Uninstalled"), output.stdout, "success")
-            except subprocess.CalledProcessError as e:
-                return display_notification(_("Uninstalling Chart Failed"), e.stderr, "danger")
+        try:
+            result = self.context_id.run(
+                [
+                    "helm",
+                    "uninstall",
+                    self.name,
+                ]
+            )
+            self.write({"state": "draft"})
+            return display_notification(_("Chart Uninstalled"), result.stdout, "success")
+        except subprocess.CalledProcessError as e:
+            return display_notification(_("Uninstalling Chart Failed"), e.stderr, "danger")

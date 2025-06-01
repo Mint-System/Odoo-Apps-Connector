@@ -13,12 +13,12 @@ class HelmChart(models.Model):
     name = fields.Char()
     repo_id = fields.Many2one("helm.repo")
     values = fields.Text(compute="_compute_values")
-    value_ids = fields.One2many("helm.chart.value", "chart_id")
+    edit_ids = fields.One2many("helm.chart.edit", "chart_id")
     product_ids = fields.Many2many("product.product")
 
     def _compute_values(self):
         for chart in self:
-            output = subprocess.run(
+            result = subprocess.run(
                 [
                     "helm",
                     "show",
@@ -30,7 +30,7 @@ class HelmChart(models.Model):
                 stderr=subprocess.PIPE,
                 text=True,
             )
-            chart.values = output.stdout
+            chart.values = result.stdout
 
     def action_release(self):
         """

@@ -3,6 +3,8 @@ import subprocess
 
 from odoo import _, fields, models
 
+from .ir_actions_client import display_notification
+
 _logger = logging.getLogger(__name__)
 
 
@@ -17,51 +19,44 @@ class HelmRepo(models.Model):
         default="draft",
     )
 
+    def _run(self, command):
+        return subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
     def action_add(self):
         self.ensure_one()
         try:
-            output = subprocess.run(
-                ["helm", "repo", "add", self.name, self.url],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+            result = self._run(["helm", "repo", "add", self.name, self.url])
             self.write({"state": "added"})
-            return display_notification(_("Repo Added"), output.stdout, "success")
+            return display_notification(_("Repo Added"), result.stdout, "success")
         except subprocess.CalledProcessError as e:
             return display_notification(_("Adding Repo Failed"), e.stderr, "danger")
 
     def action_update(self):
         self.ensure_one()
         try:
-            output = subprocess.run(
-                ["helm", "repo", "update", self.name, self.url],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            return display_notification(_("Repo Updated"), output.stdout, "success")
+            result = self._run(["helm", "repo", "update", self.name])
+            return display_notification(_("Repo Updated"), result.stdout, "success")
         except subprocess.CalledProcessError as e:
             return display_notification(_("Updating Repo Failed"), e.stderr, "danger")
 
     def action_remove(self):
         self.ensure_one()
         try:
-            output = subprocess.run(
+            result = self._run(
                 [
                     "helm",
                     "repo",
                     "remove",
                     self.name,
-                ],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+                ]
             )
             self.write({"state": "draft"})
-            return display_notification(_("Repo Removed"), output.stdout, "success")
+            return display_notification(_("Repo Removed"), result.stdout, "success")
         except subprocess.CalledProcessError as e:
             return display_notification(_("Removing Repo Failed"), e.stderr, "danger")

@@ -23,7 +23,7 @@
                                 </group>
                                 <group>
                                     <field
-                                        name="value_ids"
+                                        name="edit_ids"
                                         context="{'default_chart_id': id}"
                                     >
                                         <list editable="bottom">

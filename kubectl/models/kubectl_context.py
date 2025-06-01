@@ -47,19 +47,31 @@ class KubectlContext(models.Model):
             # Clean up the temporary file
             os.unlink(temp_file_path)
 
+    def run(self, command):
+        """
+        Run kubectl or helm command.
+        """
+        self.ensure_one()
+        if self.config:
+            # Insert kubeconfig parameter into command
+            with self.get_config_path() as config_path:
+                command = command[0] + ["--kubeconfig", config_path] + command[1:]
+        _logger.warning("Run command: %s", command)
+        return subprocess.run(
+            command,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
     def action_use_context(self):
         """
         Change kube context.
         """
         self.ensure_one()
         try:
-            result = subprocess.run(
-                ["kubectl", "config", "use-context", self.name],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
+            result = self.run(["kubectl", "config", "use-context", self.name])
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",
@@ -85,26 +97,8 @@ class KubectlContext(models.Model):
         Test connection to the kubernetes cluster using this context.
         """
         self.ensure_one()
-
         try:
-            if self.config:
-                with self.get_config_path() as config_path:
-                    result = subprocess.run(
-                        ["kubectl", "--kubeconfig", config_path, "cluster-info"],
-                        check=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True,
-                    )
-            else:
-                result = subprocess.run(
-                    ["kubectl", "cluster-info"],
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                )
-
+            result = self.run(["kubectl", "cluster-info"])
             return {
                 "type": "ir.actions.client",
                 "tag": "display_notification",

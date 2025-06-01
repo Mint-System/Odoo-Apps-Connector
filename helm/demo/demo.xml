@@ -30,6 +30,14 @@
         />
     </record>
 
+    <record id="odoo_chart_value_ingress_host_demo" model="helm.chart.edit">
+        <field name="chart_id" ref="helm.odoo_chart_demo" />
+        <field name="path">ingress.host</field>
+        <field
+            name="code"
+        >release.name + '.' + release.context_id.cluster_id.domain</field>
+    </record>
+
     <record id="odoo_release_demo" model="helm.release">
         <field name="name">odoo</field>
         <field name="product_id" ref="helm.product_odoo_community_edition_demo" />
