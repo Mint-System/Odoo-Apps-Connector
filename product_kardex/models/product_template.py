@@ -131,8 +131,7 @@ class ProductTemplate(models.Model):
     def sync_stock_of_single_product(self):
         for product in self:
             if product.default_code:
-                self.env['stock.quant'].sync_stocks(product.default_code)
-
+                self.env["stock.quant"].sync_stocks(product.default_code)
 
     def get_info_from_kardex(self):
         for product in self:
@@ -144,16 +143,14 @@ class ProductTemplate(models.Model):
                 message_list = []
                 if data:
                     for row in data:
-                        message_list.extend(
-                            f"{key}: {value}" for key, value in row.items() if value not in (None, "")
-                        )
+                        message_list.extend(f"{key}: {value}" for key, value in row.items() if value not in (None, ""))
 
                     message = (" | ").join(message_list)
-                else: 
+                else:
                     message = "No quantity for this article in Kardex."
             else:
                 message = "This Article was not found in Kardex."
-         
+
         return self._create_notification(message)
 
     def update_to_kardex(self):
@@ -255,7 +252,7 @@ class ProductTemplate(models.Model):
     def _get_product_group(self, product):
         # group = product.categ_id.name # this is HTML object
         if product.categ_id and product.categ_id.abbr:
-            return  product.categ_id.abbr
+            return product.categ_id.abbr
 
         match = re.match(r"^[^.]+", product.default_code)
 
@@ -389,17 +386,14 @@ class ProductTemplate(models.Model):
                 variant.write({"tracking": tracking_value})
 
     def _get_tracking_values(self, tracking):
-        
         if tracking == "serial":
             tracking_val = {"kardex_ch_verw": 0, "kardex_sn_verw": 1}
         elif tracking == "lot":
             tracking_val = {"kardex_ch_verw": 1, "kardex_sn_verw": 0}
         else:
             tracking_val = {"kardex_ch_verw": 0, "kardex_sn_verw": 0}
-        
+
         return tracking_val
-
-
 
     def _handle_kardex_update(self, vals, product=None):
         # record = super(ProductTemplate, self).create(vals)
@@ -414,15 +408,12 @@ class ProductTemplate(models.Model):
         vals["kardex_product_id"] = article_id
 
         # handle description
-        vals["description"] = (
-            re.sub(r"<.*?>", "", vals["description"]) if vals["description"] else ""
-        )
+        vals["description"] = re.sub(r"<.*?>", "", vals["description"]) if vals["description"] else ""
 
         # handle length of info fields
         max_length = 50
-        vals["kardex_search_term_one"] =  (vals["kardex_search_term_one"] or "")[:max_length]
-        vals["kardex_search_term_two"] =  (vals["kardex_search_term_two"] or "")[:max_length]
-
+        vals["kardex_search_term_one"] = (vals["kardex_search_term_one"] or "")[:max_length]
+        vals["kardex_search_term_two"] = (vals["kardex_search_term_two"] or "")[:max_length]
 
         # handle tracking
         if "tracking" in vals.keys():
@@ -442,29 +433,24 @@ class ProductTemplate(models.Model):
             if uom_name:
                 vals["kardex_unit"] = uom_name
         # fixing other missing kardex values
-        
+
         vals = self._update_record(vals)
         table = "PPG_Artikel"
-        new_id = self._create_external_object(
-            vals, table
-        )  # in case of creating a new record the new id is returned
+        new_id = self._create_external_object(vals, table)  # in case of creating a new record the new id is returned
 
         return new_article, article_id, new_id
-            
 
     @api.model_create_multi
     def create(self, vals_list):
-
         # for vals in vals_list:
         #     _logger.info("### vals in product template create %s " % (vals,))
-            
+
         #     if vals["kardex"] and not vals["kardex_done"] and SEND_KARDEX_PRODUCT_ON_CREATE:
 
         #         #new_id = self._handle_kardex_update(vals)
-                
+
         #         vals["kardex_done"] = True
         #         #vals["kardex_id"] = new_id
-
 
         records = super().create(vals_list)
 
@@ -487,19 +473,29 @@ class ProductTemplate(models.Model):
         #             vals['kardex_done'] = False
         # update_vals = vals.copy()
         # if update_vals:
-            
+
         #     if "tracking" in update_vals.keys():
         #         tracking_val = self._get_variants_tracking()
         #         update_vals.update(tracking_val)
 
-        kardex_relevant_fields = ["name", "default_code", "description", "kardex", "tracking", "categ_id", "uom_name", "kardex_search_term_one", "kardex_search_term_two"]
+        kardex_relevant_fields = [
+            "name",
+            "default_code",
+            "description",
+            "kardex",
+            "tracking",
+            "categ_id",
+            "uom_name",
+            "kardex_search_term_one",
+            "kardex_search_term_two",
+        ]
 
         # check if vals contains kardex relevant fields
-        update_kardex_set =  set(vals.keys()) & set(kardex_relevant_fields)
+        update_kardex_set = set(vals.keys()) & set(kardex_relevant_fields)
 
         # check if vals is empty
         vals_are_empty = False
-        if vals == {'product_properties': {}}:
+        if vals == {"product_properties": {}}:
             vals_are_empty = True
 
         if update_kardex_set or vals_are_empty:
@@ -518,7 +514,6 @@ class ProductTemplate(models.Model):
                         vals["kardex_id"] = int(new_id[0])
                     if new_article and article_id:
                         vals["kardex_product_id"] = article_id
-
 
         # # update Product in PPG
         # for product in self:

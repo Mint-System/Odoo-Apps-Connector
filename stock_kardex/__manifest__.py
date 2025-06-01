@@ -19,7 +19,7 @@
         "views/kardex_sync_report.xml",
         "views/kardex_picking_type_views.xml",
         "views/kardex_move_line_views.xml",
-        "views/res_config_settings_views.xml"
+        "views/res_config_settings_views.xml",
     ],
     "installable": True,
     "application": False,

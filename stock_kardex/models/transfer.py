@@ -1,31 +1,21 @@
 # stock_kardex/models/transfer.py
-from odoo import api, fields, models
+from odoo import fields, models
 
-from .config import (
-    COMPANY_ID,
-    CREATE_LOTS_AUTOMATICALLY,
-    CREATE_SERIAL_FOR_STORE,
-    KARDEX_DESTINATION,
-    KARDEX_WAREHOUSE,
-    ODOO_KARDEX_UNIT_FIXER, 
-    STOCK_PICKING_SEND_FLAG_FIXER
-)
+from .config import KARDEX_WAREHOUSE, ODOO_KARDEX_UNIT_FIXER, STOCK_PICKING_SEND_FLAG_FIXER
 
 
 class Transfer(models.AbstractModel):
-
     transfer_type = fields.Char()
 
     def __init__(self, env, cr, uid, context=None, transfer_type=None):
         self.transfer_type = transfer_type
-        super(Transfer, self).__init__(env, cr, uid, context)
+        super().__init__(env, cr, uid, context)
 
     _kardex_location = None
 
-
     @classmethod
     def get_kardex_location(cls):
-        if not cls._kardex_location is None:
+        if cls._kardex_location is not None:
             cls._kardex_location = cls.env["stock.location"].search(
                 [("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1
             )
@@ -42,10 +32,10 @@ class Transfer(models.AbstractModel):
 
         candidate_id = external_max + 1
 
-        #Make sure this ID is not yet used in Odoo
-        StockMoveLine = self.env['stock.move.line'].sudo()
-        while StockMoveLine.search_count([('kardex_running_id', '=', candidate_id)]) > 0:
-            candidate_id += 1 
+        # Make sure this ID is not yet used in Odoo
+        StockMoveLine = self.env["stock.move.line"].sudo()
+        while StockMoveLine.search_count([("kardex_running_id", "=", candidate_id)]) > 0:
+            candidate_id += 1
 
         return int(candidate_id)
 
@@ -59,7 +49,6 @@ class Transfer(models.AbstractModel):
             return 3
         elif move_line._check_picking_type() in ["production", "get"]:
             return 4
-
 
     def transfer(self, move_line):
         transfer_type = self.transfer_type
@@ -83,11 +72,10 @@ class Transfer(models.AbstractModel):
         if move_line.product_id.tracking == "none" or self._get_direction() == 4:
             picking_vals["kardex_charge"] = None
             picking_vals["kardex_serial"] = None
-        
 
         picking_vals["kardex_direction"] = self._get_direction()
         picking_vals["kardex_search"] = move_line.product_id.default_code
-        
+
         new_id, create_time, update_time, running_id = move_line._create_external_object(picking_vals, table)
         _logger.info(f"new_id: {new_id}")
 
@@ -99,7 +87,7 @@ class Transfer(models.AbstractModel):
             "kardex_row_update_time": update_time,
             "kardex_running_id": running_id,
         }
-       
+
         move_line.write(done_move)
         # update product last location id
         product = move_line.product_id

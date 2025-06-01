@@ -17,16 +17,20 @@
         <field name="inherit_id" ref="product.product_template_form_view" />
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="get_info_from_kardex"
-                        type="object"
-                        string=""
-                        class="btn-primary"
-                        icon="fa-info"/>
-                <button name="sync_stock_of_single_product"
-                        type="object"
-                        string=""
-                        class="btn-primary"
-                        icon="fa-arrows-h"/>
+                <button
+                    name="get_info_from_kardex"
+                    type="object"
+                    string=""
+                    class="btn-primary"
+                    icon="fa-info"
+                />
+                <button
+                    name="sync_stock_of_single_product"
+                    type="object"
+                    string=""
+                    class="btn-primary"
+                    icon="fa-arrows-h"
+                />
             </xpath>
             <xpath
                 expr="//page[@name='general_information']//group[@name='group_general']"

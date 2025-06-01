@@ -1,12 +1,11 @@
 import re
 
 
-
 def _get_location_base(s):
-        if s:
-            match = re.match(r"^[^\s-]+", s)
-            return match.group(0) if match else s
-        return None
+    if s:
+        match = re.match(r"^[^\s-]+", s)
+        return match.group(0) if match else s
+    return None
 
 
 def _transform_location(location):
@@ -16,14 +15,16 @@ def _transform_location(location):
         return "Palette"
     return location
 
+
 def _update_locations(data, transform_func):
     for item in data:
         item["LocationName"] = transform_func(item["LocationName"])
-    return data  
+    return data
+
 
 def _harmonize_empty_values(data):
     for item in data:
         for key, value in item.items():
-            if value == "" or value is None or value == '---':
+            if value == "" or value is None or value == "---":
                 item[key] = None
     return data

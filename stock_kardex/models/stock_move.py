@@ -4,6 +4,7 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
+
 class StockMove(models.Model):
     _inherit = ["stock.move"]
     products_domain = fields.Binary(
@@ -36,13 +37,13 @@ class StockMove(models.Model):
     # tracking_type_code = fields.Char(
     #     string='Tracking Code',
     #     compute='_compute_tracking_type_code',
-    #     store=False 
+    #     store=False
     # )
     tracking_type_badge = fields.Html(
-        string='Tracking',
-        compute='_compute_tracking_type_badge',
+        string="Tracking",
+        compute="_compute_tracking_type_badge",
         sanitize=False,  # Only use if you're 100% sure your HTML is safe
-        store=False
+        store=False,
     )
 
     @api.depends("move_line_ids.kardex_running_id")
@@ -80,25 +81,25 @@ class StockMove(models.Model):
 
             obj.products_domain = domain
 
-    @api.depends('product_id')
+    @api.depends("product_id")
     def _compute_tracking_type_code(self):
         for line in self:
             tracking = line.product_id.tracking
-            if tracking == 'serial':
-                line.tracking_type_code = 'S'
-            elif tracking == 'lot':
-                line.tracking_type_code = 'L'
+            if tracking == "serial":
+                line.tracking_type_code = "S"
+            elif tracking == "lot":
+                line.tracking_type_code = "L"
             else:
-                line.tracking_type_code = ''
+                line.tracking_type_code = ""
 
-    @api.depends('product_id')
+    @api.depends("product_id")
     def _compute_tracking_type_badge(self):
         for line in self:
             tracking = line.product_id.tracking
-            badge = ''
-            if tracking == 'serial':
+            badge = ""
+            if tracking == "serial":
                 badge = '<span style="background-color:#007bff;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">S</span>'
-            elif tracking == 'lot':
+            elif tracking == "lot":
                 badge = '<span style="background-color:#28a745;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">L</span>'
             line.tracking_type_badge = badge
 
@@ -132,7 +133,7 @@ class StockMove(models.Model):
                     origin_type = picking._check_picking_type()
 
                     if picking_type_code == "incoming" and origin_type == "store":
-                        #last_location_id = self._get_destination_location_for_product(product)
+                        # last_location_id = self._get_destination_location_for_product(product)
                         last_location_id = product.last_location_id
                         vals["location_final_id"] = last_location_id.id
 
@@ -173,9 +174,15 @@ class StockMove(models.Model):
 
             kardex_moves = picking.move_ids.filtered(lambda move: move.product_id.kardex)
 
-            if parent and picking and kardex_moves and not picking.kardex_done and not picking._check_picking_type() == "postproduction":
+            if (
+                parent
+                and picking
+                and kardex_moves
+                and not picking.kardex_done
+                and not picking._check_picking_type() == "postproduction"
+            ):
                 _logger.info("### kardex outgoing called")
-                #picking.send_to_kardex(picking.origin)
+                # picking.send_to_kardex(picking.origin)
 
         return res
 
@@ -190,4 +197,3 @@ class StockMove(models.Model):
     #         vals['location_dest_id'] = self.product_id.last_location_id.id
     #     _logger.info("### vals %s " % (vals,))
     #     return vals
-

@@ -5,10 +5,10 @@
         <field name="model">kardex.sync.report</field>
         <field name="arch" type="xml">
             <list>
-                <field name="name"/>
-                <field name="synced_by"/>
-                <field name="sync_time"/>
-                <field name="product_count"/>
+                <field name="name" />
+                <field name="synced_by" />
+                <field name="sync_time" />
+                <field name="product_count" />
             </list>
         </field>
     </record>
@@ -19,21 +19,21 @@
         <field name="model">kardex.sync.report</field>
         <field name="arch" type="xml">
             <form>
-                <header/>
+                <header />
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="synced_by"/>
-                        <field name="sync_time"/>
-                        <field name="product_count"/>
+                        <field name="name" />
+                        <field name="synced_by" />
+                        <field name="sync_time" />
+                        <field name="product_count" />
                     </group>
                     <notebook>
                         <page string="Modified Products">
                             <field name="line_ids">
                                 <list editable="bottom">
-                                    <field name="product_id"/>
-                                    <field name="default_code"/>
-                                    <field name="changes"/>
+                                    <field name="product_id" />
+                                    <field name="default_code" />
+                                    <field name="changes" />
                                 </list>
                             </field>
                         </page>

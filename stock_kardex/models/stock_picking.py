@@ -1,30 +1,24 @@
-import re
 import logging
 import random
 import string
 from datetime import datetime
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
 from .config import (
-    COMPANY_ID,
-    CREATE_LOTS_AUTOMATICALLY,
+    CREATE_SERIAL_FOR_PRODUCTION,
     CREATE_SERIAL_FOR_STORE,
     KARDEX_DESTINATION,
     KARDEX_WAREHOUSE,
     ODOO_KARDEX_UNIT_FIXER,
-    OVERRIDE_SERIAL_FOR_STORE,
     OVERRIDE_SERIAL_FOR_PRODUCTION,
-    CREATE_SERIAL_FOR_PRODUCTION,
+    OVERRIDE_SERIAL_FOR_STORE,
     PICKING_TYPE_FIXER,
     POST_PRODUCTION_LOCATION,
     STOCK_PICKING_SEND_FLAG_FIXER,
-    USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS,
 )
-
 
 
 class StockPicking(models.Model):
@@ -129,7 +123,7 @@ class StockPicking(models.Model):
         for rec in self:
             rec.validate_button_is_invisible = rec.send_button_is_visible
 
-    @api.depends('move_type', 'move_ids.state', 'move_ids.picking_id')
+    @api.depends("move_type", "move_ids.state", "move_ids.picking_id")
     def _compute_state(self):
         res = super()._compute_state()
         for picking in self:
@@ -155,10 +149,10 @@ class StockPicking(models.Model):
 
         candidate_id = external_max + 1
 
-        #Make sure this ID is not yet used in Odoo
-        StockMoveLine = self.env['stock.move.line'].sudo()
-        while StockMoveLine.search_count([('kardex_running_id', '=', candidate_id)]) > 0:
-            candidate_id += 1 
+        # Make sure this ID is not yet used in Odoo
+        StockMoveLine = self.env["stock.move.line"].sudo()
+        while StockMoveLine.search_count([("kardex_running_id", "=", candidate_id)]) > 0:
+            candidate_id += 1
 
         return int(candidate_id)
 
@@ -171,8 +165,6 @@ class StockPicking(models.Model):
 
     def create_lot_name(self, product, index):
         return f"{product.default_code or product.name[:3].upper()}-{datetime.now().strftime('%Y%m%d%H%M%S')}-{index}"
-
-
 
     # def button_validate(self):
     #     # auto generate lots
@@ -209,7 +201,6 @@ class StockPicking(models.Model):
     #         #         product = move.product_id
     #         #         product.write({"last_location_id": move.location_dest_id})
 
-
     #         _logger.info("### picking type: %s" % (self._check_picking_type(),))
     #         _logger.info("### location dest: %s" % (picking.location_dest_id,))
     #         _logger.info("### destination: %s" % (self._check_if_destination_is_kardex(picking.location_dest_id),))
@@ -219,7 +210,6 @@ class StockPicking(models.Model):
     #         if self._check_picking_type() == "production" and not picking.kardex_done:
     #             #self.send_to_kardex(picking.origin)
     #             pass
-                
 
     #         # if self._check_picking_type() == "postproduction" and not picking.kardex_done:
     #         #     for move in picking.move_line_ids:
@@ -230,8 +220,6 @@ class StockPicking(models.Model):
 
     #         # if self._check_picking_type() == "get":
     #         #     self.send_to_kardex(picking.origin)
-
-            
 
     #     _logger.info("res: %s" % (res,))
     #     return res
@@ -245,18 +233,18 @@ class StockPicking(models.Model):
         return check
 
     def _check_is_kardex_outgoing(self, id):
-        #import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         check = False
         picking = self.env["stock.picking"].search([("id", "=", id)])
         for move in picking.move_ids:
-            if move and move.picking_code == "outgoing":# and move.location_id.name == KARDEX_DESTINATION:
+            if move and move.picking_code == "outgoing":  # and move.location_id.name == KARDEX_DESTINATION:
                 check = True
         return check
 
     def action_next_transfer(self):
         next_transfers = super().action_next_transfer()
         _logger.info("next_transfers: %s" % (next_transfers,))
-        #import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if next_transfers:
             if "domain" in next_transfers:
                 pickings = self.env["stock.picking"].search(next_transfers["domain"])
@@ -268,10 +256,8 @@ class StockPicking(models.Model):
                 if picking._check_is_kardex_store(picking.id) and not picking.kardex_done:
                     # picking.send_to_kardex(self.origin)
                     pass
-           
 
                 _logger.info("### kardex outgoing: %s" % (picking._check_is_kardex_outgoing(picking.id),))
-
 
                 write_vals["kardex"] = self.kardex
                 picking.write(write_vals)
@@ -294,9 +280,6 @@ class StockPicking(models.Model):
         elif self.origin and self.env["sale.order"].search([("name", "=", self.origin)]):
             return "get"
 
-    
-
-
     def _update_picking_state(self):
         for picking in self:
             _logger.info("### picking type: %s" % (picking._check_picking_type(),))
@@ -308,7 +291,11 @@ class StockPicking(models.Model):
                     picking.write({"state": "waiting_for_kardex"})
                 elif not any_kardex_move_is_not_synced and picking.state == "waiting_for_kardex":
                     _logger.info(f"### set picking {picking.name} state to assigned")
-                    picking.write({"state": "assigned",})
+                    picking.write(
+                        {
+                            "state": "assigned",
+                        }
+                    )
                     for move in kardex_moves:
                         move.write({"picked": False})
             # elif picking._check_picking_type() == "store":
@@ -520,15 +507,12 @@ class StockPicking(models.Model):
     def sync_pickings(self):
         # all pickings with status not done
 
-        moves = self.env["stock.move.line"].search(
-            [("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)]
-        )
+        moves = self.env["stock.move.line"].search([("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)])
         _logger.info(", ".join(map(str, moves.mapped("kardex_running_id"))))
 
-        
         for move in moves:
             _logger.info(f"############# MOVE: {move}")
-            
+
             # if move.kardex_running_id and not move.kardex_sync:
             if move.kardex_running_id:
                 picking_journal_ids = (
@@ -593,10 +577,7 @@ class StockPicking(models.Model):
                     FROM CTE c;
                     """
 
-                
-
                 result = self._execute_query_on_mssql("select_one", sql)
-                
 
                 if result:
                     complete = 1
@@ -621,7 +602,7 @@ class StockPicking(models.Model):
                             "kardex_journal_status": new_journal_status,
                             # "kardex_journal_status": complete,
                             "kardex_sync": True,
-                            "kardex_status": "4"
+                            "kardex_status": "4",
                         }
                     )
 
@@ -649,15 +630,15 @@ class StockPicking(models.Model):
                         product_id = (
                             self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
                         )
-                        _logger.info(f'### product_id: {product_id}')
+                        _logger.info(f"### product_id: {product_id}")
                         product_object = self.env["product.product"].search([("id", "=", product_id[0])])
-                        _logger.info(f'### product_object: {product_object.default_code}')
+                        _logger.info(f"### product_object: {product_object.default_code}")
                         lot = (
                             self.env["stock.lot"]
                             .search([("name", "=", lot_name), ("product_id", "=", product_id[0])])
                             .mapped("id")
                         )
-                        _logger.info(f'### lot: {lot}')
+                        _logger.info(f"### lot: {lot}")
 
                         if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
                             if lot:
@@ -673,11 +654,11 @@ class StockPicking(models.Model):
                                     move_line_vals["lot_id"] = new_lot.id
                                 except ValidationError as e:
                                     _logger.error("Could not complete lot handling: %s", e.name)
-                                    
+
                                     pass
 
                         if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
-                            _logger.info(f'### lot: {lot}')
+                            _logger.info(f"### lot: {lot}")
                             if lot:
                                 move_line_vals["lot_id"] = lot[0]
                             elif CREATE_SERIAL_FOR_PRODUCTION:
@@ -690,11 +671,10 @@ class StockPicking(models.Model):
                                     )
                                     move_line_vals["lot_id"] = new_lot.id
                                 except:
-                                # except ValidationError as e:
-                                #     _logger.error("Could not complete lot handling: %s", e.name)
-                                    
+                                    # except ValidationError as e:
+                                    #     _logger.error("Could not complete lot handling: %s", e.name)
+
                                     pass
-                                    
 
                         if not lot:
                             move_line_vals["kardex_sync"] = False
@@ -703,7 +683,6 @@ class StockPicking(models.Model):
                     _logger.info(f"### move_line_vals for move {move.id}: {move_line_vals}")
 
                     move.write(move_line_vals)
-
 
                     # move.write({"kardex_sync": True, "kardex_status": "4"})
                     _logger.info(f"### move synced with move.kardex_sync: {move.kardex_sync}")
@@ -772,11 +751,6 @@ class StockPicking(models.Model):
                     vals["location_dest_id"] = mo.product_id.last_location_id.id
         _logger.warning("################ END OF STOCK PICKING CREATE ################")
         return super().create(vals_list)
-
-
-
-
-
 
 
 # class StockLot(models.Model):

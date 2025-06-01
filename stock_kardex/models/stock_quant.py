@@ -1,22 +1,10 @@
 import logging
 from collections import defaultdict
 
+from odoo import api, models
 
-from odoo import api, fields, models
-
-from .config import (
-    KARDEX_WAREHOUSE,
-    PALETTEN_WAREHOUSE,
-    COMPANY_ID,
-    USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS
-)
-
-from .helper import (
-    _get_location_base,
-    _transform_location,
-    _update_locations,
-    _harmonize_empty_values
-)
+from .config import COMPANY_ID, KARDEX_WAREHOUSE, PALETTEN_WAREHOUSE, USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS
+from .helper import _harmonize_empty_values, _transform_location, _update_locations
 
 _logger = logging.getLogger(__name__)
 
@@ -25,20 +13,18 @@ class StockQuant(models.Model):
     _name = "stock.quant"
     _inherit = ["stock.quant", "base.kardex.mixin"]
     _description = "Stock Quant"
-    #_inherit = "stock.quant"
+    # _inherit = "stock.quant"
 
     def _get_location_id(self, location_name):
         location_id = self.env["stock.location"].search([("name", "=", location_name)]).mapped("id")
         return location_id
 
-
-    
     def _get_data_from_bestandsabgleich(self, default_code, product_mapping):
         if default_code:
             conditions = f"WHERE Suchbegriff IN ('{default_code}')"
-        else:   
-            #conditions = f"WHERE Suchbegriff IN ('ZUS.P020.0000.A')" # for testing
-        # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
+        else:
+            # conditions = f"WHERE Suchbegriff IN ('ZUS.P020.0000.A')" # for testing
+            # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
             conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
         # conditions = f"WHERE ID > {START_STOCK_SYNC}"
         # get data from PPG_Bestandsabgleich
@@ -67,8 +53,6 @@ class StockQuant(models.Model):
 
         return ppg_data
 
-
-
     def _get_data_direct_call(self, default_code=None, products=None):
         replace_dict = {
             "Produktnr": "Suchbegriff",
@@ -76,15 +60,11 @@ class StockQuant(models.Model):
             "Serialnumber": "Seriennummer",
             "QuantityCurrent": "Bestand",
         }
-        
-        data_material, data = self._read_external_object_from_proddb(default_code, products)
-        updated_data = [
-            {replace_dict.get(k, k): v for k, v in item.items()}
-            for item in data
-        ]
-            
-        return updated_data
 
+        data_material, data = self._read_external_object_from_proddb(default_code, products)
+        updated_data = [{replace_dict.get(k, k): v for k, v in item.items()} for item in data]
+
+        return updated_data
 
     @api.model
     def sync_stocks(self, default_code=None, source_sale_order=False):
@@ -120,13 +100,13 @@ class StockQuant(models.Model):
         product_mapping = dict(self.env.cr.fetchall())
 
         location_ids = (location_id, location_paletten_id)
-        placeholders = ','.join(['%s'] * len(location_ids))   
+        placeholders = ",".join(["%s"] * len(location_ids))
 
         odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
-        self.env.cr.execute(odoo_sql, (location_id,))     
+        self.env.cr.execute(odoo_sql, (location_id,))
 
-        #odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
-        #self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
+        # odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
+        # self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
 
         # odoo_sql = f"SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN ({placeholders})"
         # self.env.cr.execute(odoo_sql, location_ids)
@@ -142,7 +122,6 @@ class StockQuant(models.Model):
 
         if not products and not default_code:
             return False  # No products to update
-        
 
         if USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS:
             kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
@@ -158,22 +137,22 @@ class StockQuant(models.Model):
         kardex_data = _harmonize_empty_values(kardex_data)
 
         _logger.info("### kardex_data: %s" % (kardex_data,))
-        
+
         # aggregate and grouping data
         grouped = {}
-        grouped2 = {} # will contain all Locations for product
+        grouped2 = {}  # will contain all Locations for product
         unaggregated = []
 
         palette_counter = 0
 
         for item in kardex_data:
-            charge = item['Charge']
-            serial = item['Seriennummer']
-            suchbegriff = item['Suchbegriff']
-            location = item.get('LocationName')
-            if location == 'Palette':
+            charge = item["Charge"]
+            serial = item["Seriennummer"]
+            suchbegriff = item["Suchbegriff"]
+            location = item.get("LocationName")
+            if location == "Palette":
                 palette_counter += 1
-            bestand = item.get('Bestand')
+            bestand = item.get("Bestand")
 
             if charge is None and serial is not None:
                 unaggregated.append(item)  # Don't group, preserve as-is
@@ -182,29 +161,28 @@ class StockQuant(models.Model):
             # Group by charge and Suchbegriff, to avoid merging unrelated products
 
             if charge:
-                key = ('charge', charge, location, suchbegriff)
+                key = ("charge", charge, location, suchbegriff)
                 if key not in grouped:
                     grouped[key] = {
-                        'Charge': charge,
-                        'Seriennummer': None,
-                        'Suchbegriff': suchbegriff,
-                        'LocationName': location,
-                        'Bestand': 0.0,
+                        "Charge": charge,
+                        "Seriennummer": None,
+                        "Suchbegriff": suchbegriff,
+                        "LocationName": location,
+                        "Bestand": 0.0,
                     }
-                grouped[key]['Bestand'] += bestand
-            
-            else:
-                key = ('no_charge', location, suchbegriff)
-                if key not in grouped:
-                    grouped[key] = {
-                        'Charge': None,
-                        'Seriennummer': None,
-                        'Suchbegriff': suchbegriff,
-                        'LocationName': location,
-                        'Bestand': 0.0,
-                    }
-                grouped[key]['Bestand'] += bestand
+                grouped[key]["Bestand"] += bestand
 
+            else:
+                key = ("no_charge", location, suchbegriff)
+                if key not in grouped:
+                    grouped[key] = {
+                        "Charge": None,
+                        "Seriennummer": None,
+                        "Suchbegriff": suchbegriff,
+                        "LocationName": location,
+                        "Bestand": 0.0,
+                    }
+                grouped[key]["Bestand"] += bestand
 
             # if key not in grouped:
             #     grouped[key] = {
@@ -221,11 +199,11 @@ class StockQuant(models.Model):
 
             # group only by Suchbegriff
         for item in kardex_data:
-            key2 = (suchbegriff)
+            key2 = suchbegriff
             if key2 not in grouped2:
                 grouped2[key2] = []
-                
-            grouped2[key2].append(item['LocationName'])
+
+            grouped2[key2].append(item["LocationName"])
 
             _logger.info("grouped: %s" % (grouped,))
             _logger.info("grouped2: %s" % (grouped2,))
@@ -240,11 +218,8 @@ class StockQuant(models.Model):
         kardex_data = list(grouped.values()) + unaggregated
         _logger.info("kardex_data after grouping: %s" % (kardex_data,))
 
-
         if palette_counter == 0 and source_sale_order and default_code:
             pass
-
-            
 
         # stock_dict = {
         #     product_mapping[Suchbegriff]: Bestand
@@ -253,7 +228,7 @@ class StockQuant(models.Model):
         # }
 
         # create report for sync actions
-        report = self.env['kardex.sync.report'].create({"name": "Sync Bestandsabgleich"})
+        report = self.env["kardex.sync.report"].create({"name": "Sync Bestandsabgleich"})
 
         existing_quant_map = defaultdict(list)
 
@@ -277,19 +252,17 @@ class StockQuant(models.Model):
             # product_id = product.id
 
             _logger.info("### product_id: %s" % (product_id,))
-            
 
             if not product_id:
                 continue
 
-            # loc_id = 
+            # loc_id =
 
             lot_id = lot_mapping.get(lot_name) if lot_name else None
             # existing_kardex_quants_for_product = self.env["stock.quant"].search(
-            #     [("product_id", "=", product_id), ("location_id", "=", location_id)]                
+            #     [("product_id", "=", product_id), ("location_id", "=", location_id)]
             # )
             # _logger.info(f"### existing_kardex_quants_for_product: {existing_kardex_quants_for_product}")
-
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
                 _logger.info("### Case 1")
@@ -305,8 +278,7 @@ class StockQuant(models.Model):
                 )
                 changes.append(f"lot: {lot_name}, qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
-                
-                
+
             elif lot_name and (lot_name not in lot_mapping):
                 # Case 2: Create a new lot if necessary
                 _logger.info("### Case 2")
@@ -358,11 +330,13 @@ class StockQuant(models.Model):
                 """,
                     (product_id, lot_id, quantity, location_id, company_id),
                 )
-                _logger.info(f"### data provided: product_id: {product_id}, lot_id: {lot_id}, quantity: {quantity}, location_id: {location_id}, company_id: {company_id}")
+                _logger.info(
+                    f"### data provided: product_id: {product_id}, lot_id: {lot_id}, quantity: {quantity}, location_id: {location_id}, company_id: {company_id}"
+                )
                 quant_id = self.env.cr.fetchone()[0]
                 changes.append(f"new lot: {lot_name}, location: {location_name} ({location_id}), qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
-                
+
             else:
                 if (product_id, None) in stock_quant_mapping:
                     # Case 3: Update stock_quant for product without lot
@@ -415,21 +389,24 @@ class StockQuant(models.Model):
                     changes.append(f"no lot, location: {location_name} ({location_id}), qty:  → {quantity} (new)")
 
             if changes:
-                self.env['kardex.sync.report.line'].create({
-                    'report_id': report.id,
-                    'product_id': product.id,
-                    'changes': '\n'.join(changes),
-                })    
+                self.env["kardex.sync.report.line"].create(
+                    {
+                        "report_id": report.id,
+                        "product_id": product.id,
+                        "changes": "\n".join(changes),
+                    }
+                )
 
         # quants not found in data coming from kardex
         _logger.info("existing quant map: %s" % (existing_quant_map,))
         for product_id, quant_ids in existing_quant_map.items():
-            quants_without_kardex_data = self.env["stock.quant"].search([("id", "not in", quant_ids), ("product_id", "=", product_id)])
+            quants_without_kardex_data = self.env["stock.quant"].search(
+                [("id", "not in", quant_ids), ("product_id", "=", product_id)]
+            )
             _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
 
             # set quantity to zero for these quants
-            quants_without_kardex_data.write({'quantity': 0})
-
+            quants_without_kardex_data.write({"quantity": 0})
 
         # quants_without_kardex_data = existing_kardex_quants_for_product.filtered(lambda q: q.id not in kardex_quants)
         # _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
@@ -437,10 +414,6 @@ class StockQuant(models.Model):
         # set quantity to zero for these quants
         # quants_without_kardex_data.write({'quantity': 0})
 
-
-
-
         # self._cr.commit()
 
         return True
-

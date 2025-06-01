@@ -2,19 +2,16 @@ import logging
 
 from odoo import api, fields, models
 
-from .config import (
-    KARDEX_WAREHOUSE,
-    KARDEX_DESTINATION
-)
-
+from .config import KARDEX_DESTINATION, KARDEX_WAREHOUSE
 
 _logger = logging.getLogger(__name__)
+
 
 class StockMoveLine(models.Model):
     _name = "stock.move.line"
     _inherit = ["kardex.transfer.mixin", "stock.move.line", "base.kardex.mixin"]
     _description = "Stock Move Line"
-    #_depends = ["kardex.transfer.mixin"]
+    # _depends = ["kardex.transfer.mixin"]
 
     has_kardex_location = fields.Boolean(
         string="Is Kardex Location", compute="_compute_has_kardex_location", store=False
@@ -33,7 +30,6 @@ class StockMoveLine(models.Model):
     kardex_running_id = fields.Char(string="Picking BzId")
 
     kardex_journal_status = fields.Char(string="Komplett")
-
 
     # location_dest_id = fields.Many2one('stock.location', 'To', domain="[('usage', '!=', 'view')]", check_company=True, required=True, compute="_compute_location_dest_id", store=True, readonly=False, precompute=True)
 
@@ -68,8 +64,6 @@ class StockMoveLine(models.Model):
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
 
-            
-
     @api.model_create_multi
     def create(self, vals_list):
         _logger.warning("################ STOCK MOVE LINE CREATE ################")
@@ -97,23 +91,20 @@ class StockMoveLine(models.Model):
         #     _logger.warning("### kardex done: %s " % (picking_obj.kardex_done))
         #     _logger.warning("### location_id: %s " % (location_obj.name,))
         #     _logger.warning("### location_dest_id: %s " % (location_dest_obj.name,))
-           
 
         #     if picking_obj._check_picking_type() == "postproduction" and not picking_obj.kardex_done:
-                
+
         #         if picking_obj._check_if_destination_is_kardex(location_dest_obj):
         #             _logger.warning("### send to kardex %s " % (picking_obj.name,))
         #             picking_obj.kardex_done = True
         #             picking_obj.send_to_kardex(picking_obj.origin)
 
         #     if picking_obj._check_picking_type() == "sale" and not picking_obj.kardex_done:
-                
+
         #         if picking_obj._check_if_location_is_kardex(location_obj):
         #             _logger.warning("### send to kardex %s " % (picking_obj.name,))
         #             picking_obj.kardex_done = True
         #             picking_obj.send_to_kardex(picking_obj.origin)
 
-            
         # _logger.warning("################ END OF STOCK MOVE LINE CREATE ################")
         # return res
-    

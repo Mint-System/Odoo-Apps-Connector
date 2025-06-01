@@ -1,5 +1,6 @@
 from odoo import api, fields, models
 
+
 class StockPickingJournal(models.Model):
     _name = "stock.picking.journal"
     _description = "Stock Picking Journal"
@@ -11,10 +12,9 @@ class StockPickingJournal(models.Model):
 
     @api.model
     def create(self, vals):
-        existing = self.search([('journal_id', '=', vals.get('journal_id'))], limit=1)
+        existing = self.search([("journal_id", "=", vals.get("journal_id"))], limit=1)
         if existing:
             # Update existing record with new kardex_running_id
-            existing.kardex_running_id = vals.get('kardex_running_id')
+            existing.kardex_running_id = vals.get("kardex_running_id")
             return existing
         return super().create(vals)
-

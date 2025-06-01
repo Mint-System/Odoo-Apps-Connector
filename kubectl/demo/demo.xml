@@ -32,7 +32,9 @@
     </record>
 
     <record id="kubectl_context_exo_demo" model="kubectl.context">
-        <field name="name">odoo/api-exoscale-ch-gva-2-0-appuio-cloud:6443/mint-jvonrotz1</field>
+        <field
+            name="name"
+        >odoo/api-exoscale-ch-gva-2-0-appuio-cloud:6443/mint-jvonrotz1</field>
         <field name="cluster_id" ref="kubectl.kubectl_cluster_exo_demo" />
     </record>
 

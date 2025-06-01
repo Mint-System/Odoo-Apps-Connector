@@ -1,4 +1,3 @@
-import pymssql
 import logging
 from datetime import datetime
 from types import SimpleNamespace
@@ -120,7 +119,6 @@ class BaseKardexMixin(models.AbstractModel):
         WHERE MaterialName IN %s
         """
         result_material = proddb_instance.execute("select", query_material, params)
-        
 
         query = """
         SELECT
@@ -133,14 +131,12 @@ class BaseKardexMixin(models.AbstractModel):
             LocContentbreakdown
             LEFT JOIN LocContent on LocContentbreakdown.LocContentId = LocContent.LocContentId
             LEFT JOIN Materialbase on LocContent.MaterialId = MaterialBase.MaterialId
-            LEFT JOIN Location on LocContent.LocationId = Location.LocationId 
+            LEFT JOIN Location on LocContent.LocationId = Location.LocationId
         WHERE Materialbase.MaterialName IN %s
             """
 
         result = proddb_instance.execute("select", query, params)
         return result_material, result
-       
-
 
     def _check_already_in_kardex(self, record):
         sql_query = f"SELECT ID, Suchbegriff FROM PPG_Artikel WHERE Suchbegriff='{record.default_code}'"
@@ -169,7 +165,7 @@ class BaseKardexMixin(models.AbstractModel):
                 # generate string from key-value-pair list
             data = ", ".join(kardex_list)
             # building sql query
-        
+
             sql = f"UPDATE {table} SET {data} WHERE Suchbegriff = '{default_code}'"
             self._execute_query_on_mssql("update", sql)
             return True
@@ -289,8 +285,3 @@ class BaseKardexMixin(models.AbstractModel):
     #     ], order='write_date desc', limit=1)
 
     #     return quant.location_id if quant else False
-
-
-
-
-

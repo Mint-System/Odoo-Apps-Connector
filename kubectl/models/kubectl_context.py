@@ -29,7 +29,6 @@ class KubectlContext(models.Model):
         for rec in self:
             rec.is_current = True if rec.name == result.stdout.strip() else False
 
-
     @contextmanager
     def get_config_path(self):
         """
