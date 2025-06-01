@@ -15,24 +15,25 @@ class KubectlContext(models.Model):
 
     name = fields.Char()
     cluster_id = fields.Many2one("kubectl.cluster")
-    config = fields.Text()
+    config = fields.Text(help="Export and pase config with `kubectl config view --minify --raw`.")
     is_current = fields.Boolean(compute="_compute_is_current")
 
     def _compute_is_current(self):
+        result = subprocess.run(
+            ["kubectl", "config", "current-context"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
         for rec in self:
-            rec.is_current = self.env.user.current_context_id == rec
+            rec.is_current = True if rec.name == result.stdout.strip() else False
 
-    def action_use_context(self):
-        self.ensure_one()
-        self.env.user.current_context_id = self
 
     @contextmanager
     def get_config_path(self):
         """
         Context manager that creates a temporary file with kubectl config.
-
-        Yields:
-            str: Path to the temporary config file
         """
         self.ensure_one()
 
@@ -47,38 +48,80 @@ class KubectlContext(models.Model):
             # Clean up the temporary file
             os.unlink(temp_file_path)
 
+    def action_use_context(self):
+        """
+        Change kube context.
+        """
+        self.ensure_one()
+        try:
+            result = subprocess.run(
+                ["kubectl", "config", "use-context", self.name],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Use Context Success"),
+                    "type": "success",
+                    "message": result.stdout,
+                },
+            }
+        except subprocess.CalledProcessError as e:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Use Context Failed"),
+                    "type": "danger",
+                    "message": e.stderr,
+                },
+            }
+
     def action_test_connection(self):
         """
         Test connection to the kubernetes cluster using this context.
         """
         self.ensure_one()
 
-        with self.get_config_path() as config_path:
-            try:
-                output = subprocess.run(
-                    ["kubectl", "--kubeconfig", config_path, "cluster-info"],
+        try:
+            if self.config:
+                with self.get_config_path() as config_path:
+                    result = subprocess.run(
+                        ["kubectl", "--kubeconfig", config_path, "cluster-info"],
+                        check=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                    )
+            else:
+                result = subprocess.run(
+                    ["kubectl", "cluster-info"],
                     check=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,
                 )
 
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "title": _("Connection Success"),
-                        "type": "success",
-                        "message": output.stdout,
-                    },
-                }
-            except subprocess.CalledProcessError as e:
-                return {
-                    "type": "ir.actions.client",
-                    "tag": "display_notification",
-                    "params": {
-                        "title": _("Connection Failed"),
-                        "type": "danger",
-                        "message": e.stderr,
-                    },
-                }
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Connection Success"),
+                    "type": "success",
+                    "message": result.stdout,
+                },
+            }
+        except subprocess.CalledProcessError as e:
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Connection Failed"),
+                    "type": "danger",
+                    "message": e.stderr,
+                },
+            }

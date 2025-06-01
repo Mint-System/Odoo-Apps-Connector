@@ -9,4 +9,3 @@ class ResUsers(models.Model):
     _inherit = "res.users"
 
     kubectl_context_ids = fields.Many2many("kubectl.context")
-    current_context_id = fields.Many2one("kubectl.context")

@@ -5,15 +5,35 @@
         <field name="is_provider" eval="True" />
     </record>
 
+    <record id="res_partner_localhost_demo" model="res.partner">
+        <field name="name">localhost</field>
+        <field name="is_provider" eval="True" />
+    </record>
+
     <record id="kubectl_cluster_kind_demo" model="kubectl.cluster">
         <field name="name">kind-kind</field>
         <field name="server">https://127.0.0.1:35249</field>
+        <field name="code">knd</field>
+        <field name="domain">cloud.local</field>
+        <field name="provider_id" ref="kubectl.res_partner_localhost_demo" />
+    </record>
+
+    <record id="kubectl_cluster_exo_demo" model="kubectl.cluster">
+        <field name="name">api-exoscale-ch-gva-2-0-appuio-cloud:6443</field>
+        <field name="server"> https://api.exoscale-ch-gva-2-0.appuio.cloud:6443</field>
+        <field name="code">exo</field>
+        <field name="domain">exo.mintcloud.ch</field>
         <field name="provider_id" ref="kubectl.res_partner_vshn_demo" />
     </record>
 
     <record id="kubectl_context_kind_demo" model="kubectl.context">
         <field name="name">kind-kind</field>
         <field name="cluster_id" ref="kubectl.kubectl_cluster_kind_demo" />
+    </record>
+
+    <record id="kubectl_context_exo_demo" model="kubectl.context">
+        <field name="name">odoo/api-exoscale-ch-gva-2-0-appuio-cloud:6443/mint-jvonrotz1</field>
+        <field name="cluster_id" ref="kubectl.kubectl_cluster_exo_demo" />
     </record>
 
     <record id="base.user_admin" model="res.users">

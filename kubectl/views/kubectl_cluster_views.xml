@@ -18,6 +18,10 @@
                                     <field name="server" />
                                     <field name="provider_id" />
                                 </group>
+                                <group>
+                                    <field name="code" />
+                                    <field name="domain" />
+                                </group>
                             </group>
                         </page>
                     </notebook>
