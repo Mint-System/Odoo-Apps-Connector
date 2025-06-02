@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <list>
                 <field name="path" />
+                <field name="field_id" />
             </list>
         </field>
     </record>

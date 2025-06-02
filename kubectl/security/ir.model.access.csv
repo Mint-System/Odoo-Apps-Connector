@@ -3,3 +3,5 @@ access_kubectl_cluster_user,access.kubectl.cluster.user,model_kubectl_cluster,ku
 access_kubectl_cluster_manager,access.kubectl.cluster.manager,model_kubectl_cluster,kubectl.group_user,1,1,1,1
 access_kubectl_context_user,access.kubectl.context.user,model_kubectl_context,kubectl.group_user,1,0,0,0
 access_kubectl_context_manager,access.kubectl.context.manager,model_kubectl_context,kubectl.group_manager,1,1,1,1
+access_kubectl_namespace_user,access.kubectl.namespace.user,model_kubectl_namespace,kubectl.group_user,1,0,0,0
+access_kubectl_namespace_manager,access.kubectl.namespace.manager,model_kubectl_namespace,kubectl.group_manager,1,1,1,1

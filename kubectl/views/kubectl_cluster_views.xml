@@ -69,6 +69,6 @@
         name="Clusters"
         parent="kubectl.menu_root"
         action="kubectl.action_kubectl_cluster_view"
-        sequence="10"
+        sequence="20"
     />
 </odoo>

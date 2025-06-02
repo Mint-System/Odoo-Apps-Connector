@@ -12,3 +12,6 @@ class HelmChartEdit(models.Model):
     chart_id = fields.Many2one("helm.chart")
     path = fields.Char()
     code = fields.Char(help="Use Python expressions to return the value.")
+    field_id = fields.Many2one(
+        "ir.model.fields", domain=[("model", "=", "helm.release")], help="Optionally write value to release field."
+    )

@@ -18,11 +18,32 @@
                             <field name="name" />
                         </h1>
                     </div>
-                    <field name="cluster_id" />
                     <notebook>
-                        <page string="General Information" name="general_info">
+                        <field name="is_current" insible="1" />
+                        <page string="Command" name="command">
                             <group>
                                 <group>
+                                    <field
+                                        name="command"
+                                        placeholder="kubectl get pods"
+                                    />
+                                    <label for="action_run" />
+                                    <button
+                                        name="action_run"
+                                        string="Run"
+                                        class="btn btn-primary"
+                                        type="object"
+                                    />
+                                </group>
+                                <group>
+                                    <field name="output" class="terminal-screen" />
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Config" name="config">
+                            <group>
+                                <group>
+                                    <field name="cluster_id" />
                                     <field name="config" class="terminal-screen" />
                                 </group>
                             </group>
@@ -74,6 +95,6 @@
         name="Contexts"
         parent="kubectl.menu_root"
         action="kubectl.action_kubectl_context_view"
-        sequence="20"
+        sequence="10"
     />
 </odoo>

@@ -5,6 +5,7 @@ import tempfile
 from contextlib import contextmanager
 
 from odoo import _, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -15,8 +16,11 @@ class KubectlContext(models.Model):
 
     name = fields.Char()
     cluster_id = fields.Many2one("kubectl.cluster")
+    namespace_id = fields.Many2one("kubectl.namespace")
     config = fields.Text(help="Export and pase config with `kubectl config view --minify --raw`.")
     is_current = fields.Boolean(compute="_compute_is_current")
+    command = fields.Char(help="Run a command that starts with `kubectl` or `helm`.")
+    output = fields.Text(help="Output of the command.")
 
     def _compute_is_current(self):
         result = subprocess.run(
@@ -28,6 +32,21 @@ class KubectlContext(models.Model):
         )
         for rec in self:
             rec.is_current = True if rec.name == result.stdout.strip() else False
+
+    def action_run(self):
+        """
+        Run a command.
+        """
+        self.ensure_one()
+        if not self.command or not (self.command.startswith("kubectl ") or self.command.startswith("helm ")):
+            raise ValidationError(_("Command must start with either `kubectl` or `helm`."))
+
+        command = self.command.split(" ")
+        try:
+            result = self.run(command)
+            self.output = result.stdout
+        except subprocess.CalledProcessError as e:
+            self.output = e.stderr
 
     @contextmanager
     def get_config_path(self):
@@ -52,10 +71,18 @@ class KubectlContext(models.Model):
         Run kubectl or helm command.
         """
         self.ensure_one()
+
+        # If config is given apply kubeconfig
         if self.config:
-            # Insert kubeconfig parameter into command
             with self.get_config_path() as config_path:
                 command = command[0] + ["--kubeconfig", config_path] + command[1:]
+
+        # Apply context explicitlty
+        if command[0] == "kubectl":
+            command.extend([f"--context={self.name}"])
+        if command[0] == "helm":
+            command.extend(["--kube-context", self.name])
+
         _logger.warning("Run command: %s", command)
         return subprocess.run(
             command,

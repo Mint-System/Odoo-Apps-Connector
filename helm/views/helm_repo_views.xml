@@ -6,7 +6,11 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <field name="state" widget="statusbar" select="1" readonly="1" />
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        options="{'clickable': '1'}"
+                    />
                     <button
                         name="action_add"
                         string="Add"

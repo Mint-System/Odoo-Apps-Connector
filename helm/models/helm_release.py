@@ -15,10 +15,10 @@ class HelmRelease(models.Model):
     _name = "helm.release"
     _description = "Helm Release"
 
-    name = fields.Char()
-    product_id = fields.Many2one("product.product")
-    chart_id = fields.Many2one("helm.chart")
-    context_id = fields.Many2one("kubectl.context")
+    name = fields.Char(help="Name of the release.", required=True)
+    chart_id = fields.Many2one("helm.chart", help="Chart that shall be installed.", required=True)
+    context_id = fields.Many2one("kubectl.context", help="Context used for installation.", required=True)
+    namespace_id = fields.Many2one("kubectl.namespace", help="Target namespace in cluster.", required=True)
     partner_id = fields.Many2one("res.partner", string="Customer")
     state = fields.Selection(
         selection=[("draft", "Draft"), ("installed", "Installed")],
@@ -26,11 +26,23 @@ class HelmRelease(models.Model):
     )
     values = fields.Text(compute="_compute_values", store=True, help="Shows Chart values with applied rules.")
 
-    @api.depends("name", "chart_id", "chart_id.edit_ids", "context_id", "partner_id")
+    ingress_scheme = fields.Char(default="https://")
+    ingress_host = fields.Char(help="Will be applied from values.")
+    ingress_port = fields.Integer(default=443)
+    ingress_url = fields.Char(compute="_compute_ingress_url")
+
+    @api.depends("name", "chart_id", "chart_id.edit_ids", "context_id", "namespace_id", "partner_id")
     def _compute_values(self):
         for release in self:
             if release.state == "draft":
                 release.values = self._apply_edits()
+
+    def _compute_ingress_url(self):
+        for release in self:
+            if release.state == "installed":
+                release.ingress_url = release.ingress_scheme + release.ingress_host + ":" + str(release.ingress_port)
+            else:
+                release.ingress_url = ""
 
     def _apply_edits(self):
         """
@@ -49,6 +61,9 @@ class HelmRelease(models.Model):
                 try:
                     eval_context = {"release": release}
                     new_value = safe_eval.safe_eval(edit.code, eval_context, dict_values)
+
+                    if edit.field_id:
+                        release[edit.field_id.name] = new_value
 
                     path_parts = edit.path.split(".")
                     target = dict_values

@@ -6,7 +6,11 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <field name="state" widget="statusbar" select="1" readonly="1" />
+                    <field
+                        name="state"
+                        widget="statusbar"
+                        options="{'clickable': '1'}"
+                    />
                     <button
                         name="action_install"
                         string="Install"
@@ -29,20 +33,26 @@
                 <sheet>
                     <div class="oe_title">
                         <h1>
-                            <field name="name" />
+                            <field name="name" readonly="state == 'installed'" />
                         </h1>
                     </div>
                     <notebook>
                         <page string="General Information" name="general_info">
                             <group>
                                 <group>
-                                    <field name="product_id" />
                                     <field name="chart_id" />
                                     <field name="context_id" />
+                                    <field name="namespace_id" />
                                     <field name="partner_id" />
                                 </group>
                                 <group>
                                     <field name="values" class="terminal-screen" />
+                                </group>
+                                <group>
+                                    <field name="ingress_url" widget="url" />
+                                    <field name="ingress_scheme" />
+                                    <field name="ingress_host" />
+                                    <field name="ingress_port" />
                                 </group>
                             </group>
                         </page>

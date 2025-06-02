@@ -16,6 +16,7 @@
         "views/kubectl_cluster_views.xml",
         "views/kubectl_context_views.xml",
         "views/res_partner_views.xml",
+        "views/kubectl_namespace_views.xml",
     ],
     "installable": True,
     "application": False,

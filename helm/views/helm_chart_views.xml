@@ -29,6 +29,7 @@
                                         <list editable="bottom">
                                             <field name="path" />
                                             <field name="code" />
+                                            <field name="field_id" />
                                         </list>
                                     </field>
                                 </group>
