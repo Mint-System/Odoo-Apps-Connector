@@ -12,11 +12,11 @@ class StockMove(models.Model):
         help="Dynamic domain used for the products that can be chosen on a move line",
         compute="_compute_products_domain",
     )
-    product_id = fields.Many2one(
-        "product.product",
-        string="Product",
-        domain="[('kardex', '=', parent.kardex)]",
-    )  # this adds domain to existing domain!
+    # product_id = fields.Many2one(
+    #     "product.product",
+    #     string="Product",
+    #     domain="[('kardex', '=', parent.kardex)]",
+    # )  # this adds domain to existing domain!
     kardex_id = fields.Integer(string="Kardex Id")
     kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
@@ -33,6 +33,7 @@ class StockMove(models.Model):
     kardex_journal_status = fields.Char(string="Komplett")
     has_kardex_location = fields.Boolean(compute="_compute_has_kardex_location", store=False)
     kardex_running_id_string = fields.Char(string="BzIds", compute="_compute_kardex_running_id_string", store=False)
+    state = fields.Selection(selection_add=[("waiting_for_kardex", "Waiting for Kardex")])
 
     # tracking_type_code = fields.Char(
     #     string='Tracking Code',
@@ -73,13 +74,15 @@ class StockMove(models.Model):
     def _compute_products_domain(self):
         # if picking is kardex than product must be kardex too
         # field products_domain must be included in view
-        for obj in self:
-            if obj.picking_id.kardex:
-                domain = [("kardex", "=", "True")]
-            else:
-                domain = []
+        # for obj in self:
+        #     if obj.picking_id.kardex:
+        #         domain = [("kardex", "=", "True")]
+        #     else:
+        #         domain = []
 
-            obj.products_domain = domain
+        #     obj.products_domain = domain
+        for obj in self:
+            obj.products_domain = []
 
     @api.depends("product_id")
     def _compute_tracking_type_code(self):
