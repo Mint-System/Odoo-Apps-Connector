@@ -642,7 +642,9 @@ class StockPicking(models.Model):
 
                         if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
                             if lot:
+                                _logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
                                 move_line_vals["lot_id"] = lot[0]
+                                
                             elif CREATE_SERIAL_FOR_STORE:
                                 try:
                                     new_lot = self.env["stock.lot"].create(
@@ -656,6 +658,10 @@ class StockPicking(models.Model):
                                     _logger.error("Could not complete lot handling: %s", e.name)
 
                                     pass
+                            else:
+                                move_line_vals["kardex_sync"] = False
+                                move_line_vals["kardex_status"] = "2"
+
 
                         if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
                             _logger.info(f"### lot: {lot}")
@@ -676,9 +682,9 @@ class StockPicking(models.Model):
 
                                     pass
 
-                        if not lot:
-                            move_line_vals["kardex_sync"] = False
-                            move_line_vals["kardex_status"] = "2"
+                            else:
+                                move_line_vals["kardex_sync"] = False
+                                move_line_vals["kardex_status"] = "2"
 
                     _logger.info(f"### move_line_vals for move {move.id}: {move_line_vals}")
 
