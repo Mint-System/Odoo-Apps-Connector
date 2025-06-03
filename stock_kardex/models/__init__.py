@@ -1,5 +1,6 @@
 from . import (
     kardex_transfer_mixin,
+    validation_mixin,
     stock_picking,
     stock_move,
     stock_move_line,

@@ -1,14 +1,13 @@
 import logging
 
-from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo import api, fields, models, _
 
 _logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
     _name = "sale.order"
-    _inherit = ["sale.order", "base.kardex.mixin"]
+    _inherit = ["validation.mixin", "sale.order", "base.kardex.mixin"]
     _description = "Sale Kardex Order"
 
     kardex = fields.Boolean(default=False, compute="_compute_kardex", store=True)
@@ -18,19 +17,7 @@ class SaleOrder(models.Model):
         for order in self:
             order.kardex = any(line.product_id.kardex for line in order.order_line)
 
-    def action_confirm(self):
-        for order in self:
-            # check if picking types with kardex_picking_type = store exist
-            store_picking_type = self.env["stock.picking.type"].search([("kardex_picking_type", "=", "kardex_get")])
-            if not store_picking_type:
-                raise UserError(
-                    _(
-                        "There is no picking type associated to kardex picking type = kardex_get. Please correct this in the configuration."
-                    )
-                )
 
-        # If validation passes, continue with standard confirmation
-        return super().action_confirm()
 
 
 class SaleOrderLine(models.Model):

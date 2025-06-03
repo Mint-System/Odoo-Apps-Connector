@@ -21,9 +21,8 @@ class StockPickingType(models.Model):
 
     @api.constrains("kardex_picking_type")
     def _check_kardex_picking_type(self):
-        if self.kardex_picking_type:
-            existing_records = self.search(
-                [("kardex_picking_type", "=", self.kardex_picking_type), ("id", "!=", self.id)]
-            )
-            if existing_records:
-                raise ValidationError("This Kardex picking type is already in use")
+        for record in self:
+            if record.kardex_picking_type:
+                existing_records = self.search([('kardex_picking_type', '=', record.kardex_picking_type), ('id', '!=', record.id)])
+                if existing_records:
+                    raise ValidationError('This Kardex picking type is already in use')
