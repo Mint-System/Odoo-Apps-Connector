@@ -47,6 +47,7 @@ class StockMove(models.Model):
         store=False,
     )
 
+
     @api.depends("move_line_ids.kardex_running_id")
     def _compute_kardex_running_id_string(self):
         for move in self:
@@ -108,60 +109,76 @@ class StockMove(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        # Ensure that the product being added has kardex=True if picking has kardex=True
-        _logger.warning("################ STOCK MOVE CREATE ################")
-        _logger.info("### vals_list in stock move create %s " % (vals_list,))
-
         for vals in vals_list:
-            picking_id = vals.get("picking_id")
-            product_id = vals.get("product_id")
-            location_final_id = (
-                vals.get("location_final_id")
-                if vals.get("location_final_id")
-                else self.env["product.template"].search([("id", "=", product_id)]).location_id
-            )
+            _logger.info("### vals in stock move create %s " % (vals,))
+            product_id = vals.get('product_id')
+            if product_id:
+                product = self.env['product.template'].browse(product_id)
+                
+                last_location = product.last_location_id
+                _logger.info("### last_location in stock move create %s " % (last_location,))
+                if last_location:
+                    vals['location_dest_id'] = last_location.id
+                    vals['location_final_id'] = last_location.id
 
-            if picking_id and product_id:
-                # Retrieve the stock.picking record, see browse docs of odoo
-                picking = self.env["stock.picking"].browse(picking_id)
-                # Retirve the product
-                product = self.env["product.product"].browse(vals.get("product_id"))
-                if product.last_location_id:
-                    _logger.info("### product last location %s " % (product.last_location_id.name,))
-                # if picking.kardex and not product.kardex:
-                #     raise UserError(_("You can only add Kardex products."))
+        return super().create(vals_list)
 
-                if location_final_id:
-                    picking_type_code = picking.picking_type_code
-                    origin_type = picking._check_picking_type()
+    # @api.model_create_multi
+    # def create(self, vals_list):
+    #     # Ensure that the product being added has kardex=True if picking has kardex=True
+    #     _logger.warning("################ STOCK MOVE CREATE ################")
+    #     _logger.info("### vals_list in stock move create %s " % (vals_list,))
 
-                    if picking_type_code == "incoming" and origin_type == "store":
-                        # last_location_id = self._get_destination_location_for_product(product)
-                        last_location_id = product.last_location_id
-                        vals["location_final_id"] = last_location_id.id
+    #     for vals in vals_list:
+    #         picking_id = vals.get("picking_id")
+    #         product_id = vals.get("product_id")
+    #         location_final_id = (
+    #             vals.get("location_final_id")
+    #             if vals.get("location_final_id")
+    #             else self.env["product.template"].search([("id", "=", product_id)]).location_id
+    #         )
 
-                if picking._check_picking_type() == "postproduction":
-                    last_location_id = product.last_location_id
-                    # last_location_id = self._get_destination_location_for_product(product)
-                    vals["location_final_id"] = last_location_id.id
+    #         if picking_id and product_id:
+    #             # Retrieve the stock.picking record, see browse docs of odoo
+    #             picking = self.env["stock.picking"].browse(picking_id)
+    #             # Retirve the product
+    #             product = self.env["product.product"].browse(vals.get("product_id"))
+    #             if product.last_location_id:
+    #                 _logger.info("### product last location %s " % (product.last_location_id.name,))
+    #             # if picking.kardex and not product.kardex:
+    #             #     raise UserError(_("You can only add Kardex products."))
 
-        records = super().create(vals_list)
+    #             if location_final_id:
+    #                 picking_type_code = picking.picking_type_code
+    #                 origin_type = picking._check_picking_type()
 
-        already_sent = []
-        for move in records:
-            picking = move.picking_id
-            parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
-            # NEU 14.5.2025 uk
-            # if not parent:
-            #     parent = self.env["sale.order"].search([("name", "=", picking.origin)], limit=1)
-            # _logger.info("### parent %s" % (parent.name,))
-            if parent and picking.picking_type_code == "internal" and picking.id not in already_sent:
-                # picking.send_to_kardex(picking.origin)
-                already_sent.append(picking.id)
+    #                 if picking_type_code == "incoming" and origin_type == "store":
+    #                     # last_location_id = self._get_destination_location_for_product(product)
+    #                     last_location_id = product.last_location_id
+    #                     vals["location_final_id"] = last_location_id.id
 
-        _logger.warning("################ END OF STOCK MOVE CREATE ################")
+    #             if picking._check_picking_type() == "postproduction":
+    #                 last_location_id = product.last_location_id
+    #                 # last_location_id = self._get_destination_location_for_product(product)
+    #                 vals["location_final_id"] = last_location_id.id
 
-        return records
+    #     records = super().create(vals_list)
+
+    #     already_sent = []
+    #     for move in records:
+    #         picking = move.picking_id
+    #         parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+    #         # NEU 14.5.2025 uk
+    #         # if not parent:
+    #         #     parent = self.env["sale.order"].search([("name", "=", picking.origin)], limit=1)
+    #         # _logger.info("### parent %s" % (parent.name,))
+    #         if parent and picking.picking_type_code == "internal" and picking.id not in already_sent:
+    #             # picking.send_to_kardex(picking.origin)
+    #             already_sent.append(picking.id)
+
+    #     _logger.warning("################ END OF STOCK MOVE CREATE ################")
+
+    #     return records
 
     @api.model
     def _action_confirm(self, merge=True, merge_into=False):

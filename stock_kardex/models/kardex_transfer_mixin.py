@@ -66,7 +66,8 @@ class KardexTransferMixin(models.AbstractModel):
         elif (
             self._determine_picking_type() == "store"
             and make_transfer
-            and self.product_id.last_location_id == kardex_location
+            # and self.product_id.last_location_id == kardex_location or self.picking.location_dest_id == kardex_location
+            and self.move_id.location_dest_id == kardex_location
         ):
             self.transfer("store")
         else:
