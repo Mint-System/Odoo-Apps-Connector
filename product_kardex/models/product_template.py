@@ -143,7 +143,9 @@ class ProductTemplate(models.Model):
                 message_list = []
                 if data:
                     for row in data:
-                        message_list.extend(f"{key}: {value}" for key, value in row.items() if value not in (None, ""))
+                        message_list.extend(
+                            f"{key}: {value}" for key, value in row.items() if value not in (None, "")
+                            )
 
                     message = (" | ").join(message_list)
                 else:
