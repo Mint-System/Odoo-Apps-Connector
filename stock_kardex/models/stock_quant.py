@@ -306,9 +306,10 @@ class StockQuant(models.Model):
                 changes.append(f"lot: {lot_name}, qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
 
-            elif lot_name and (lot_name not in lot_mapping):
+            elif lot_name and product_id and (lot_name not in lot_mapping):
                 # Case 2: Create a new lot if necessary
                 _logger.info("### Case 2")
+                
                 self.env.cr.execute(
                     """
                     INSERT INTO stock_lot (
