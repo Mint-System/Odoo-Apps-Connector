@@ -145,7 +145,7 @@ class BaseKardexMixin(models.AbstractModel):
             return True
 
     def _read_external_object_from_proddb(self, default_code=None, products=None):
-        rows_material, rows = self._execute_query_on_proddb(default_code.lower(), products)
+        rows_material, rows = self._execute_query_on_proddb(default_code, products)
         return rows_material, rows
 
     def _update_external_object(self, vals):
