@@ -642,7 +642,7 @@ class StockPicking(models.Model):
 
                         if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
                             if lot:
-                                _logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
+                                #_logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
                                 move_line_vals["lot_id"] = lot[0]
                                 
                             elif CREATE_SERIAL_FOR_STORE:
