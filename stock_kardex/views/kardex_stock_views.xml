@@ -102,6 +102,7 @@
             <xpath expr="//list/field[@name='description_picking']" position="after">
                 <field name="has_kardex_location" invisible="1" optional="hide" />
                 <field name="location_id" optional="hide" />
+                <field name="location_dest_id" optional="hide" />
                 <field name="kardex_done" string="->Kardex" optional="hide" />
                 <field name="kardex_id" string="KID" optional="hide" />
                 <field

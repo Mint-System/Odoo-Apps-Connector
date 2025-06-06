@@ -113,13 +113,14 @@ class StockMove(models.Model):
             _logger.info("### vals in stock move create %s " % (vals,))
             product_id = vals.get('product_id')
             if product_id:
-                product = self.env['product.template'].browse(product_id)
+                product = self.env['product.product'].browse(product_id)
                 
                 last_location = product.last_location_id
                 _logger.info("### last_location in stock move create %s " % (last_location,))
                 if last_location:
-                    vals['location_dest_id'] = last_location.id
+                    # vals['location_dest_id'] = last_location.id
                     vals['location_final_id'] = last_location.id
+                    # pass
 
         return super().create(vals_list)
 

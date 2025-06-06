@@ -241,27 +241,27 @@ class StockPicking(models.Model):
                 check = True
         return check
 
-    def action_next_transfer(self):
-        next_transfers = super().action_next_transfer()
-        _logger.info("next_transfers: %s" % (next_transfers,))
-        # import pdb; pdb.set_trace()
-        if next_transfers:
-            if "domain" in next_transfers:
-                pickings = self.env["stock.picking"].search(next_transfers["domain"])
-            elif "res_id" in next_transfers:
-                pickings = self.env["stock.picking"].search([("id", "=", next_transfers["res_id"])])
-            for picking in pickings:
-                write_vals = {}
+    # def action_next_transfer(self):
+    #     next_transfers = super().action_next_transfer()
+    #     _logger.info("next_transfers: %s" % (next_transfers,))
+    #     # import pdb; pdb.set_trace()
+    #     if next_transfers:
+    #         if "domain" in next_transfers:
+    #             pickings = self.env["stock.picking"].search(next_transfers["domain"])
+    #         elif "res_id" in next_transfers:
+    #             pickings = self.env["stock.picking"].search([("id", "=", next_transfers["res_id"])])
+    #         for picking in pickings:
+    #             write_vals = {}
 
-                if picking._check_is_kardex_store(picking.id) and not picking.kardex_done:
-                    # picking.send_to_kardex(self.origin)
-                    pass
+    #             if picking._check_is_kardex_store(picking.id) and not picking.kardex_done:
+    #                 # picking.send_to_kardex(self.origin)
+    #                 pass
 
-                _logger.info("### kardex outgoing: %s" % (picking._check_is_kardex_outgoing(picking.id),))
+    #             _logger.info("### kardex outgoing: %s" % (picking._check_is_kardex_outgoing(picking.id),))
 
-                write_vals["kardex"] = self.kardex
-                picking.write(write_vals)
-        return next_transfers
+    #             write_vals["kardex"] = self.kardex
+    #             picking.write(write_vals)
+    #     return next_transfers
 
     def send_to_kardex_picking(self):
         self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))

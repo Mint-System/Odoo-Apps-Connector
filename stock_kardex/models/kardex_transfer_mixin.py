@@ -49,9 +49,13 @@ class KardexTransferMixin(models.AbstractModel):
         make_transfer = not self.kardex_done and not self.kardex_running_id
 
         _logger.info("### picking type: %s " % (self._determine_picking_type(),))
-        _logger.info("### last location: %s " % (self.product_id.last_location_id,))
+        _logger.info("### last location of product: %s " % (self.product_id.last_location_id,))
         _logger.info("### kardex_location: %s " % (kardex_location,))
         _logger.info("### picking_type_id: %s" % (self.picking_type_id,))
+        _logger.info("### location_dest_id: %s" % (self.location_dest_id))
+        _logger.info("### move finale location_id: %s" % (self.move_id.location_final_id))
+        _logger.info("### picking destination location_id: %s" % (self.picking_id.location_dest_id))
+        _logger.info("### make_transfer: %s" % (make_transfer,))
 
         if self._determine_picking_type() == "production" and make_transfer and self.location_id == kardex_location:
             self.transfer("production")
@@ -66,8 +70,9 @@ class KardexTransferMixin(models.AbstractModel):
         elif (
             self._determine_picking_type() == "store"
             and make_transfer
-            # and self.product_id.last_location_id == kardex_location or self.picking.location_dest_id == kardex_location
-            and self.move_id.location_dest_id == kardex_location
+            #and self.product_id.last_location_id == kardex_location or self.move_id.location_dest_id == kardex_location
+            and self.move_id.location_final_id == kardex_location
+            # and self.picking_id.location_dest_id == kardex_location
         ):
             self.transfer("store")
         else:
