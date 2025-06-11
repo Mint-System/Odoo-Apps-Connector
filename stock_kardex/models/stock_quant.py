@@ -101,6 +101,13 @@ class StockQuant(models.Model):
             JOIN product_template pt ON pp.product_tmpl_id = pt.id
             WHERE pt.default_code IS NOT NULL
         """)
+        # for testing
+        # self.env.cr.execute("""
+        #     SELECT pt.default_code, pp.id
+        #     FROM product_product pp
+        #     JOIN product_template pt ON pp.product_tmpl_id = pt.id
+        #     WHERE pt.default_code = 'MOT.1061.0000.V001'
+        # """)
         product_mapping = dict(self.env.cr.fetchall())
 
         location_ids = (location_id, location_paletten_id)
@@ -233,8 +240,9 @@ class StockQuant(models.Model):
 
             for key in grouped2.keys():
                 if all(x == "Shuttle" or x == "Palette" for x in grouped2[key]):
-                    product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
+                    product = self.env["product.product"].search([("default_code", "=", suchbegriff)], limit=1)
                     product.write({"last_location_id": location_id})
+                    _logger.info("product mit default_code %s wird auf last locatio  %s gesetzt" % (suchbegriff, location_id,))
 
         # Convert to list if needed
         kardex_data = list(grouped.values()) + unaggregated
