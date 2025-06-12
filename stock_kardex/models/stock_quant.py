@@ -73,14 +73,18 @@ class StockQuant(models.Model):
     @api.model
     def sync_stocks(self, default_code=None, source_sale_order=False):
         # get stock quants of Kardex Warehouse
-        location_ids = self._get_location_id(KARDEX_WAREHOUSE)
+        kardex_location_ids = self._get_location_id(KARDEX_WAREHOUSE)
         #_logger.info("location_ids: %s" % (location_ids,))
-        if not location_ids:
+        if not kardex_location_ids:
             return False
 
-        location_id = location_ids[0]
-        location_name = self.env["stock.location"].browse(location_id).name
-        #_logger.info("location_id: %s" % (location_id,))
+        kardex_location_id = kardex_location_ids[0]
+
+        non_kardex_location_ids = self._get_location_id(NON_KARDEX_WAREHOUSE)
+        non_kardex_location_id = non_location_ids[0]
+
+        kardex_location_name = self.env["stock.location"].browse(kardex_location_id).name
+        #_logger.info("kardex_location_id: %s" % (kardex_location_id,))
 
         location_paletten_ids = self._get_location_id(PALETTEN_WAREHOUSE)
         #_logger.info("location_paletten_ids: %s" % (location_paletten_ids,))
@@ -110,11 +114,11 @@ class StockQuant(models.Model):
         # """)
         product_mapping = dict(self.env.cr.fetchall())
 
-        location_ids = (location_id, location_paletten_id)
+        location_ids = (kardex_location_id, location_paletten_id, non_kardex_location_id)
         placeholders = ",".join(["%s"] * len(location_ids))
 
         odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
-        self.env.cr.execute(odoo_sql, (location_id,))
+        self.env.cr.execute(odoo_sql, (kardex_location_id,))
 
         # odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
         # self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
@@ -154,7 +158,7 @@ class StockQuant(models.Model):
                         SET quantity = 0
                         WHERE product_id = %s and location_id = %s
                     """,
-                        (product_mapping[product_key], location_id),
+                        (product_mapping[product_key], kardex_location_id),
                     )
 
         #_logger.info("### kardex_data: %s" % (kardex_data,))
@@ -241,12 +245,12 @@ class StockQuant(models.Model):
             for key in grouped2.keys():
                 if all(x == "Shuttle" or x == "Palette" for x in grouped2[key]):
                     product = self.env["product.product"].search([("default_code", "=", suchbegriff)], limit=1)
-                    product.write({"last_location_id": location_id})
-                    _logger.info("product mit default_code %s wird auf last locatio  %s gesetzt" % (suchbegriff, location_id,))
+                    product.write({"last_location_id": kardex_location_id})
+                    _logger.info("product mit default_code %s wird auf last location  %s gesetzt" % (suchbegriff, kardex_location_id,))
 
         # Convert to list if needed
         kardex_data = list(grouped.values()) + unaggregated
-        # _logger.info("kardex_data after grouping: %s" % (kardex_data,))
+        _logger.info("kardex_data after grouping: %s" % (kardex_data,))
 
         if palette_counter == 0 and source_sale_order and default_code:
             pass
@@ -334,7 +338,7 @@ class StockQuant(models.Model):
                     )
                     RETURNING id
                 """,
-                    (lot_name, product_id, location_id),
+                    (lot_name, product_id, kardex_location_id),
                 )
                 lot_id = self.env.cr.fetchone()[0]
                 lot_mapping[lot_name] = lot_id  # Update lot mapping
@@ -364,13 +368,13 @@ class StockQuant(models.Model):
                     )
                     RETURNING id
                 """,
-                    (product_id, lot_id, quantity, location_id, company_id),
+                    (product_id, lot_id, quantity, kardex_location_id, company_id),
                 )
                 # _logger.info(
                 #     f"### data provided: product_id: {product_id}, lot_id: {lot_id}, quantity: {quantity}, location_id: {location_id}, company_id: {company_id}"
                 # )
                 quant_id = self.env.cr.fetchone()[0]
-                changes.append(f"new lot: {lot_name}, location: {location_name} ({location_id}), qty:  → {quantity}")
+                changes.append(f"new lot: {lot_name}, location: {kardex_location_name} ({kardex_location_id}), qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
 
             else:
@@ -419,11 +423,11 @@ class StockQuant(models.Model):
                             )
                             RETURNING id
                         """,
-                            (product_id, quantity, location_id, company_id),
+                            (product_id, quantity, kardex_location_id, company_id),
                         )
                         quant_id = self.env.cr.fetchone()[0]
                         existing_quant_map[product_id].append(quant_id)
-                        changes.append(f"no lot, location: {location_name} ({location_id}), qty:  → {quantity} (new)")
+                        changes.append(f"no lot, location: {kardex_location_name} ({kardex_location_id}), qty:  → {quantity} (new)")
 
             if changes:
                 self.env["kardex.sync.report.line"].create(
