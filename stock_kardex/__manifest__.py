@@ -20,6 +20,8 @@
         "views/kardex_picking_type_views.xml",
         "views/kardex_move_line_views.xml",
         "views/res_config_settings_views.xml",
+        "views/stock_quant_delete_wizard_view.xml",
+        "views/stock_quant_delete_wizard_action.xml",
     ],
     "installable": True,
     "application": False,

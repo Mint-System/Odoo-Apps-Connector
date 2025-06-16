@@ -1,5 +1,7 @@
 import re
 
+from .config import AGGREGATE_PALETTEN
+
 
 def _get_location_base(s):
     if s:
@@ -11,7 +13,7 @@ def _get_location_base(s):
 def _transform_location(location):
     if _get_location_base(location) == "Shuttle":
         return "Shuttle"
-    elif _get_location_base(location) == "Palette":
+    elif _get_location_base(location) == "Palette" and AGGREGATE_PALETTEN:
         return "Palette"
     return location
 
@@ -28,3 +30,5 @@ def _harmonize_empty_values(data):
             if value == "" or value is None or value == "---":
                 item[key] = None
     return data
+
+
