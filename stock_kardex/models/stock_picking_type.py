@@ -7,6 +7,7 @@ class StockPickingType(models.Model):
 
     kardex_picking_type = fields.Selection(
         [
+            ("kardex_entry", "Kardex Entry"),
             ("kardex_store", "Kardex Store"),
             ("kardex_get", "Kardex Get"),
             ("kardex_prod", "Kardex Prod"),

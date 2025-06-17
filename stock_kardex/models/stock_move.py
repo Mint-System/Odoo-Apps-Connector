@@ -107,20 +107,49 @@ class StockMove(models.Model):
                 badge = '<span style="background-color:#28a745;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">L</span>'
             line.tracking_type_badge = badge
 
+    def _determine_picking_type(self):
+        if self.picking_type_id.kardex_picking_type == "kardex_entry":
+            return "entry"
+        if self.picking_type_id.kardex_picking_type == "kardex_store":
+            # if self.origin and self.env["purchase.order"].search([("name", "=", self.origin)]) and self.location_id.name == ENTRANCE_LOCATION:
+            return "store"
+        # elif (
+        #     self.origin
+        #     and self.env["mrp.production"].search([("name", "=", self.origin)])
+        #     and self.location_id.name == POST_PRODUCTION_LOCATION
+        # ):
+        elif self.picking_type_id.kardex_picking_type == "kardex_postprod":
+            return "postproduction"
+        # elif self.origin and self.env["mrp.production"].search([("name", "=", self.origin)]):
+        elif self.picking_type_id.kardex_picking_type == "kardex_prod":
+            return "production"
+        # elif self.origin and self.env["sale.order"].search([("name", "=", self.origin)]):
+        elif self.picking_type_id.kardex_picking_type == "kardex_get":
+            return "get"
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             _logger.info("### vals in stock move create %s " % (vals,))
+            location_final_id = vals.get('location_final_id')
+            picking_type_id = vals.get('picking_type_id')
+            picking_type = self.env['stock.picking.type'].browse(picking_type_id)
+            
+            kardex_picking_type = picking_type.kardex_picking_type
+            _logger.info("### picking_type in stock move create %s " % (picking_type,))
+            _logger.info("### kardex picking_type_id in stock move create %s " % (kardex_picking_type,))
             product_id = vals.get('product_id')
             if product_id:
                 product = self.env['product.product'].browse(product_id)
                 
                 last_location = product.last_location_id
                 _logger.info("### last_location in stock move create %s " % (last_location,))
-                if last_location:
+                if last_location and kardex_picking_type == "kardex_entry":
                     # vals['location_dest_id'] = last_location.id
                     vals['location_final_id'] = last_location.id
                     # pass
+                # if location_final_id and location_final_id.id != last_location:
+                #     vals['location_final_id'] = location_final_id
 
         return super().create(vals_list)
 

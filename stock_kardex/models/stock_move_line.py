@@ -64,6 +64,14 @@ class StockMoveLine(models.Model):
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
 
+
+    def copy_data(self, default=None):
+        default = dict(default or {})
+        _logger.warning("################ STOCK MOVE LINE COPY DATA ################")
+        _logger.info("### default in stock move line copy data %s " % (default,))
+        vals_list = super().copy_data(default=default)
+        return vals_list
+
     @api.model_create_multi
     def create(self, vals_list):
         _logger.warning("################ STOCK MOVE LINE CREATE ################")
