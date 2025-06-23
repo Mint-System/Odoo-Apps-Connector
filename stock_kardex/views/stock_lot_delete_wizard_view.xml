@@ -1,15 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <odoo>
-  <record id="stock_quant_delete_wizard_view_form" model="ir.ui.view">
-    <field name="name">stock.quant.delete.wizard.form</field>
-    <field name="model">stock.quant.delete.wizard</field>
+  <record id="stock_lot_delete_wizard_view_form" model="ir.ui.view">
+    <field name="name">stock.lot.delete.wizard.form</field>
+    <field name="model">stock.lot.delete.wizard</field>
     <field name="arch" type="xml">
-      <form string="Confirm Deletion of Stock Quants">
+      <form string="Confirm Deletion of Stock Lots">
         <group>
           <field name="confirm"/>
-          <field name="reservation_to_zero"/>
-          <field name="set_in_to_zero"/>
         </group>
         <footer>
           <button name="action_confirm_delete" type="object" string="Delete All" class="btn-danger"/>
