@@ -85,7 +85,7 @@ class StockQuant(models.Model):
 
 
     @api.model
-    def sync_stocks(self, default_code=None, all_products=False, source_sale_order=False):
+    def sync_stocks(self, default_code=None, all_products=False, all_locations=False, source_sale_order=False):
         # get stock quants of Kardex Warehouse
         kardex_location_ids = self._get_location_id(KARDEX_WAREHOUSE)
         #_logger.info("location_ids: %s" % (location_ids,))
@@ -113,13 +113,35 @@ class StockQuant(models.Model):
         company_id = COMPANY_ID
 
         # create dict with product ids and non empty default codes
-        self.env.cr.execute("""
+        where = []
+        params = []
+        # default_codes = ['FLB.1037.28SW.RUND.A']
+        default_codes = []
+        query = """
             SELECT pt.default_code, pp.id
             FROM product_product pp
             JOIN product_template pt ON pp.product_tmpl_id = pt.id
-            WHERE pt.default_code IS NOT NULL
-        """)
+        """
+        if default_codes:
+            where.append("pt.default_code IN %s")
+            params.append(tuple(default_codes))
+        else:
+            where.append("pt.default_code IS NOT NULL")
+        # for testing 
+        # import pdb; pdb.set_trace()
+        if where:
+            query += " WHERE " + " AND ".join(where)
+
+        self.env.cr.execute(query, params)
+        
+        # self.env.cr.execute("""
+        #     SELECT pt.default_code, pp.id
+        #     FROM product_product pp
+        #     JOIN product_template pt ON pp.product_tmpl_id = pt.id
+        #     WHERE pt.default_code IS NOT NULL
+        # """)
         # for testing
+
         # self.env.cr.execute("""
         #     SELECT pt.default_code, pp.id
         #     FROM product_product pp
@@ -138,8 +160,13 @@ class StockQuant(models.Model):
         location_ids = (kardex_location_id, location_paletten_id, non_kardex_location_id)
         placeholders = ",".join(["%s"] * len(location_ids))
 
-        odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
-        self.env.cr.execute(odoo_sql, (kardex_location_id,))
+        if all_locations:
+            odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant"
+            self.env.cr.execute(odoo_sql)
+        
+        else:
+            odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
+            self.env.cr.execute(odoo_sql, (kardex_location_id,))
 
         # odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
         # self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
@@ -151,11 +178,15 @@ class StockQuant(models.Model):
         stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
 
         # 2. Get existing lot_id mapping {lot_name → lot_id} for lots with location
-        self.env.cr.execute("SELECT name, id FROM stock_lot WHERE location_id IS NOT NULL")
-        lot_mapping = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
+        lots_sql = "SELECT name, product_id, id FROM stock_lot WHERE location_id IS NOT NULL"
+        self.env.cr.execute(lots_sql)
+        # lots = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
+        lots = self.env.cr.fetchall()
+
+        lot_mapping = {(n, p): i for n, p, i in lots}
 
         products = tuple(set(q[1] for q in stock_quants if q[1]))
-        _logger.warning("#### products: %s" % (products,))
+        # _logger.warning("#### products: %s" % (products,))
 
         if not all_products and not products and not default_code:
             return False  # No products to update
@@ -315,12 +346,12 @@ class StockQuant(models.Model):
             product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
             # product_id = product.id
 
-            # _logger.info("### product_id: %s" % (product_id,))
+            _logger.info("### product_id: %s" % (product_id,))
 
 
             # loc_id =
 
-            lot_id = lot_mapping.get(lot_name) if lot_name else None
+            lot_id = lot_mapping.get((lot_name, product_id)) if lot_name and product_id else None
             # existing_kardex_quants_for_product = self.env["stock.quant"].search(
             #     [("product_id", "=", product_id), ("location_id", "=", location_id)]
             # )
@@ -328,6 +359,7 @@ class StockQuant(models.Model):
 
             # get or create location
             location_id = self._get_or_create_location(location)
+            _logger.info("### lot_name: %s, lot_id: %s, (product_id, lot_id) in stock_quant_mapping: %s, lot_name not in lot_mapping: %s" % (lot_name, lot_id, (product_id, lot_id) in stock_quant_mapping, lot_name not in lot_mapping))
 
             if lot_id and (product_id, lot_id) in stock_quant_mapping:
                 _logger.info("### Case 1")
@@ -344,7 +376,7 @@ class StockQuant(models.Model):
                 changes.append(f"lot: {lot_name}, qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
 
-            elif lot_name and product_id and (lot_name not in lot_mapping):
+            if lot_name and product_id and ((lot_name, product_id) not in lot_mapping):
                 # Case 2: Create a new lot if necessary
                 _logger.info("### Case 2")
 
@@ -368,7 +400,7 @@ class StockQuant(models.Model):
                     (lot_name, product_id, location_id),
                 )
                 lot_id = self.env.cr.fetchone()[0]
-                lot_mapping[lot_name] = lot_id  # Update lot mapping
+                lot_mapping[(lot_name, product_id)] = lot_id  # Update lot mapping
 
                 _logger.warning("### bestand anlegen fuer lot_id: %s, location: %s , location id: %s" % (lot_id, location, location_id))
 
@@ -406,7 +438,7 @@ class StockQuant(models.Model):
                 changes.append(f"new lot: {lot_name}, location: {kardex_location_name} ({kardex_location_id}), qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
 
-            else:
+            if not lot_name:
                 if (product_id, None) in stock_quant_mapping:
                     # Case 3: Update stock_quant for product without lot
                     _logger.info("### Case 3")
@@ -425,6 +457,7 @@ class StockQuant(models.Model):
 
                 else:
                     # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
+                    _logger.info("### lot_name: %s" % (lot_name,))
                     _logger.info("### Case 4")
                     if product_id:
 
