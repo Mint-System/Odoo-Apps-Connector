@@ -22,6 +22,8 @@
         "views/res_config_settings_views.xml",
         "views/stock_quant_delete_wizard_view.xml",
         "views/stock_quant_delete_wizard_action.xml",
+        "views/stock_lot_delete_wizard_view.xml",
+        "views/stock_lot_delete_wizard_action.xml",
     ],
     "installable": True,
     "application": False,
