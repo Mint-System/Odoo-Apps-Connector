@@ -210,31 +210,31 @@ class StockMove(models.Model):
 
     #     return records
 
-    @api.model
-    def _action_confirm(self, merge=True, merge_into=False):
-        # Call super to create stock moves and pickings
-        _logger.info("### _action_confirm called")
+    # @api.model
+    # def _action_confirm(self, merge=True, merge_into=False):
+    #     # Call super to create stock moves and pickings
+    #     _logger.info("### _action_confirm called")
 
-        res = super()._action_confirm(merge, merge_into)
-        _logger.info("### action confirm res %s " % (res,))
+    #     res = super()._action_confirm(merge, merge_into)
+    #     _logger.info("### action confirm res %s " % (res,))
 
-        for move in res:
-            picking = move.picking_id
-            parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
+    #     for move in res:
+    #         picking = move.picking_id
+    #         parent = self.env["mrp.production"].search([("name", "=", picking.origin)])
 
-            kardex_moves = picking.move_ids.filtered(lambda move: move.product_id.kardex)
+    #         kardex_moves = picking.move_ids.filtered(lambda move: move.product_id.kardex)
 
-            if (
-                parent
-                and picking
-                and kardex_moves
-                and not picking.kardex_done
-                and not picking._check_picking_type() == "postproduction"
-            ):
-                _logger.info("### kardex outgoing called")
-                # picking.send_to_kardex(picking.origin)
+    #         if (
+    #             parent
+    #             and picking
+    #             and kardex_moves
+    #             and not picking.kardex_done
+    #             and not picking._check_picking_type() == "postproduction"
+    #         ):
+    #             _logger.info("### kardex outgoing called")
+    #             # picking.send_to_kardex(picking.origin)
 
-        return res
+    #     return res
 
     # def _prepare_move_line_vals(self, quantity=None, reserved_quant=None):
     #     _logger.info("### _prepare_move_line_vals")

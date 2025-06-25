@@ -3,7 +3,15 @@ from collections import defaultdict
 
 from odoo import api, models
 
-from .config import COMPANY_ID, KARDEX_WAREHOUSE, PALETTEN_WAREHOUSE, USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS, AGGREGATE_PALETTEN, NON_KARDEX_WAREHOUSE, STOCK_WAREHOUSE
+from .config import (
+    COMPANY_ID,
+    KARDEX_WAREHOUSE,
+    PALETTEN_WAREHOUSE,
+    USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS,
+    AGGREGATE_PALETTEN,
+    NON_KARDEX_WAREHOUSE,
+    STOCK_WAREHOUSE,
+)
 from .helper import _harmonize_empty_values, _transform_location, _update_locations
 
 _logger = logging.getLogger(__name__)
@@ -74,18 +82,23 @@ class StockQuant(models.Model):
     def _get_or_create_location(self, location_name):
     
         if location_name == "Shuttle":
-            location = self.env["stock.location"].search([("name", "=", "Kardex")], limit=1)
-            return location.id
+            location = self.env["stock.location"].search([("name", "=", KARDEX_WAREHOUSE)], limit=1)
+            return location.id, KARDEX_WAREHOUSE
         location = self.env["stock.location"].search([("name", "=", location_name)], limit=1)
         if not location:
             location_stock = self.env["stock.location"].search([("name", "=", STOCK_WAREHOUSE)], limit=1)
             location = self.env["stock.location"].create({"name": location_name, "location_id": location_stock.id})
-        return location.id
+        return location.id, location_name
 
 
 
     @api.model
     def sync_stocks(self, default_code=None, all_products=False, all_locations=False, source_sale_order=False):
+
+        param = self.env["ir.config_parameter"].sudo()
+
+        remove_quants = param.get_param("kardex.remove_quants") == "True"
+
         # get stock quants of Kardex Warehouse
         kardex_location_ids = self._get_location_id(KARDEX_WAREHOUSE)
         #_logger.info("location_ids: %s" % (location_ids,))
@@ -161,11 +174,11 @@ class StockQuant(models.Model):
         placeholders = ",".join(["%s"] * len(location_ids))
 
         if all_locations:
-            odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant"
+            odoo_sql = "SELECT id, product_id, lot_id, location_id FROM stock_quant"
             self.env.cr.execute(odoo_sql)
         
         else:
-            odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id = %s"
+            odoo_sql = "SELECT id, product_id, lot_id, location_id FROM stock_quant WHERE location_id = %s"
             self.env.cr.execute(odoo_sql, (kardex_location_id,))
 
         # odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
@@ -175,7 +188,7 @@ class StockQuant(models.Model):
         # self.env.cr.execute(odoo_sql, location_ids)
         stock_quants = self.env.cr.fetchall()
 
-        stock_quant_mapping = {(p, l): q for q, p, l in stock_quants}
+        stock_quant_mapping = {(p, l, loc): q for q, p, l, loc in stock_quants}
 
         # 2. Get existing lot_id mapping {lot_name → lot_id} for lots with location
         lots_sql = "SELECT name, product_id, id FROM stock_lot WHERE location_id IS NOT NULL"
@@ -203,7 +216,7 @@ class StockQuant(models.Model):
             not_in_kardex_data = data_material_values - kardex_data_values
 
             for product_key in not_in_kardex_data:
-                quant_id = stock_quant_mapping.get((product_mapping.get(product_key), None))
+                quant_id = stock_quant_mapping.get((product_mapping.get(product_key), None, None))
                 if quant_id:
                     self.env.cr.execute(
                         """
@@ -348,6 +361,12 @@ class StockQuant(models.Model):
 
             _logger.info("### product_id: %s" % (product_id,))
 
+            # quants of product with location = kardex
+            existing_kardex_quants_ids_for_product = self.env["stock.quant"].search(
+                [("product_id", "=", product_id), ("location_id", "=", kardex_location_id)]
+            ).ids
+            _logger.info("### existing_kardex_quants_ids_for_product: %s" % (existing_kardex_quants_ids_for_product,))
+
 
             # loc_id =
 
@@ -358,23 +377,30 @@ class StockQuant(models.Model):
             # _logger.info(f"### existing_kardex_quants_for_product: {existing_kardex_quants_for_product}")
 
             # get or create location
-            location_id = self._get_or_create_location(location)
-            _logger.info("### lot_name: %s, lot_id: %s, (product_id, lot_id) in stock_quant_mapping: %s, lot_name not in lot_mapping: %s" % (lot_name, lot_id, (product_id, lot_id) in stock_quant_mapping, lot_name not in lot_mapping))
+            location_id, location_name = self._get_or_create_location(location)
+            if not all_locations and location_name != kardex_location_name:
+                continue
+            _logger.info("### lot_name: %s, lot_id: %s, (product_id, lot_id, location_id) in stock_quant_mapping: %s, lot_name not in lot_mapping: %s" % (lot_name, lot_id, (product_id, lot_id, location_id) in stock_quant_mapping, lot_name not in lot_mapping))
 
-            if lot_id and (product_id, lot_id) in stock_quant_mapping:
+            if lot_id and (product_id, lot_id, location_id) in stock_quant_mapping:
                 _logger.info("### Case 1")
-                # Case 1: Update existing stock_quant record with known lot
-                quant_id = stock_quant_mapping[(product_id, lot_id)]
+                # Case 1: Update existing stock_quant record with known lot for certain location
+                quant_id = stock_quant_mapping[(product_id, lot_id, location_id)]
+                
                 self.env.cr.execute(
                     """
                     UPDATE stock_quant
                     SET quantity = %s
-                    WHERE id = %s
+                    WHERE id = %s AND location_id = %s
                 """,
-                    (quantity, quant_id),
+                    (quantity, quant_id, location_id),
                 )
-                changes.append(f"lot: {lot_name}, qty:  → {quantity}")
+                changes.append(f"lot: {lot_name}, loc: {location_id}, qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
+
+                if quant_id and location_id == kardex_location_id:
+                    existing_kardex_quants_ids_for_product.pop(quant_id)
+
 
             if lot_name and product_id and ((lot_name, product_id) not in lot_mapping):
                 # Case 2: Create a new lot if necessary
@@ -435,15 +461,15 @@ class StockQuant(models.Model):
                 #     f"### data provided: product_id: {product_id}, lot_id: {lot_id}, quantity: {quantity}, location_id: {location_id}, company_id: {company_id}"
                 # )
                 quant_id = self.env.cr.fetchone()[0]
-                changes.append(f"new lot: {lot_name}, location: {kardex_location_name} ({kardex_location_id}), qty:  → {quantity}")
+                changes.append(f"new lot: {lot_name}, location: {location_id}, qty:  → {quantity}")
                 existing_quant_map[product_id].append(quant_id)
 
             if not lot_name:
-                if (product_id, None) in stock_quant_mapping:
+                if (product_id, None, location_id) in stock_quant_mapping:
                     # Case 3: Update stock_quant for product without lot
                     _logger.info("### Case 3")
 
-                    quant_id = stock_quant_mapping[(product_id, None)]
+                    quant_id = stock_quant_mapping[(product_id, None, location_id)]
                     self.env.cr.execute(
                         """
                         UPDATE stock_quant
@@ -452,8 +478,11 @@ class StockQuant(models.Model):
                     """,
                         (quantity, quant_id),
                     )
-                    changes.append(f"no lot, qty:  → {quantity}")
+                    changes.append(f"no lot, loc: {location_id}, qty:  → {quantity}")
                     existing_quant_map[product_id].append(quant_id)
+
+                    if quant_id and location_id == kardex_location_id:
+                        existing_kardex_quants_ids_for_product.pop(quant_id)
 
                 else:
                     # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
@@ -489,7 +518,7 @@ class StockQuant(models.Model):
                         )
                         quant_id = self.env.cr.fetchone()[0]
                         existing_quant_map[product_id].append(quant_id)
-                        changes.append(f"no lot, location: {kardex_location_name} ({kardex_location_id}), qty:  → {quantity} (new)")
+                        changes.append(f"no lot, location: {location_id}, qty:  → {quantity} (new)")
 
             if changes:
                 self.env["kardex.sync.report.line"].create(
@@ -501,15 +530,19 @@ class StockQuant(models.Model):
                 )
 
         # quants not found in data coming from kardex
-        # _logger.info("existing quant map: %s" % (existing_quant_map,))
+        _logger.info("existing quant map: %s" % (existing_quant_map,))
         for product_id, quant_ids in existing_quant_map.items():
             quants_without_kardex_data = self.env["stock.quant"].search(
                 [("id", "not in", quant_ids), ("product_id", "=", product_id)]
             )
-            # _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
+            _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
 
             # set quantity to zero for these quants
             quants_without_kardex_data.write({"quantity": 0})
+
+        # remove quants for kardex which are not in data from ppg
+        if existing_kardex_quants_ids_for_product and remove_quants:
+            self.env["stock.quant"].browse(existing_kardex_quants_ids_for_product).unlink()
 
         # quants_without_kardex_data = existing_kardex_quants_for_product.filtered(lambda q: q.id not in kardex_quants)
         # _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")

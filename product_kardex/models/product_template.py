@@ -131,7 +131,7 @@ class ProductTemplate(models.Model):
     def sync_stock_of_single_product(self):
         for product in self:
             if product.default_code:
-                self.env["stock.quant"].sync_stocks(product.default_code)
+                self.env["stock.quant"].sync_stocks(default_code=product.default_code)
 
     def get_info_from_kardex(self):
         for product in self:

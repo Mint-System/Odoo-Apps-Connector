@@ -127,6 +127,7 @@ class StockPicking(models.Model):
     def _compute_state(self):
         res = super()._compute_state()
         for picking in self:
+            _logger.info(f"### picking.kardex_picking_state: {picking.kardex_picking_state}")
             if picking.kardex_picking_state == "waiting_for_kardex":
                 picking.state = "waiting_for_kardex"
 
@@ -297,6 +298,7 @@ class StockPicking(models.Model):
                         }
                     )
                     for move in kardex_moves:
+                        _logger.info("### set picked to false for move %s" % (move.name,))
                         move.write({"picked": False})
             # elif picking._check_picking_type() == "store":
             elif picking._check_picking_type() in ["store", "postproduction"]:
@@ -311,7 +313,8 @@ class StockPicking(models.Model):
                 if all_moves_have_kardex_destination and not any_move_has_no_sync:
                     # TODO : Validate Aktion ausfuehren
                     # picking.write({"state": "done"})
-                    self.button_validate()
+                    picking.write({"state": "assigned"})
+                    # self.button_validate()
             elif picking._check_picking_type() == "get":
                 all_moves_have_kardex_location = all(
                     [move.location_id.name == KARDEX_DESTINATION for move in kardex_moves]
@@ -484,8 +487,8 @@ class StockPicking(models.Model):
                                 "kardex_row_update_time": update_time,
                             }
                         )
-                        if new_status == 2:
-                            picking.write({"kardex_picking_state": "updated"})
+                        # if new_status == 2:
+                        #     picking.write({"kardex_picking_state": "updated"})
 
                     if updated:
                         message_list.append(
@@ -509,6 +512,8 @@ class StockPicking(models.Model):
 
         moves = self.env["stock.move.line"].search([("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)])
         _logger.info(", ".join(map(str, moves.mapped("kardex_running_id"))))
+
+        picking_complete_dict = {}
 
         for move in moves:
             _logger.info(f"############# MOVE: {move}")
@@ -579,13 +584,18 @@ class StockPicking(models.Model):
 
                 result = self._execute_query_on_mssql("select_one", sql)
 
+                
+
+
                 if result:
                     complete = 1
+                    
                     # _logger.info(f"##### SQL: {sql}")
                     _logger.info(f"##### PICKING OF MOVE: {move.picking_id.name}")
                     _logger.info(f"##### RESULT: {result}")
                     # if moves do not correspond ignore move line for sync
-                    if move.picking_id.name != result["Belegnummer"]:
+                    picking_name = result["Belegnummer"]
+                    if move.picking_id.name != picking_name:
                         continue
                     new_journal_status = result["MaxKomplett"]
                     journal_ids = result["id_list"]
@@ -693,12 +703,34 @@ class StockPicking(models.Model):
                     # move.write({"kardex_sync": True, "kardex_status": "4"})
                     _logger.info(f"### move synced with move.kardex_sync: {move.kardex_sync}")
 
-                    if complete == 2 or (complete == 1 and serial_name):
-                        picking = move.picking_id
-                        picking.write({"kardex_sync": True, "kardex_picking_state": "synced"})
-                        picking._compute_state()
-                        move.move_id.write({"picked": False})
-                        # i have to set picked = False for the moves
+                    # at the End of sync picking
+                    _logger.info("#### at the end of sync picking:")
+                    _logger.info("#### complete: %s " % (complete,))
+                    _logger.info("#### serial_name: %s " % (serial_name,))
+                    _logger.info("#### serial_name: %s " % (lot_name,))
+
+                    picking_complete_dict[picking_name] = complete
+
+                    move.move_id.write({"picked": False})
+
+
+                    # if complete == 2 or complete == 1 or (complete == 1 and lot_name):
+                    #     picking = move.picking_id
+                    #     picking.write({"kardex_sync": True, "kardex_picking_state": "synced"})
+                    #     picking._compute_state()
+                    #     move.move_id.write({"picked": False})
+                    #     _logger.info("### set picked to false for move %s" % (move.move_id.name,))
+                    #     # i have to set picked = False for the moves
+
+        for picking_key in picking_complete_dict.keys():
+            picking = self.env["stock.picking"].search([("name", "=", picking_key)])
+            if picking_complete_dict[picking_key] == 1:
+                picking.write({"kardex_status": "1"})
+            elif picking_complete_dict[picking_key] == 2:
+                picking.write({"kardex_status": "2", "kardex_sync": True, "kardex_picking_state": "synced"})
+                
+            picking._compute_state()
+            
 
     def _get_unit(self, unit):
         fixer = ODOO_KARDEX_UNIT_FIXER
