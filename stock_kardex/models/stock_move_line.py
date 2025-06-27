@@ -64,7 +64,6 @@ class StockMoveLine(models.Model):
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
 
-
     def copy_data(self, default=None):
         default = dict(default or {})
         _logger.warning("################ STOCK MOVE LINE COPY DATA ################")

@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, fields, models, _
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -18,7 +18,6 @@ class MrpProduction(models.Model):
             # Check if the related product template's kardex field is True
             record.kardex = record.product_id.product_tmpl_id.kardex
 
-
     @api.model
     def create(self, vals_list):
         param = self.env["ir.config_parameter"].sudo()
@@ -35,5 +34,3 @@ class MrpProduction(models.Model):
                         product_tmpl.sync_stock_of_single_product()
 
         return records
-
-    

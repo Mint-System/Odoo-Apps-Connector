@@ -584,12 +584,9 @@ class StockPicking(models.Model):
 
                 result = self._execute_query_on_mssql("select_one", sql)
 
-                
-
-
                 if result:
                     complete = 1
-                    
+
                     # _logger.info(f"##### SQL: {sql}")
                     _logger.info(f"##### PICKING OF MOVE: {move.picking_id.name}")
                     _logger.info(f"##### RESULT: {result}")
@@ -652,9 +649,9 @@ class StockPicking(models.Model):
 
                         if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
                             if lot:
-                                #_logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
+                                # _logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
                                 move_line_vals["lot_id"] = lot[0]
-                                
+
                             elif CREATE_SERIAL_FOR_STORE:
                                 try:
                                     new_lot = self.env["stock.lot"].create(
@@ -671,7 +668,6 @@ class StockPicking(models.Model):
                             else:
                                 move_line_vals["kardex_sync"] = False
                                 move_line_vals["kardex_status"] = "2"
-
 
                         if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
                             _logger.info(f"### lot: {lot}")
@@ -713,7 +709,6 @@ class StockPicking(models.Model):
 
                     move.move_id.write({"picked": False})
 
-
                     # if complete == 2 or complete == 1 or (complete == 1 and lot_name):
                     #     picking = move.picking_id
                     #     picking.write({"kardex_sync": True, "kardex_picking_state": "synced"})
@@ -728,9 +723,8 @@ class StockPicking(models.Model):
                 picking.write({"kardex_status": "1"})
             elif picking_complete_dict[picking_key] == 2:
                 picking.write({"kardex_status": "2", "kardex_sync": True, "kardex_picking_state": "synced"})
-                
+
             picking._compute_state()
-            
 
     def _get_unit(self, unit):
         fixer = ODOO_KARDEX_UNIT_FIXER

@@ -14,5 +14,5 @@ from . import (
     stock_picking_type,
     res_config_settings,
     stock_quant_delete_wizard,
-    stock_lot_delete_wizard
+    stock_lot_delete_wizard,
 )

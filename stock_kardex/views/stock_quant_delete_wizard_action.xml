@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
-
 <odoo>
-  <record id="action_stock_quant_delete_wizard" model="ir.actions.act_window">
-    <field name="name">Delete All Stock Quants</field>
-    <field name="res_model">stock.quant.delete.wizard</field>
-    <field name="view_mode">form</field>
-    <field name="view_id" ref="stock_quant_delete_wizard_view_form"/>
-    <field name="target">new</field>
-  </record>
+    <record id="action_stock_quant_delete_wizard" model="ir.actions.act_window">
+        <field name="name">Delete All Stock Quants</field>
+        <field name="res_model">stock.quant.delete.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="stock_quant_delete_wizard_view_form" />
+        <field name="target">new</field>
+    </record>
 
-  <menuitem id="menu_delete_stock_quants"
-          name="Delete All Stock Quants"
-          parent="stock.menu_stock_root"
-          action="action_stock_quant_delete_wizard"
-          groups="base.group_system" />
+    <menuitem
+        id="menu_delete_stock_quants"
+        name="Delete All Stock Quants"
+        parent="stock.menu_stock_root"
+        action="action_stock_quant_delete_wizard"
+        groups="base.group_system"
+    />
 </odoo>

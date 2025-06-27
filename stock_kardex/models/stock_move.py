@@ -47,7 +47,6 @@ class StockMove(models.Model):
         store=False,
     )
 
-
     @api.depends("move_line_ids.kardex_running_id")
     def _compute_kardex_running_id_string(self):
         for move in self:
@@ -131,22 +130,22 @@ class StockMove(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             _logger.info("### vals in stock move create %s " % (vals,))
-            location_final_id = vals.get('location_final_id')
-            picking_type_id = vals.get('picking_type_id')
-            picking_type = self.env['stock.picking.type'].browse(picking_type_id)
-            
+            location_final_id = vals.get("location_final_id")
+            picking_type_id = vals.get("picking_type_id")
+            picking_type = self.env["stock.picking.type"].browse(picking_type_id)
+
             kardex_picking_type = picking_type.kardex_picking_type
             _logger.info("### picking_type in stock move create %s " % (picking_type,))
             _logger.info("### kardex picking_type_id in stock move create %s " % (kardex_picking_type,))
-            product_id = vals.get('product_id')
+            product_id = vals.get("product_id")
             if product_id:
-                product = self.env['product.product'].browse(product_id)
-                
+                product = self.env["product.product"].browse(product_id)
+
                 last_location = product.last_location_id
                 _logger.info("### last_location in stock move create %s " % (last_location,))
                 if last_location and kardex_picking_type == "kardex_entry":
                     # vals['location_dest_id'] = last_location.id
-                    vals['location_final_id'] = last_location.id
+                    vals["location_final_id"] = last_location.id
                     # pass
                 # if location_final_id and location_final_id.id != last_location:
                 #     vals['location_final_id'] = location_final_id

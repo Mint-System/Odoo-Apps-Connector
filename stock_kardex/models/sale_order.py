@@ -1,6 +1,6 @@
 import logging
 
-from odoo import api, fields, models, _
+from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -16,8 +16,6 @@ class SaleOrder(models.Model):
     def _compute_kardex(self):
         for order in self:
             order.kardex = any(line.product_id.kardex for line in order.order_line)
-
-
 
 
 class SaleOrderLine(models.Model):

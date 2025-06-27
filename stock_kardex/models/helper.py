@@ -30,5 +30,3 @@ def _harmonize_empty_values(data):
             if value == "" or value is None or value == "---":
                 item[key] = None
     return data
-
-
