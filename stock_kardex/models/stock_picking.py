@@ -705,7 +705,11 @@ class StockPicking(models.Model):
                     _logger.info("#### serial_name: %s " % (serial_name,))
                     _logger.info("#### serial_name: %s " % (lot_name,))
 
-                    picking_complete_dict[picking_name] = complete
+                    if picking_complete_dict.get(picking_name) is None:
+                        picking_complete_dict[picking_name] = complete
+                    else:
+                        if complete > picking_complete_dict[picking_name]:
+                            picking_complete_dict[picking_name] = complete
 
                     move.move_id.write({"picked": False})
 
