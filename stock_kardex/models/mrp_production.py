@@ -26,7 +26,7 @@ class MrpProduction(models.Model):
         records = super().create(vals_list)
 
         for production in records:
-            bom = production.bom_id or production._get_bom()
+            bom = production.bom_id
             if bom and sync_before_mo:
                 for line in bom.bom_line_ids:
                     product_tmpl = line.product_id.product_tmpl_id
