@@ -71,6 +71,54 @@ class StockMoveLine(models.Model):
         vals_list = super().copy_data(default=default)
         return vals_list
 
+    def sync_move_line_status(self):
+        # pickings = self.env['stock.picking'].search([('state', '=', 'waiting_for_kardex')])
+        move_lines = self.env["stock.move.line"].search(
+            [
+                ("kardex_running_id", "!=", None),
+                ("kardex_status", "not in", ["2", "4"]),
+            ]
+        )
+        move_lines.update_move_lines_from_kardex()
+
+    def update_move_lines_from_kardex(self):
+        message_list = []
+        for move in self:
+            kardex_running_id = move.kardex_running_id
+            old_status = move.kardex_status
+            sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE BzId = {kardex_running_id}"
+            result = self._execute_query_on_mssql("select_one", sql)
+            if result:
+                new_status = result["Status"]
+                update_time = result["Row_Update_Time"]
+
+                updated = False
+
+                if new_status != old_status and update_time:
+                    updated = True
+                    move.write(
+                        {
+                            "kardex_status": str(new_status),
+                            "kardex_row_update_time": update_time,
+                        }
+                    )
+                    # if new_status == 2:
+                    #     picking.write({"kardex_picking_state": "updated"})
+
+                if updated:
+                    message_list.append(
+                        f"Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}."
+                    )
+
+                else:
+                    message_list.append(f"Kardex Status for {move.product_id.name} was not updated.")
+
+            if move.picking_id:
+                picking = move.picking_id
+                picking._update_picking_state()
+        message = ", ".join(message_list)
+        return self._create_notification(message)
+
     @api.model_create_multi
     def create(self, vals_list):
         _logger.warning("################ STOCK MOVE LINE CREATE ################")
@@ -115,3 +163,5 @@ class StockMoveLine(models.Model):
 
         # _logger.warning("################ END OF STOCK MOVE LINE CREATE ################")
         # return res
+
+    

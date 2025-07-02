@@ -35,6 +35,8 @@ class KardexTransferMixin(models.AbstractModel):
         # elif self.origin and self.env["sale.order"].search([("name", "=", self.origin)]):
         elif self.picking_type_id.kardex_picking_type == "kardex_get":
             return "get"
+        elif self.move_id.is_inventory:
+            return "inventory"
 
     def _update_picking_state(self):
         picking_id = self.picking_id
@@ -75,6 +77,12 @@ class KardexTransferMixin(models.AbstractModel):
             # and self.picking_id.location_dest_id == kardex_location
         ):
             self.transfer("store")
+        elif (
+            self._determine_picking_type() == "inventory"
+            and make_transfer
+            and (self.location_id == kardex_location or self.location_dest_id == kardex_location) and self.location_dest_id != self.location_id
+        ):
+            self.transfer("inventory")
         else:
             return
 
@@ -231,6 +239,10 @@ class KardexTransferMixin(models.AbstractModel):
             return 3
         elif move_line._determine_picking_type() in ["production", "get"]:
             return 4
+        elif move_line.location_dest_id == self._get_kardex_location():
+            return 3
+        elif move_line.location_id == self._get_kardex_location():
+            return 4
 
     def transfer(self, transfer_type):
         move_line = self
@@ -245,7 +257,10 @@ class KardexTransferMixin(models.AbstractModel):
         picking_vals["kardex_running_id"] = self._get_kardex_running_id(move_line)
         picking_vals["kardex_unit"] = self._get_unit(move_line)
         picking_vals["kardex_quantity"] = move_line.quantity
-        picking_vals["kardex_doc_number"] = move_line.picking_id.name
+        if transfer_type == 'inventory':
+            picking_vals["kardex_doc_number"] = move_line.reference
+        else:
+            picking_vals["kardex_doc_number"] = move_line.picking_id.name
         if move_line.lot_id and move_line.product_id.tracking == "serial":
             picking_vals["kardex_serial"] = move_line.lot_id.name
             picking_vals["kardex_charge"] = None

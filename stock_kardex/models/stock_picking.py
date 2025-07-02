@@ -592,7 +592,7 @@ class StockPicking(models.Model):
                     _logger.info(f"##### RESULT: {result}")
                     # if moves do not correspond ignore move line for sync
                     picking_name = result["Belegnummer"]
-                    if move.picking_id.name != picking_name:
+                    if move.picking_id.name != picking_name and move.reference != picking_name:
                         continue
                     new_journal_status = result["MaxKomplett"]
                     journal_ids = result["id_list"]
