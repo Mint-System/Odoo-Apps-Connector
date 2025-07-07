@@ -4,13 +4,14 @@
         <field name="name">Mint System</field>
     </record>
 
+    <record id="kubernetes_build_demo" model="helm.repo">
+        <field name="name">kubernetes-build</field>
+        <field name="url">https://kubernetes.build</field>
+    </record>
+
     <record id="odoo_chart_demo" model="helm.chart">
         <field name="name">odoo</field>
         <field name="repo_id" ref="helm.kubernetes_build_demo" />
-        <!-- <field
-            name="product_ids"
-            eval="[(4, ref('helm.product_odoo_community_edition_demo')), (4, ref('helm.product_odoo_enterprise_edition_demo'))]"
-        /> -->
     </record>
 
     <record id="product_odoo_community_edition_demo" model="product.product">
@@ -25,11 +26,6 @@
         <field name="type">consu</field>
         <field name="list_price">80</field>
         <field name="chart_ids" eval="[(4, ref('helm.odoo_chart_demo'))]" />
-    </record>
-
-    <record id="kubernetes_build_demo" model="helm.repo">
-        <field name="name">kubernetes-build</field>
-        <field name="url">https://kubernetes.build</field>
     </record>
 
     <record id="odoo_chart_value_ingress_host_demo" model="helm.chart.edit">

@@ -34,8 +34,10 @@ class HelmRelease(models.Model):
     @api.depends("name", "chart_id", "chart_id.edit_ids", "context_id", "namespace_id", "partner_id")
     def _compute_values(self):
         for release in self:
-            if release.state == "draft":
+            if release.state == "draft" and release.chart_id.state == "added":
                 release.values = self._apply_edits()
+            else:
+                release.values = ""
 
     def _compute_ingress_url(self):
         for release in self:

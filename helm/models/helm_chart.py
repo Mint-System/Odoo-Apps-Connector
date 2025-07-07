@@ -15,6 +15,7 @@ class HelmChart(models.Model):
     values = fields.Text(compute="_compute_values")
     edit_ids = fields.One2many("helm.chart.edit", "chart_id")
     product_ids = fields.Many2many("product.product")
+    state = fields.Selection(related="repo_id.state")
 
     def _compute_values(self):
         for chart in self:
