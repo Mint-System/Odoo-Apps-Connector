@@ -48,7 +48,7 @@
                                 <group>
                                     <field name="values" class="terminal-screen" />
                                 </group>
-                                <group>
+                                <group string="Access">
                                     <field name="ingress_url" widget="url" />
                                     <field name="ingress_scheme" />
                                     <field name="ingress_host" />

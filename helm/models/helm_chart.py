@@ -10,28 +10,31 @@ class HelmChart(models.Model):
     _name = "helm.chart"
     _description = "Helm Chart"
 
-    name = fields.Char()
-    repo_id = fields.Many2one("helm.repo")
+    name = fields.Char(required=True)
+    repo_id = fields.Many2one("helm.repo", required=True)
     values = fields.Text(compute="_compute_values")
     edit_ids = fields.One2many("helm.chart.edit", "chart_id")
-    product_ids = fields.Many2many("product.product")
+    product_ids = fields.One2many("product.product", "chart_id")
     state = fields.Selection(related="repo_id.state")
 
     def _compute_values(self):
         for chart in self:
-            result = subprocess.run(
-                [
-                    "helm",
-                    "show",
-                    "values",
-                    f"{self.repo_id.name}/{self.name}",
-                ],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            chart.values = result.stdout
+            if chart.state == "added":
+                result = subprocess.run(
+                    [
+                        "helm",
+                        "show",
+                        "values",
+                        f"{self.repo_id.name}/{self.name}",
+                    ],
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                )
+                chart.values = result.stdout
+            else:
+                chart.values = ""
 
     def action_release(self):
         """

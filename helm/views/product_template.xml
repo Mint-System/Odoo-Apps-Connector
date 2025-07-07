@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <group name="description" position="after">
                 <group string="Kubernetes" name="kubernetes">
-                    <field name="chart_ids" />
+                    <field name="chart_id" />
                 </group>
             </group>
         </field>

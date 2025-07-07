@@ -28,12 +28,12 @@
 
     <record id="kubectl_namespace_odoo_demo" model="kubectl.namespace">
         <field name="name">odoo</field>
+        <field name="cluster_id" ref="kubectl.kubectl_cluster_kind_demo" />
     </record>
 
     <record id="kubectl_context_kind_demo" model="kubectl.context">
         <field name="name">kind-kind</field>
         <field name="cluster_id" ref="kubectl.kubectl_cluster_kind_demo" />
-        <field name="namespace_id" ref="kubectl.kubectl_namespace_odoo_demo" />
     </record>
 
     <record id="kubectl_context_exo_demo" model="kubectl.context">

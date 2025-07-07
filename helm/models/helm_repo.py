@@ -12,8 +12,8 @@ class HelmRepo(models.Model):
     _name = "helm.repo"
     _description = "Helm Repo"
 
-    name = fields.Char()
-    url = fields.Char()
+    name = fields.Char(required=True)
+    url = fields.Char(required=True)
     state = fields.Selection(
         selection=[("draft", "Draft"), ("added", "Added")],
         default="draft",

@@ -163,5 +163,3 @@ class StockMoveLine(models.Model):
 
         # _logger.warning("################ END OF STOCK MOVE LINE CREATE ################")
         # return res
-
-    

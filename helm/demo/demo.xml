@@ -18,14 +18,14 @@
         <field name="name">Odoo Community Edition</field>
         <field name="type">consu</field>
         <field name="list_price">50</field>
-        <field name="chart_ids" eval="[(4, ref('helm.odoo_chart_demo'))]" />
+        <field name="chart_id" ref="helm.odoo_chart_demo" />
     </record>
 
     <record id="product_odoo_enterprise_edition_demo" model="product.product">
         <field name="name">Odoo Enterprise Edition</field>
         <field name="type">consu</field>
         <field name="list_price">80</field>
-        <field name="chart_ids" eval="[(4, ref('helm.odoo_chart_demo'))]" />
+        <field name="chart_id" ref="helm.odoo_chart_demo" />
     </record>
 
     <record id="odoo_chart_value_ingress_host_demo" model="helm.chart.edit">

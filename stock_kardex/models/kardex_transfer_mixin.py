@@ -80,7 +80,8 @@ class KardexTransferMixin(models.AbstractModel):
         elif (
             self._determine_picking_type() == "inventory"
             and make_transfer
-            and (self.location_id == kardex_location or self.location_dest_id == kardex_location) and self.location_dest_id != self.location_id
+            and (self.location_id == kardex_location or self.location_dest_id == kardex_location)
+            and self.location_dest_id != self.location_id
         ):
             self.transfer("inventory")
         else:
@@ -257,7 +258,7 @@ class KardexTransferMixin(models.AbstractModel):
         picking_vals["kardex_running_id"] = self._get_kardex_running_id(move_line)
         picking_vals["kardex_unit"] = self._get_unit(move_line)
         picking_vals["kardex_quantity"] = move_line.quantity
-        if transfer_type == 'inventory':
+        if transfer_type == "inventory":
             picking_vals["kardex_doc_number"] = move_line.reference
         else:
             picking_vals["kardex_doc_number"] = move_line.picking_id.name

@@ -14,9 +14,8 @@ class KubectlContext(models.Model):
     _name = "kubectl.context"
     _description = "Kubectl Context"
 
-    name = fields.Char()
-    cluster_id = fields.Many2one("kubectl.cluster")
-    namespace_id = fields.Many2one("kubectl.namespace")
+    name = fields.Char(required=True)
+    cluster_id = fields.Many2one("kubectl.cluster", required=True)
     config = fields.Text(help="Export and pase config with `kubectl config view --minify --raw`.")
     is_current = fields.Boolean(compute="_compute_is_current")
     command = fields.Char(help="Run a command that starts with `kubectl` or `helm`.")
