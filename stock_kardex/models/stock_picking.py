@@ -20,6 +20,8 @@ from .config import (
     STOCK_PICKING_SEND_FLAG_FIXER,
 )
 
+from .helper import _get_sql_for_journal_query
+
 
 class StockPicking(models.Model):
     _name = "stock.picking"
@@ -545,181 +547,196 @@ class StockPicking(models.Model):
                 #         {condition1} {condition2}
                 # """.format(condition1=condition1, condition2=condition2)
 
-                sql = f"""
-                    WITH CTE AS (
-                        SELECT BzId,
-                            Belegnummer,
-                            Seriennummer,
-                            Charge,
-                            Suchbegriff,
-                            Richtung,
-                            Row_Create_Time,
-                            Row_Update_Time,
-                            SUM(Menge) AS MengeErledigt,
-                            MAX(Komplett) AS MaxKomplett
-                        FROM PPG_Journal
-                        {condition1} {condition2}
-                        GROUP BY BzId, Belegnummer, Seriennummer, Charge, Suchbegriff, Richtung, Row_Create_Time, Row_Update_Time
-                    )
-                    SELECT c.BzId,
-                        c.Belegnummer,
-                        c.Seriennummer,
-                        c.Charge,
-                        c.Suchbegriff,
-                        c.Richtung,
-                        c.Row_Create_Time,
-                        c.Row_Update_Time,
-                        c.MengeErledigt,
-                        c.MaxKomplett,
-                        STUFF(
-                                (SELECT ', ' + CAST(ID AS VARCHAR)
-                                FROM PPG_Journal
-                                WHERE BzId = c.BzId
-                                {condition2}
-                                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'),
-                                1, 2, ''
-                        ) AS id_list
-                    FROM CTE c;
-                    """
+                sql = _get_sql_for_journal_query(condition1, condition2)
+               
 
-                result = self._execute_query_on_mssql("select_one", sql)
+                # sql = f"""
+                #     WITH CTE AS (
+                #         SELECT BzId,
+                #             Belegnummer,
+                #             Seriennummer,
+                #             Charge,
+                #             Suchbegriff,
+                #             Richtung,
+                #             Row_Create_Time,
+                #             Row_Update_Time,
+                #             SUM(Menge) AS MengeErledigt,
+                #             MAX(Komplett) AS MaxKomplett
+                #         FROM PPG_Journal
+                #         {condition1} {condition2}
+                #         GROUP BY BzId, Belegnummer, Seriennummer, Charge, Suchbegriff, Richtung, Row_Create_Time, Row_Update_Time
+                #     )
+                #     SELECT c.BzId,
+                #         c.Belegnummer,
+                #         c.Seriennummer,
+                #         c.Charge,
+                #         c.Suchbegriff,
+                #         c.Richtung,
+                #         c.Row_Create_Time,
+                #         c.Row_Update_Time,
+                #         c.MengeErledigt,
+                #         c.MaxKomplett,
+                #         STUFF(
+                #                 (SELECT ', ' + CAST(ID AS VARCHAR)
+                #                 FROM PPG_Journal
+                #                 WHERE BzId = c.BzId
+                #                 {condition2}
+                #                 FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'),
+                #                 1, 2, ''
+                #         ) AS id_list
+                #     FROM CTE c;
+                #     """
 
-                if result:
-                    complete = 1
+                #result = self._execute_query_on_mssql("select_one", sql)
+                results = self._execute_query_on_mssql("select", sql)
 
-                    # _logger.info(f"##### SQL: {sql}")
-                    _logger.info(f"##### PICKING OF MOVE: {move.picking_id.name}")
-                    _logger.info(f"##### RESULT: {result}")
-                    # if moves do not correspond ignore move line for sync
-                    picking_name = result["Belegnummer"]
-                    if move.picking_id.name != picking_name and move.reference != picking_name:
-                        continue
-                    new_journal_status = result["MaxKomplett"]
-                    journal_ids = result["id_list"]
-                    create_time = result["Row_Create_Time"]
-                    update_time = result["Row_Update_Time"]
-                    complete = max(complete, new_journal_status)
-                    # complete = result["MaxKomplett"]
-                    serial_name = result.get("Seriennummer")
-                    lot_name = result.get("Seriennummer") or result.get("Charge")
-                    direction = result["Richtung"]
-                    product_code = result["Suchbegriff"]
-                    move.write(
-                        {
-                            "kardex_journal_status": new_journal_status,
-                            # "kardex_journal_status": complete,
-                            "kardex_sync": True,
-                            "kardex_status": "4",
-                        }
-                    )
 
-                    for journal_id in journal_ids.split(","):
-                        self.env["stock.picking.journal"].create(
+                if results:
+                    for result in enumerate(result_counter, results):
+                        complete = 1
+
+                        # _logger.info(f"##### SQL: {sql}")
+                        _logger.info(f"##### PICKING OF MOVE: {move.picking_id.name}")
+                        _logger.info(f"##### RESULT: {result}")
+                        # if moves do not correspond ignore move line for sync
+                        picking_name = result["Belegnummer"]
+                        if move.picking_id.name != picking_name and move.reference != picking_name:
+                            continue
+
+                        new_journal_status = result["MaxKomplett"]
+                        journal_ids = result["id_list"]
+                        create_time = result["Row_Create_Time"]
+                        update_time = result["Row_Update_Time"]
+                        complete = max(complete, new_journal_status)
+                        # complete = result["MaxKomplett"]
+                        serial_name = result.get("Seriennummer")
+                        lot_name = result.get("Seriennummer") or result.get("Charge")
+                        direction = result["Richtung"]
+                        product_code = result["Suchbegriff"]
+                        move.write(
                             {
-                                "journal_id": journal_id,
-                                "kardex_running_id": move.kardex_running_id,
+                                "kardex_journal_status": new_journal_status,
+                                # "kardex_journal_status": complete,
+                                "kardex_sync": True,
+                                "kardex_status": "4",
                             }
                         )
 
-                    # get amounts for one move
-                    qty_done = result["MengeErledigt"]
-                    _logger.info(f"### lot_name, qty_done: {lot_name}, {qty_done}")
+                        for journal_id in journal_ids.split(","):
+                            self.env["stock.picking.journal"].create(
+                                {
+                                    "journal_id": journal_id,
+                                    "kardex_running_id": move.kardex_running_id,
+                                }
+                            )
 
-                    # new_qty_done = move_line.qty_done #- qty_done
-                    new_qty_done = qty_done
-                    move_line_vals = {
-                        "qty_done": new_qty_done,
-                        "kardex_sync": True,
-                        "kardex_status": "4",
-                    }
+                        # get amounts for one move
+                        qty_done = result["MengeErledigt"]
+                        _logger.info(f"### lot_name, qty_done: {lot_name}, {qty_done}")
 
-                    if lot_name:
+                        # new_qty_done = move_line.qty_done #- qty_done
+                        new_qty_done = qty_done
+                        move_line_vals = {
+                            "qty_done": new_qty_done,
+                            "kardex_sync": True,
+                            "kardex_status": "4",
+                        }
+
                         product_id = (
-                            self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
-                        )
+                                self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
+                            )
                         _logger.info(f"### product_id: {product_id}")
                         product_object = self.env["product.product"].search([("id", "=", product_id[0])])
                         _logger.info(f"### product_object: {product_object.default_code}")
-                        lot = (
-                            self.env["stock.lot"]
-                            .search([("name", "=", lot_name), ("product_id", "=", product_id[0])])
-                            .mapped("id")
-                        )
-                        _logger.info(f"### lot: {lot}")
 
-                        if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
-                            if lot:
-                                # _logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
-                                move_line_vals["lot_id"] = lot[0]
-
-                            elif CREATE_SERIAL_FOR_STORE:
-                                try:
-                                    new_lot = self.env["stock.lot"].create(
-                                        {
-                                            "name": lot_name,
-                                            "product_id": product_id[0],
-                                        }
-                                    )
-                                    move_line_vals["lot_id"] = new_lot.id
-                                except ValidationError as e:
-                                    _logger.error("Could not complete lot handling: %s", e.name)
-
-                                    pass
-                            else:
-                                move_line_vals["kardex_sync"] = False
-                                move_line_vals["kardex_status"] = "2"
-
-                        if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
+                        if lot_name:
+                            
+                            lot = (
+                                self.env["stock.lot"]
+                                .search([("name", "=", lot_name), ("product_id", "=", product_id[0])])
+                                .mapped("id")
+                            )
                             _logger.info(f"### lot: {lot}")
-                            if lot:
-                                move_line_vals["lot_id"] = lot[0]
-                            elif CREATE_SERIAL_FOR_PRODUCTION:
-                                try:
-                                    new_lot = self.env["stock.lot"].create(
-                                        {
-                                            "name": lot_name,
-                                            "product_id": product_id[0],
-                                        }
-                                    )
-                                    move_line_vals["lot_id"] = new_lot.id
-                                except:
-                                    # except ValidationError as e:
-                                    #     _logger.error("Could not complete lot handling: %s", e.name)
 
-                                    pass
+                            if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
+                                if lot:
+                                    # _logger.info(f"LOT/SN {move_line_vals['lot_id']} is overwritten with {lot[0]}")
+                                    move_line_vals["lot_id"] = lot[0]
 
-                            else:
-                                move_line_vals["kardex_sync"] = False
-                                move_line_vals["kardex_status"] = "2"
+                                elif CREATE_SERIAL_FOR_STORE:
+                                    try:
+                                        new_lot = self.env["stock.lot"].create(
+                                            {
+                                                "name": lot_name,
+                                                "product_id": product_id[0],
+                                            }
+                                        )
+                                        move_line_vals["lot_id"] = new_lot.id
+                                    except ValidationError as e:
+                                        _logger.error("Could not complete lot handling: %s", e.name)
 
-                    _logger.info(f"### move_line_vals for move {move.id}: {move_line_vals}")
+                                        pass
+                                else:
+                                    move_line_vals["kardex_sync"] = False
+                                    move_line_vals["kardex_status"] = "2"
 
-                    move.write(move_line_vals)
+                            if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
+                                _logger.info(f"### lot: {lot}")
+                                if lot:
+                                    move_line_vals["lot_id"] = lot[0]
+                                elif CREATE_SERIAL_FOR_PRODUCTION:
+                                    try:
+                                        new_lot = self.env["stock.lot"].create(
+                                            {
+                                                "name": lot_name,
+                                                "product_id": product_id[0],
+                                            }
+                                        )
+                                        move_line_vals["lot_id"] = new_lot.id
+                                    except:
+                                        # except ValidationError as e:
+                                        #     _logger.error("Could not complete lot handling: %s", e.name)
 
-                    # move.write({"kardex_sync": True, "kardex_status": "4"})
-                    _logger.info(f"### move synced with move.kardex_sync: {move.kardex_sync}")
+                                        pass
 
-                    # at the End of sync picking
-                    _logger.info("#### at the end of sync picking:")
-                    _logger.info("#### complete: %s " % (complete,))
-                    _logger.info("#### serial_name: %s " % (serial_name,))
-                    _logger.info("#### serial_name: %s " % (lot_name,))
+                                else:
+                                    move_line_vals["kardex_sync"] = False
+                                    move_line_vals["kardex_status"] = "2"
 
-                    if picking_complete_dict.get(picking_name) is None:
-                        picking_complete_dict[picking_name] = complete
-                    else:
-                        if complete > picking_complete_dict[picking_name]:
+                        _logger.info(f"### move_line_vals for move {move.id}: {move_line_vals}")
+
+                        if result_counter == 0:
+                            move.write(move_line_vals)
+                        else:
+                            new_stock_move_line = move.copy({
+                                'qty_done': qty_done,
+                                'lot_id': move_line_vals['lot_id'],
+                            })
+
+                        # move.write({"kardex_sync": True, "kardex_status": "4"})
+                        _logger.info(f"### move synced with move.kardex_sync: {move.kardex_sync}")
+
+                        # at the End of sync picking
+                        _logger.info("#### at the end of sync picking:")
+                        _logger.info("#### complete: %s " % (complete,))
+                        _logger.info("#### serial_name: %s " % (serial_name,))
+                        _logger.info("#### serial_name: %s " % (lot_name,))
+
+                        if picking_complete_dict.get(picking_name) is None:
                             picking_complete_dict[picking_name] = complete
+                        else:
+                            if complete > picking_complete_dict[picking_name]:
+                                picking_complete_dict[picking_name] = complete
 
-                    move.move_id.write({"picked": False})
+                        move.move_id.write({"picked": False})
 
-                    # if complete == 2 or complete == 1 or (complete == 1 and lot_name):
-                    #     picking = move.picking_id
-                    #     picking.write({"kardex_sync": True, "kardex_picking_state": "synced"})
-                    #     picking._compute_state()
-                    #     move.move_id.write({"picked": False})
-                    #     _logger.info("### set picked to false for move %s" % (move.move_id.name,))
-                    #     # i have to set picked = False for the moves
+                        # if complete == 2 or complete == 1 or (complete == 1 and lot_name):
+                        #     picking = move.picking_id
+                        #     picking.write({"kardex_sync": True, "kardex_picking_state": "synced"})
+                        #     picking._compute_state()
+                        #     move.move_id.write({"picked": False})
+                        #     _logger.info("### set picked to false for move %s" % (move.move_id.name,))
+                        #     # i have to set picked = False for the moves
 
         for picking_key in picking_complete_dict.keys():
             picking = self.env["stock.picking"].search([("name", "=", picking_key)])

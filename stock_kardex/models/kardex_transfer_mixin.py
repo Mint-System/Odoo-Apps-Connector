@@ -6,6 +6,7 @@ from .config import (
     KARDEX_WAREHOUSE,
     ODOO_KARDEX_UNIT_FIXER,
     STOCK_PICKING_SEND_FLAG_FIXER,
+    TRANSFER_INVENTORY_MOVES,
 )
 
 _logger = logging.getLogger(__name__)
@@ -81,8 +82,8 @@ class KardexTransferMixin(models.AbstractModel):
         elif (
             self._determine_picking_type() == "inventory"
             and make_transfer
-            and (self.location_id == kardex_location or self.location_dest_id == kardex_location)
-            and self.location_dest_id != self.location_id
+            and TRANSFER_INVENTORY_MOVES
+            and (self.location_id == kardex_location or self.location_dest_id == kardex_location) and self.location_dest_id != self.location_id
         ):
             self.transfer("inventory")
         else:

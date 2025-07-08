@@ -30,3 +30,59 @@ def _harmonize_empty_values(data):
             if value == "" or value is None or value == "---":
                 item[key] = None
     return data
+
+
+def _get_sql_for_journal_query(condition1=None, condition2=None):
+    sql = f"""
+          WITH CTE AS (
+                SELECT 
+                    BzId,
+                     CASE 
+                        WHEN Seriennummer IS NOT NULL AND Seriennummer != '' THEN Seriennummer
+                        WHEN Charge IS NOT NULL AND Charge != '' THEN Charge
+                        ELSE '__none__'
+                    END AS SerienOrCharge,
+                    Belegnummer,
+                    Suchbegriff,
+                    Richtung,
+                    Row_Create_Time,
+                    Row_Update_Time,
+                    SUM(Menge) AS MengeErledigt,
+                    MAX(Komplett) AS MaxKomplett
+                FROM PPG_Journal
+                {condition1}
+                GROUP BY 
+                    BzId,
+                    CASE 
+                        WHEN Seriennummer IS NOT NULL AND Seriennummer != '' THEN Seriennummer
+                        WHEN Charge IS NOT NULL AND Charge != '' THEN Charge
+                        ELSE '__none__'
+                    END,
+                    Belegnummer,
+                    Suchbegriff,
+                    Richtung,
+                    Row_Create_Time,
+                    Row_Update_Time
+            )
+            SELECT 
+                c.*,
+                STUFF(
+                    (
+                        SELECT ', ' + CAST(ID AS VARCHAR)
+                        FROM PPG_Journal j
+                        WHERE 
+                            j.BzId = c.BzId
+                            AND ISNULL(NULLIF(COALESCE(j.Seriennummer, j.Charge), ''), '__none__') = c.SerienOrCharge
+                            AND j.Belegnummer = c.Belegnummer
+                            AND j.Suchbegriff = c.Suchbegriff
+                            AND j.Richtung = c.Richtung
+                            AND j.Row_Create_Time = c.Row_Create_Time
+                            AND j.Row_Update_Time = c.Row_Update_Time
+                        FOR XML PATH(''), TYPE
+                    ).value('.', 'NVARCHAR(MAX)'),
+                    1, 2, ''
+                ) AS id_list
+            FROM CTE c;
+        """
+
+    return sql
