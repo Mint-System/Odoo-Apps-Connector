@@ -54,6 +54,7 @@ class KardexTransferMixin(models.AbstractModel):
         _logger.info("### last location of product: %s " % (self.product_id.last_location_id,))
         _logger.info("### kardex_location: %s " % (kardex_location,))
         _logger.info("### picking_type_id: %s" % (self.picking_type_id,))
+        _logger.info("### location_id: %s" % (self.location_id))
         _logger.info("### location_dest_id: %s" % (self.location_dest_id))
         _logger.info("### move finale location_id: %s" % (self.move_id.location_final_id))
         _logger.info("### picking destination location_id: %s" % (self.picking_id.location_dest_id))
