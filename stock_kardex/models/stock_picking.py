@@ -592,7 +592,7 @@ class StockPicking(models.Model):
 
 
                 if results:
-                    for result in enumerate(result_counter, results):
+                    for result_counter, result in enumerate(results):
                         complete = 1
 
                         # _logger.info(f"##### SQL: {sql}")
@@ -610,7 +610,8 @@ class StockPicking(models.Model):
                         complete = max(complete, new_journal_status)
                         # complete = result["MaxKomplett"]
                         serial_name = result.get("Seriennummer")
-                        lot_name = result.get("Seriennummer") or result.get("Charge")
+                        # lot_name = result.get("Seriennummer") or result.get("Charge")
+                        lot_name = result.get("SerienOrCharge")
                         direction = result["Richtung"]
                         product_code = result["Suchbegriff"]
                         move.write(

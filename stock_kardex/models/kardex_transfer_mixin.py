@@ -37,6 +37,7 @@ class KardexTransferMixin(models.AbstractModel):
         elif self.picking_type_id.kardex_picking_type == "kardex_get":
             return "get"
         elif self.move_id.is_inventory:
+            _logger.info("location for inventory move: %s" % (self.move_id.location_id.name,))
             return "inventory"
 
     def _update_picking_state(self):
@@ -260,8 +261,8 @@ class KardexTransferMixin(models.AbstractModel):
         picking_vals["kardex_running_id"] = self._get_kardex_running_id(move_line)
         picking_vals["kardex_unit"] = self._get_unit(move_line)
         picking_vals["kardex_quantity"] = move_line.quantity
-        if transfer_type == "inventory":
-            picking_vals["kardex_doc_number"] = move_line.reference
+        if transfer_type == 'inventory':
+            picking_vals["kardex_doc_number"] = move_line.reference[:15].replace(" ", "")
         else:
             picking_vals["kardex_doc_number"] = move_line.picking_id.name
         if move_line.lot_id and move_line.product_id.tracking == "serial":
