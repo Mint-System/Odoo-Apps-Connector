@@ -35,9 +35,9 @@ def _harmonize_empty_values(data):
 def _get_sql_for_journal_query(condition1=None, condition2=None):
     # sql = f"""
     #       WITH CTE AS (
-    #             SELECT 
+    #             SELECT
     #                 BzId,
-    #                  CASE 
+    #                  CASE
     #                     WHEN Seriennummer IS NOT NULL AND Seriennummer != '' THEN Seriennummer
     #                     WHEN Charge IS NOT NULL AND Charge != '' THEN Charge
     #                     ELSE '__none__'
@@ -51,9 +51,9 @@ def _get_sql_for_journal_query(condition1=None, condition2=None):
     #                 MAX(Komplett) AS MaxKomplett
     #             FROM PPG_Journal
     #             {condition1}
-    #             GROUP BY 
+    #             GROUP BY
     #                 BzId,
-    #                 CASE 
+    #                 CASE
     #                     WHEN Seriennummer IS NOT NULL AND Seriennummer != '' THEN Seriennummer
     #                     WHEN Charge IS NOT NULL AND Charge != '' THEN Charge
     #                     ELSE '__none__'
@@ -64,13 +64,13 @@ def _get_sql_for_journal_query(condition1=None, condition2=None):
     #                 Row_Create_Time,
     #                 Row_Update_Time
     #         )
-    #         SELECT 
+    #         SELECT
     #             c.*,
     #             STUFF(
     #                 (
     #                     SELECT ', ' + CAST(ID AS VARCHAR)
     #                     FROM PPG_Journal j
-    #                     WHERE 
+    #                     WHERE
     #                         j.BzId = c.BzId
     #                         AND ISNULL(NULLIF(COALESCE(j.Seriennummer, j.Charge), ''), '__none__') = c.SerienOrCharge
     #                         AND j.Belegnummer = c.Belegnummer
@@ -116,7 +116,7 @@ def _get_sql_for_journal_query(condition1=None, condition2=None):
                     Row_Create_Time,
                     Row_Update_Time
             )
-            SELECT 
+            SELECT
                 c.BzId,
                 c.Belegnummer,
                 c.SerienOrCharge,
@@ -127,7 +127,7 @@ def _get_sql_for_journal_query(condition1=None, condition2=None):
                 c.MengeErledigt,
                 c.MaxKomplett,
                 (
-                    SELECT 
+                    SELECT
                         STUFF((
                             SELECT ', ' + CAST(j.ID AS VARCHAR)
                             FROM PPG_Journal j

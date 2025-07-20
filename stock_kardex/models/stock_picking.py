@@ -19,7 +19,6 @@ from .config import (
     POST_PRODUCTION_LOCATION,
     STOCK_PICKING_SEND_FLAG_FIXER,
 )
-
 from .helper import _get_sql_for_journal_query
 
 
@@ -548,7 +547,6 @@ class StockPicking(models.Model):
                 # """.format(condition1=condition1, condition2=condition2)
 
                 sql = _get_sql_for_journal_query(condition1, condition2)
-               
 
                 # sql = f"""
                 #     WITH CTE AS (
@@ -587,9 +585,8 @@ class StockPicking(models.Model):
                 #     FROM CTE c;
                 #     """
 
-                #result = self._execute_query_on_mssql("select_one", sql)
+                # result = self._execute_query_on_mssql("select_one", sql)
                 results = self._execute_query_on_mssql("select", sql)
-
 
                 if results:
                     for result_counter, result in enumerate(results):
@@ -644,14 +641,13 @@ class StockPicking(models.Model):
                         }
 
                         product_id = (
-                                self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
-                            )
+                            self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
+                        )
                         _logger.info(f"### product_id: {product_id}")
                         product_object = self.env["product.product"].search([("id", "=", product_id[0])])
                         _logger.info(f"### product_object: {product_object.default_code}")
 
                         if lot_name:
-                            
                             lot = (
                                 self.env["stock.lot"]
                                 .search([("name", "=", lot_name), ("product_id", "=", product_id[0])])
@@ -709,10 +705,12 @@ class StockPicking(models.Model):
                         if result_counter == 0:
                             move.write(move_line_vals)
                         else:
-                            new_stock_move_line = move.copy({
-                                'qty_done': qty_done,
-                                'lot_id': move_line_vals['lot_id'],
-                            })
+                            new_stock_move_line = move.copy(
+                                {
+                                    "qty_done": qty_done,
+                                    "lot_id": move_line_vals["lot_id"],
+                                }
+                            )
 
                         # move.write({"kardex_sync": True, "kardex_status": "4"})
                         _logger.info(f"### move synced with move.kardex_sync: {move.kardex_sync}")
