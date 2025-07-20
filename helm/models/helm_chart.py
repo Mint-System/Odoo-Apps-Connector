@@ -25,7 +25,7 @@ class HelmChart(models.Model):
                         "helm",
                         "show",
                         "values",
-                        f"{self.repo_id.name}/{self.name}",
+                        f"{chart.repo_id.name}/{chart.name}",
                     ],
                     check=True,
                     stdout=subprocess.PIPE,

@@ -3,7 +3,8 @@ import subprocess
 
 import yaml
 
-from odoo import _, api, exceptions, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import ValidationError
 from odoo.tools import safe_eval
 
 from .ir_actions_client import display_notification
@@ -19,6 +20,7 @@ class HelmRelease(models.Model):
     chart_id = fields.Many2one("helm.chart", help="Chart that shall be installed.", required=True)
     context_id = fields.Many2one("kubectl.context", help="Context used for installation.", required=True)
     namespace_id = fields.Many2one("kubectl.namespace", help="Target namespace in cluster.", required=True)
+    create_namespace = fields.Boolean()
     partner_id = fields.Many2one("res.partner", string="Customer")
     state = fields.Selection(
         selection=[("draft", "Draft"), ("installed", "Installed")],
@@ -35,13 +37,13 @@ class HelmRelease(models.Model):
     def _compute_values(self):
         for release in self:
             if release.state == "draft" and release.chart_id.state == "added":
-                release.values = self._apply_edits()
+                release.values = release._apply_edits()
             else:
                 release.values = ""
 
     def _compute_ingress_url(self):
         for release in self:
-            if release.state == "installed":
+            if release.state == "installed" and release.ingress_host:
                 release.ingress_url = release.ingress_scheme + release.ingress_host + ":" + str(release.ingress_port)
             else:
                 release.ingress_url = ""
@@ -57,7 +59,7 @@ class HelmRelease(models.Model):
             try:
                 dict_values = yaml.safe_load(values) or {}
             except yaml.YAMLError as e:
-                raise exceptions.ValidationError(f"Invalid YAML: {str(e)}")
+                raise ValidationError(f"Invalid YAML: {str(e)}")
 
             for edit in edits:
                 try:
@@ -74,12 +76,12 @@ class HelmRelease(models.Model):
                     target[path_parts[-1]] = new_value
 
                 except Exception as e:
-                    raise exceptions.ValidationError(f"Invalid expression {edit.code}: {str(e)}")
+                    raise ValidationError(f"Invalid expression {edit.code}: {str(e)}")
 
             try:
                 release.values = yaml.safe_dump(dict_values, sort_keys=False)
             except yaml.YAMLError as e:
-                raise exceptions.ValidationError(f"Error converting to YAML: {str(e)}")
+                raise ValidationError(f"Error converting to YAML: {str(e)}")
 
             return release.values
 
@@ -88,10 +90,14 @@ class HelmRelease(models.Model):
         Install the Helm chart using the current context configuration.
         """
         self.ensure_one()
+        # Check if chart has been added
+        if self.chart_id.state != "added":
+            raise ValidationError(_(f"The chart '{self.chart_id.name}' has not been added."))
         try:
-            result = self.context_id.run(
-                ["helm", "install", self.name, f"{self.chart_id.repo_id.name}/{self.chart_id.name}"]
-            )
+            command = ["helm", "install", self.name, f"{self.chart_id.repo_id.name}/{self.chart_id.name}"]
+            if self.create_namespace:
+                command += ["--create-namespace", "--namespace", self.namespace_id.name]
+            result = self.context_id.run(command)
             self.write({"state": "installed"})
             return display_notification(_("Chart Installed"), result.stdout, "success")
         except subprocess.CalledProcessError as e:
