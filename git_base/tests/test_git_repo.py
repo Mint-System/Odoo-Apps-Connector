@@ -53,7 +53,9 @@ class TestGitRepo(TransactionCase):
         output = self.repo_id.cmd_log()
         self.assertTrue("Test commit" in output, output)
 
-        self.repo_id.cmd_switch("dev")
+        self.repo_id.cmd_fetch("dev")
+
+        self.repo_id.cmd_checkout("dev")
         output = self.repo_id.cmd_branch_list()
         self.assertTrue("dev" in output)
 

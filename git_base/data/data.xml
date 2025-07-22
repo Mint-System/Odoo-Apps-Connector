@@ -144,8 +144,8 @@
         <field name="sequence">22</field>
         <field name="name">Checkout</field>
         <field name="code">checkout</field>
-        <field name="command">git checkout -b $BRANCH origin/$BRANCH</field>
-        <field name="help">Checkout branch and from upstream if given.</field>
+        <field name="command">git checkout $BRANCH origin/$BRANCH</field>
+        <field name="help">Checkout branch from upstream if given.</field>
         <field name="states">initialized,connected</field>
         <field name="has_input" eval="True" />
     </record>
@@ -156,6 +156,7 @@
         <field name="command">git branch -D $BRANCH</field>
         <field name="help">Delete branch if it is not active.</field>
         <field name="states">initialized,connected</field>
+        <field name="has_input" eval="True" />
     </record>
     <record id="cmd_rebase" model="git.repo.cmd">
         <field name="sequence">24</field>
@@ -222,7 +223,7 @@
         <field name="sequence">35</field>
         <field name="name">Pull</field>
         <field name="code">pull</field>
-        <field name="command">git pull origin $BRANCH</field>
+        <field name="command">git pull --ff-only origin $BRANCH</field>
         <field name="help">Pull branch from origin.</field>
         <field name="states">initialized,connected</field>
     </record>

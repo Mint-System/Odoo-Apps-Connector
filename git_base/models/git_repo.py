@@ -471,9 +471,10 @@ class GitRepo(models.Model):
 
         # If branch is not in list, create it
         if branch_name not in git_branch_list:
+            # Checkout form upstream
             if branch_id and branch_id.upstream:
                 output = check_output(
-                    ["git", "-C", self.local_path, "checkout", "-b", branch_id.name, branch_id.upstream],
+                    ["git", "-C", self.local_path, "checkout", branch_id.name, branch_id.upstream],
                     stderr=STDOUT,
                     text=True,
                 )
@@ -601,6 +602,7 @@ class GitRepo(models.Model):
                 "-C",
                 self.local_path,
                 "pull",
+                "--ff-only",
                 "origin",
                 self.active_branch_id.name,
             ]
