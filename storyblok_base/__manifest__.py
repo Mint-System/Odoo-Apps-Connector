@@ -15,7 +15,6 @@
         "views/storyblok_folder_views.xml",
         "views/res_config_settings_view.xml",
     ],
-    "external_dependencies": {"python": ["requests_toolbelt.multipart.encoder"]},
     "demo": [
         "demo/demo.xml",
     ],
