@@ -14,7 +14,7 @@
         <field name="name">kind-kind</field>
         <field name="server">https://127.0.0.1:35249</field>
         <field name="code">knd</field>
-        <field name="domain">cloud.local</field>
+        <field name="domain">knd.local</field>
         <field name="provider_id" ref="kubectl.res_partner_localhost_demo" />
     </record>
 
@@ -26,8 +26,8 @@
         <field name="provider_id" ref="kubectl.res_partner_vshn_demo" />
     </record>
 
-    <record id="kubectl_namespace_odoo_demo" model="kubectl.namespace">
-        <field name="name">odoo</field>
+    <record id="kubectl_namespace_default_demo" model="kubectl.namespace">
+        <field name="name">default</field>
         <field name="cluster_id" ref="kubectl.kubectl_cluster_kind_demo" />
     </record>
 

@@ -38,45 +38,34 @@
         <field name="chart_id" ref="helm.odoo_chart_demo" />
     </record>
 
-    <record id="odoo_chart_value_ingress_host_demo" model="helm.chart.edit">
+    <record id="odoo_chart_value_ingress_host_demo" model="helm.chart.value">
         <field name="chart_id" ref="helm.odoo_chart_demo" />
         <field name="path">ingress.host</field>
         <field
-            name="code"
+            name="value"
         >release.namespace_id.name + '.' + release.context_id.cluster_id.domain</field>
         <field name="field_id" ref="helm.field_helm_release__ingress_host" />
     </record>
 
-    <record id="odoo_chart_value_ingress_classname_demo" model="helm.chart.edit">
+    <record id="odoo_chart_value_ingress_classname_demo" model="helm.chart.value">
         <field name="chart_id" ref="helm.odoo_chart_demo" />
+        <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
         <field name="path">ingress.className</field>
-        <field
-            name="code"
-        >'haproxy' if release.context_id.cluster_id.code in ['exo'] else 'nginx'</field>
+        <field name="value">'haproxy'</field>
     </record>
 
-    <record id="odoo_chart_value_ingress_secure_demo" model="helm.chart.edit">
+    <record id="odoo_chart_value_vshnpostgres_enabled_demo" model="helm.chart.value">
         <field name="chart_id" ref="helm.odoo_chart_demo" />
-        <field name="path">ingress.secure</field>
-        <field
-            name="code"
-        >True if release.context_id.cluster_id.code in ['exo'] else False</field>
-    </record>
-
-    <record id="odoo_chart_value_vshnpostgres_enabled_demo" model="helm.chart.edit">
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
+        <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
         <field name="path">vshnPostgres.enabled</field>
-        <field
-            name="code"
-        >True if release.context_id.cluster_id.code in ['exo'] else False</field>
+        <field name="value">True</field>
     </record>
 
-    <record id="odoo_chart_value_postgres_enabled_demo" model="helm.chart.edit">
+    <record id="odoo_chart_value_cnpg_enabled_demo" model="helm.chart.value">
         <field name="chart_id" ref="helm.odoo_chart_demo" />
-        <field name="path">postgres.enabled</field>
-        <field
-            name="code"
-        >False if release.context_id.cluster_id.code in ['exo'] else True</field>
+        <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
+        <field name="path">cnpg.enabled</field>
+        <field name="value">False</field>
     </record>
 
     <record id="odoo_release_demo" model="helm.release">

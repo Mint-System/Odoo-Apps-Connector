@@ -12,8 +12,8 @@ class HelmChart(models.Model):
 
     name = fields.Char(required=True)
     repo_id = fields.Many2one("helm.repo", required=True)
-    values = fields.Text(compute="_compute_values")
-    edit_ids = fields.One2many("helm.chart.edit", "chart_id")
+    values = fields.Text(compute="_compute_values", string="Chart values.yaml")
+    value_ids = fields.One2many("helm.chart.value", "chart_id", string="Custom values.yaml")
     product_ids = fields.One2many("product.product", "chart_id")
     state = fields.Selection(related="repo_id.state")
 

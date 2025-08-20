@@ -46,8 +46,12 @@
                                     <field name="create_namespace" />
                                     <field name="partner_id" />
                                 </group>
-                                <group>
-                                    <field name="values" class="terminal-screen" />
+                                <group string="values.yaml">
+                                    <field
+                                        name="values"
+                                        nolabel="1"
+                                        class="terminal-screen"
+                                    />
                                 </group>
                                 <group string="Access">
                                     <field name="ingress_url" widget="url" />
