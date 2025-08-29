@@ -1,0 +1,21 @@
+.terminal-screen {
+    background-color: black;
+    color: white;
+    font-family: monospace;
+    font-size: 1em;
+    padding: 0.3em;
+    padding-left: 0.6em;
+    padding-right: 0.6em;
+    white-space: pre-wrap;
+    max-height: 500px;
+    overflow: auto;
+}
+
+.terminal-screen .o_input {
+    border: none;
+}
+
+.terminal-screen button {
+    background: black;
+    color: white;
+}

@@ -1,9 +1,9 @@
 import base64
 import logging
 import os
-from subprocess import STDOUT, CalledProcessError, check_output
+from subprocess import STDOUT, CalledProcessError, check_output, run
 
-from odoo import models
+from odoo import api, models
 
 _logger = logging.getLogger(__name__)
 
@@ -16,14 +16,46 @@ class ResUsersKeychain(models.AbstractModel):
         """
         Return keychain in order: deploy > user > personal > company
         """
-        if self.ssh_private_key_file:
+        if hasattr(self, "ssh_private_key_file") and self.ssh_private_key_file:
             return self
-        elif self.user_id and self.user_id.ssh_private_key_file:
+        elif hasattr(self, "user_id") and self.user_id and self.user_id.ssh_private_key_file:
             return self.user_id
         elif self.env.user.ssh_private_key_file:
             return self.env.user
         elif self.env.company.ssh_private_key_file:
             return self.env.company
+        else:
+            return False
+
+    @api.model
+    def generate_ssh_keys(self, comment, output_keyfile, new_passphrase=""):
+        ssh_keygen_command = [
+            "ssh-keygen",
+            "-t",
+            "ed25519",
+            "-C",
+            comment,
+            "-f",
+            output_keyfile,
+            "-N",
+            new_passphrase,
+        ]
+        run(ssh_keygen_command)
+
+        # Read public key
+        ssh_public_key = ""
+        with open(f"{output_keyfile}.pub") as file:
+            ssh_public_key = file.read()
+
+        # Read private key
+        ssh_private_key_file = ""
+        with open(f"{output_keyfile}", "rb") as file:
+            ssh_private_key_file = base64.b64encode(file.read())
+
+        os.remove(f"{output_keyfile}.pub")
+        os.remove(f"{output_keyfile}")
+
+        return ssh_public_key, ssh_private_key_file
 
     def run_ssh_command(self, command, timeout=10):
         """
@@ -31,7 +63,7 @@ class ResUsersKeychain(models.AbstractModel):
         """
 
         keychain = self._get_keychain()
-        if keychain.ssh_private_key_file:
+        if keychain and keychain.ssh_private_key_file:
             try:
                 with open(keychain.ssh_private_key_filename, "wb") as file:
                     file.write(base64.b64decode(keychain.ssh_private_key_file))
@@ -59,7 +91,7 @@ class ResUsersKeychain(models.AbstractModel):
                     f"ssh -o StrictHostKeyChecking=no -i {keychain.ssh_private_key_filename}"
                 )
                 # _logger.warning(" ".join(command))
-                output += check_output(command, stderr=STDOUT, timeout=timeout)
+                output += check_output(command, stderr=STDOUT, timeout=timeout, text=True)
                 return output
             except CalledProcessError as e:
                 raise Exception(e.output)
