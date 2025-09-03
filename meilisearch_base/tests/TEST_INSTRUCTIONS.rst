@@ -1,3 +1,15 @@
+Setup:
+
+- Start meiliearch container:
+
+```bash
+docker run -it --rm -p 7700:7700 \
+  --network host \
+  -e MEILI_MASTER_KEY=test \
+  -e MEILI_TASK_WEBHOOK_URL=http://localhost:8069/meilisearch/task-webhook/ \
+  getmeili/meilisearch:latest
+```
+
 Configuration:
 
 - Open the user group "Index Manager"

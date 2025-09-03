@@ -1,14 +1,13 @@
 import gzip
 import json
 import logging
+import time
 from io import BytesIO
-
-from werkzeug.exceptions import NotFound
 
 from odoo import http
 from odoo.http import request
 
-_logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class MeilissearchController(http.Controller):
@@ -26,24 +25,20 @@ class MeilissearchController(http.Controller):
             with gzip.GzipFile(fileobj=BytesIO(compressed_data)) as gz:
                 decompressed_data = gz.read()
             data_str = decompressed_data.decode("utf-8")
-            _logger.debug("Received data from meilisearch task webhook: %s", data_str)
+            logger.debug("Received data from meilisearch task webhook: %s", data_str)
+
             ndjson_lines = data_str.strip().split("\n")
             for line in ndjson_lines:
                 data = json.loads(line)
+                task_uid = data["uid"]
 
-                # Get task by uid
-                task = request.env["meilisearch.task"].sudo().search([("uid", "=", data["uid"])])
-                # _logger.warning(
-                #     [
-                #         "webhook",
-                #         data["uid"],
-                #         task,
-                #         request.env["meilisearch.task"]
-                #         .sudo()
-                #         .search([], limit=10)
-                #         .mapped("uid"),
-                #     ]
-                # )
+                # Search for task with retry logic
+                task = None
+                for attempt in range(3):
+                    task = request.env["meilisearch.task"].sudo().search([("uid", "=", task_uid)])
+                    if task:
+                        break
+                    time.sleep(0.5)
 
                 if task:
                     if data["status"] == "succeeded":
@@ -51,7 +46,12 @@ class MeilissearchController(http.Controller):
                     elif data["status"] == "failed":
                         task.task_failed()
                 else:
-                    raise NotFound()
+                    logger.debug("Meilisearch task with uid %s not found after 3 retries", task_uid)
+                    return request.make_response(
+                        _("Task with id %s not found", task_uid), status=404, headers={"Content-Type": "text/plain"}
+                    )
+
+            return request.make_response("OK", status=200)
 
         elif request.httprequest.method == "GET":
-            return "Send me a POST request to this endpoint."
+            return "Send me a POST request to this endpoint"
