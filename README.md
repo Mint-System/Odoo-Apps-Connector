@@ -1,20 +1,17 @@
 # Odoo Apps: Connector
 
-Collection of Odoo apps to connect with other systems.
+Odoo modules extending the `connector` module.
 
 ## Usage
 
-Clone module into Odoo addon directory.
+Clone this repo into the Odoo addons directory.
 
 ```bash
-git clone git@github.com:mint-system/odoo-apps-stock-logistics-workflow.git ./addons/stock_logistics_workflow
+git clone git@github.com:Mint-System/Odoo-Apps-connector.git ./addons/connector
 ```
 
 ## Available modules
 
 | Module | Summary |
-| --- | --- |
-| [git_base](git_base) |         Manage git repositories with Odoo. |
-| [meilisearch_base](meilisearch_base) |         Sets up meilisearch indexes and provides a document mixin. |
-| [ssh](ssh) |         Manage SSH credentials. |
-| [storyblok_base](storyblok_base) |         Sozialinfo base module for Storyblok. |
+| ------ | ------- |
+|        |         |
