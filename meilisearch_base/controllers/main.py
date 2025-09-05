@@ -4,7 +4,7 @@ import logging
 import time
 from io import BytesIO
 
-from odoo import http
+from odoo import http, _
 from odoo.http import request
 
 logger = logging.getLogger(__name__)
