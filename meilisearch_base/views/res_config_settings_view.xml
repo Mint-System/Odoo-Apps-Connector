@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">meilisearch_base.res_config_settings_view_form</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form" />
+        <field name="arch" type="xml">
+            <block name="integration" position="inside">
+                <setting help="Integrate with Meilisearch.">
+                    <field name="module_meilisearch_base"/>
+                    <div invisible="not module_meilisearch_base">
+                        <div class="content-group mt16">
+                            <label for="meilisearch_api_url" class="o_light_label mr8" />
+                            <field name="meilisearch_api_url" required="1" />
+                        </div>
+                        <div class="content-group">
+                            <label for="meilisearch_api_key" class="o_light_label mr8" />
+                            <field name="meilisearch_api_key" required="1" />
+                        </div>
+                    </div>
+                </setting>
+            </block>
+        </field>
+    </record>
+</odoo>
