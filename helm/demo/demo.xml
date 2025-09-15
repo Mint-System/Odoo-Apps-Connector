@@ -67,5 +67,4 @@
         <field name="create_namespace" eval="True" />
         <field name="namespace">odoo</field>
     </record>
-
 </odoo>

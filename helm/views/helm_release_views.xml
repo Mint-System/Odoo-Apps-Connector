@@ -21,6 +21,7 @@
                         name="action_uninstall"
                         string="Uninstall"
                         type="object"
+                        confirm="Do you really want to delete the deployment?"
                         invisible="state == 'draft'"
                     />
                     <button
