@@ -48,12 +48,12 @@
                                     />
                                     <field
                                         name="namespace"
-                                        invisible="create_namespace == False"
+                                        invisible="create_namespace == False or namespace_id"
                                         required="True"
                                     />
                                     <field
                                         name="namespace_id"
-                                        invisible="create_namespace"
+                                        invisible="namespace_id == False"
                                     />
                                     <field name="partner_id" />
                                     <field name="ingress_url" widget="url" />

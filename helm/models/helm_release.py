@@ -68,7 +68,9 @@ class HelmRelease(models.Model):
     def _compute_ingress_url(self):
         for release in self:
             if release.state == "installed" and release.namespace_id:
-                release.ingress_url =  "https://" + release.namespace_id.name + "." + release.context_id.cluster_id.domain 
+                release.ingress_url = (
+                    "https://" + release.namespace_id.name + "." + release.context_id.cluster_id.domain
+                )
             else:
                 release.ingress_url = ""
 
@@ -127,10 +129,9 @@ class HelmRelease(models.Model):
                 command += ["--create-namespace", "--namespace", self.namespace]
             result = self.context_id.run(command)
             if self.create_namespace:
-                self.namespace_id = self.env["kubectl.namespace"].create({
-                    "name": self.namespace,
-                    "cluster_id": self.context_id.cluster_id.id
-                })
+                self.namespace_id = self.env["kubectl.namespace"].create(
+                    {"name": self.namespace, "cluster_id": self.context_id.cluster_id.id}
+                )
             self.write({"state": "installed"})
             return display_notification(_("Chart Installed"), result.stdout, "success")
         except subprocess.CalledProcessError as e:
