@@ -19,8 +19,9 @@ class HelmRelease(models.Model):
     name = fields.Char(help="Name of the release.", required=True)
     chart_id = fields.Many2one("helm.chart", help="Chart that shall be installed.", required=True)
     context_id = fields.Many2one("kubectl.context", help="Context used for installation.", required=True)
-    namespace_id = fields.Many2one("kubectl.namespace", help="Target namespace in cluster.", required=True)
     create_namespace = fields.Boolean()
+    namespace = fields.Char()
+    namespace_id = fields.Many2one("kubectl.namespace", help="Target namespace in cluster.")
     partner_id = fields.Many2one("res.partner", string="Customer")
     state = fields.Selection(
         selection=[("draft", "Draft"), ("installed", "Installed")],
@@ -28,9 +29,6 @@ class HelmRelease(models.Model):
     )
     values = fields.Text(compute="_compute_values", store=True, string="Custom values.yaml")
 
-    ingress_scheme = fields.Char(default="https://")
-    ingress_host = fields.Char(help="Will be applied from values.")
-    ingress_port = fields.Integer(default=443)
     ingress_url = fields.Char(compute="_compute_ingress_url")
 
     def _get_eval_context(self):
@@ -69,8 +67,8 @@ class HelmRelease(models.Model):
 
     def _compute_ingress_url(self):
         for release in self:
-            if release.state == "installed" and release.ingress_host:
-                release.ingress_url = release.ingress_scheme + release.ingress_host + ":" + str(release.ingress_port)
+            if release.state == "installed" and release.namespace_id:
+                release.ingress_url =  "https://" + release.namespace_id.name + "." + release.context_id.cluster_id.domain 
             else:
                 release.ingress_url = ""
 
@@ -126,8 +124,13 @@ class HelmRelease(models.Model):
         try:
             command = ["helm", "install", self.name, f"{self.chart_id.repo_id.name}/{self.chart_id.name}"]
             if self.create_namespace:
-                command += ["--create-namespace", "--namespace", self.namespace_id.name]
+                command += ["--create-namespace", "--namespace", self.namespace]
             result = self.context_id.run(command)
+            if self.create_namespace:
+                self.namespace_id = self.env["kubectl.namespace"].create({
+                    "name": self.namespace,
+                    "cluster_id": self.context_id.cluster_id.id
+                })
             self.write({"state": "installed"})
             return display_notification(_("Chart Installed"), result.stdout, "success")
         except subprocess.CalledProcessError as e:

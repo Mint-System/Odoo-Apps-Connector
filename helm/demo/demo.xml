@@ -38,15 +38,6 @@
         <field name="chart_id" ref="helm.odoo_chart_demo" />
     </record>
 
-    <record id="odoo_chart_value_ingress_host_demo" model="helm.chart.value">
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
-        <field name="path">ingress.host</field>
-        <field
-            name="value"
-        >release.namespace_id.name + '.' + release.context_id.cluster_id.domain</field>
-        <field name="field_id" ref="helm.field_helm_release__ingress_host" />
-    </record>
-
     <record id="odoo_chart_value_ingress_classname_demo" model="helm.chart.value">
         <field name="chart_id" ref="helm.odoo_chart_demo" />
         <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
@@ -72,18 +63,17 @@
         <field name="name">odoo</field>
         <field name="chart_id" ref="helm.odoo_chart_demo" />
         <field name="context_id" ref="kubectl.kubectl_context_kind_demo" />
-        <field name="namespace_id" ref="kubectl.kubectl_namespace_odoo_demo" />
         <field name="partner_id" ref="helm.res_partner_mint_system_demo" />
-        <field name="ingress_scheme">http://</field>
-        <field name="ingress_port">8080</field>
+        <field name="create_namespace" eval="True" />
+        <field name="namespace">odoo</field>
     </record>
 
     <record id="ingress_nginx_release_demo" model="helm.release">
         <field name="name">ingress-nginx</field>
         <field name="chart_id" ref="helm.ingress_nginx_chart_demo" />
         <field name="context_id" ref="kubectl.kubectl_context_kind_demo" />
-        <field name="namespace_id" ref="kubectl.kubectl_namespace_ingress_nginx_demo" />
         <field name="create_namespace" eval="True" />
+        <field name="namespace">ingress-nginx</field>
         <field name="partner_id" ref="helm.res_partner_mint_system_demo" />
     </record>
 </odoo>

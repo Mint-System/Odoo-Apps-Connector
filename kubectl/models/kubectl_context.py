@@ -13,6 +13,7 @@ _logger = logging.getLogger(__name__)
 class KubectlContext(models.Model):
     _name = "kubectl.context"
     _description = "Kubectl Context"
+    _resource = "context"
 
     name = fields.Char(required=True)
     cluster_id = fields.Many2one("kubectl.cluster", required=True)

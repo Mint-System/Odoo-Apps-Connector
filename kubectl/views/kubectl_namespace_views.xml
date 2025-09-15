@@ -11,6 +11,9 @@
                             <field name="name" />
                         </h1>
                     </div>
+                    <group>
+                        <field name="uid" />
+                    </group>
                     <notebook />
                 </sheet>
             </form>
@@ -22,7 +25,16 @@
         <field name="model">kubectl.namespace</field>
         <field name="arch" type="xml">
             <list>
+                <header>
+                    <button
+                        name="action_get_namespaces"
+                        string="Get Namespaces"
+                        type="object"
+                        class="oe_highlight"
+                    />
+                </header>
                 <field name="name" />
+                <field name="cluster_id" />
             </list>
         </field>
     </record>

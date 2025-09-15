@@ -9,8 +9,8 @@
                         <field name="name" />
                         <field name="chart_id" readonly="1" />
                         <field name="context_id" />
-                        <field name="namespace_id" />
                         <field name="create_namespace" />
+                        <field name="namespace_id" />
                         <field name="partner_id" />
                     </group>
                 </sheet>

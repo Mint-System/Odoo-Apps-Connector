@@ -42,9 +42,21 @@
                                 <group>
                                     <field name="chart_id" />
                                     <field name="context_id" />
-                                    <field name="namespace_id" />
-                                    <field name="create_namespace" />
+                                    <field
+                                        name="create_namespace"
+                                        invisible="namespace_id"
+                                    />
+                                    <field
+                                        name="namespace"
+                                        invisible="create_namespace == False"
+                                        required="True"
+                                    />
+                                    <field
+                                        name="namespace_id"
+                                        invisible="create_namespace"
+                                    />
                                     <field name="partner_id" />
+                                    <field name="ingress_url" widget="url" />
                                 </group>
                                 <group string="values.yaml">
                                     <field
@@ -52,12 +64,6 @@
                                         nolabel="1"
                                         class="terminal-screen"
                                     />
-                                </group>
-                                <group string="Access">
-                                    <field name="ingress_url" widget="url" />
-                                    <field name="ingress_scheme" />
-                                    <field name="ingress_host" />
-                                    <field name="ingress_port" />
                                 </group>
                             </group>
                         </page>
