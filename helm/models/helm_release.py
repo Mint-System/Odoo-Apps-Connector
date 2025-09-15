@@ -128,7 +128,7 @@ class HelmRelease(models.Model):
             if self.create_namespace:
                 command += ["--create-namespace", "--namespace", self.namespace]
             result = self.context_id.run(command)
-            if self.create_namespace:
+            if self.create_namespace and not self.namespace_id:
                 self.namespace_id = self.env["kubectl.namespace"].create(
                     {"name": self.namespace, "cluster_id": self.context_id.cluster_id.id}
                 )

@@ -24,7 +24,7 @@ class HelmChartInstall(models.TransientModel):
                     "chart_id": wizard.chart_id.id,
                     "context_id": wizard.context_id.id,
                     "create_namespace": wizard.create_namespace,
-                    "namespace": wizard.namespace.id,
+                    "namespace": wizard.namespace,
                     "namespace_id": wizard.namespace_id.id,
                     "partner_id": wizard.partner_id.id,
                 }

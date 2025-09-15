@@ -68,12 +68,4 @@
         <field name="namespace">odoo</field>
     </record>
 
-    <record id="ingress_nginx_release_demo" model="helm.release">
-        <field name="name">ingress-nginx</field>
-        <field name="chart_id" ref="helm.ingress_nginx_chart_demo" />
-        <field name="context_id" ref="kubectl.kubectl_context_kind_demo" />
-        <field name="create_namespace" eval="True" />
-        <field name="namespace">ingress-nginx</field>
-        <field name="partner_id" ref="helm.res_partner_mint_system_demo" />
-    </record>
 </odoo>

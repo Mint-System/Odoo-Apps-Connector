@@ -25,6 +25,20 @@
                     </group>
                     <notebook>
                         <page string="General Information" name="general_info">
+                            <group string="Custom values.yaml">
+                                <field
+                                    name="value_ids"
+                                    nolabel="1"
+                                    context="{'default_chart_id': id}"
+                                >
+                                    <list editable="bottom">
+                                        <field name="apply" />
+                                        <field name="path" />
+                                        <field name="value" />
+                                        <field name="field_id" />
+                                    </list>
+                                </field>
+                            </group>
                             <group>
                                 <group string="Chart values.yaml">
                                     <field
@@ -32,20 +46,6 @@
                                         nolabel="1"
                                         class="terminal-screen"
                                     />
-                                </group>
-                                <group string="Custom values.yaml">
-                                    <field
-                                        name="value_ids"
-                                        nolabel="1"
-                                        context="{'default_chart_id': id}"
-                                    >
-                                        <list editable="bottom">
-                                            <field name="apply" />
-                                            <field name="path" />
-                                            <field name="value" />
-                                            <field name="field_id" />
-                                        </list>
-                                    </field>
                                 </group>
                             </group>
                         </page>
