@@ -60,11 +60,7 @@ class KubectlContext(models.Model):
             temp_file.write(self.config)
             temp_file_path = temp_file.name
 
-        try:
-            yield temp_file_path
-        finally:
-            # Clean up the temporary file
-            os.unlink(temp_file_path)
+        yield temp_file_path
 
     @contextmanager
     def get_values_path(self, values):
@@ -78,40 +74,44 @@ class KubectlContext(models.Model):
             temp_file.write(values)
             temp_file_path = temp_file.name
 
-        try:
-            yield temp_file_path
-        finally:
-            # Clean up the temporary file
-            os.unlink(temp_file_path)
+        yield temp_file_path
 
     def run(self, command, values=None):
         """
         Run kubectl or helm command.
         """
         self.ensure_one()
+        config_path = None
+        values_path = None
 
-        # If config is given apply kubeconfig
-        if self.config:
-            with self.get_config_path() as config_path:
-                command = command[0] + ["--kubeconfig", config_path] + command[1:]
+        try:
+            # If config is given apply kubeconfig
+            if self.config:
+                with self.get_config_path() as config_path:
+                    command = command[0] + ["--kubeconfig", config_path] + command[1:]
 
-        # Apply context explicitlty
-        if command[0] == "kubectl":
-            command.extend([f"--context={self.name}"])
-        if command[0] == "helm":
-            command.extend(["--kube-context", self.name])
-            if values:
-                with self.get_values_path(values) as values_path:
-                    command.extend(["--values", values_path])
+            # Apply context explicitlty
+            if command[0] == "kubectl":
+                command.extend([f"--context={self.name}"])
+            if command[0] == "helm":
+                command.extend(["--kube-context", self.name])
+                if values:
+                    with self.get_values_path(values) as values_path:
+                        command.extend(["--values", values_path])
 
-        _logger.warning("Run command: %s", command)
-        return subprocess.run(
-            command,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+            _logger.warning("Run command: %s", command)
+            return subprocess.run(
+                command,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+        finally:
+            if config_path and os.path.exists(config_path):
+                os.unlink(config_path)
+            if values_path and os.path.exists(values_path):
+                os.unlink(values_path)
 
     def action_use_context(self):
         """
