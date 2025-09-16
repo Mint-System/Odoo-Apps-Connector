@@ -36,6 +36,18 @@ class HelmChart(models.Model):
             else:
                 chart.values = ""
 
+    def create_release(self, namespace_id, partner_id):
+        self.ensure_one()
+        return self.env["helm.release"].create(
+            {
+                "name": self.name,
+                "chart_id": self.id,
+                "context_id": namespace_id.cluster_id.cluster_ids[0].id,
+                "namespace_id": namespace_id.id,
+                "partner_id": partner_id.id,
+            }
+        )
+
     def action_release(self):
         """
         Opens the release wizard when the Release button is clicked.
