@@ -21,7 +21,7 @@ class HelmRelease(models.Model):
     context_id = fields.Many2one("kubectl.context", help="Context used for installation.", required=True)
     create_namespace = fields.Boolean()
     namespace = fields.Char()
-    namespace_id = fields.Many2one("kubectl.namespace", help="Target namespace in cluster.")
+    namespace_id = fields.Many2one("kubectl.namespace", string="Linked Namespace", help="Target namespace in cluster.")
     partner_id = fields.Many2one("res.partner", string="Customer")
     state = fields.Selection(
         selection=[("draft", "Draft"), ("installed", "Installed")],
@@ -94,13 +94,18 @@ class HelmRelease(models.Model):
                         if value.field_id:
                             release[value.field_id.name] = new_value
 
+                        def set_value(dict_values, path_parts, new_value):
+                            part = path_parts[0]
+                            if not isinstance(dict_values[part], dict):
+                                dict_values[part] = new_value
+                            else:
+                                path_parts.pop(0)
+                                set_value(dict_values[part], path_parts, new_value)
+
                         # Apply to path of values.yaml
                         if value.path:
                             path_parts = value.path.split(".")
-                            target = dict_values
-                            for part in path_parts[:-1]:
-                                target = target.setdefault(part, {})
-                            target[path_parts[-1]] = new_value
+                            set_value(dict_values, path_parts, new_value)
 
                     except Exception as e:
                         raise ValidationError(f"Invalid expression {value.value}: {str(e)}")
@@ -127,7 +132,7 @@ class HelmRelease(models.Model):
             command = ["helm", "install", self.name, f"{self.chart_id.repo_id.name}/{self.chart_id.name}"]
             if self.create_namespace:
                 command += ["--create-namespace", "--namespace", self.namespace]
-            result = self.context_id.run(command)
+            result = self.context_id.run(command, self.values)
             if self.create_namespace and not self.namespace_id:
                 self.namespace_id = self.env["kubectl.namespace"].create(
                     {"name": self.namespace, "cluster_id": self.context_id.cluster_id.id}

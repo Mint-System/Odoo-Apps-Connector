@@ -66,7 +66,25 @@ class KubectlContext(models.Model):
             # Clean up the temporary file
             os.unlink(temp_file_path)
 
-    def run(self, command):
+    @contextmanager
+    def get_values_path(self, values):
+        """
+        Context manager that creates a temporary values.yaml file.
+        """
+        self.ensure_one()
+
+        # Write values to temporary file
+        with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_file:
+            temp_file.write(values)
+            temp_file_path = temp_file.name
+
+        try:
+            yield temp_file_path
+        finally:
+            # Clean up the temporary file
+            os.unlink(temp_file_path)
+
+    def run(self, command, values=None):
         """
         Run kubectl or helm command.
         """
@@ -82,6 +100,9 @@ class KubectlContext(models.Model):
             command.extend([f"--context={self.name}"])
         if command[0] == "helm":
             command.extend(["--kube-context", self.name])
+            if values:
+                with self.get_values_path(values) as values_path:
+                    command.extend(["--values", values_path])
 
         _logger.warning("Run command: %s", command)
         return subprocess.run(
