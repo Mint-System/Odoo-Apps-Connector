@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <record id="res_partner_mint_system_demo" model="res.partner">
-        <field name="name">Mint System</field>
-    </record>
-
     <record id="kubernetes_build_demo" model="helm.repo">
         <field name="name">kubernetes-build</field>
         <field name="url">https://kubernetes.build</field>
@@ -36,6 +32,14 @@
         <field name="type">consu</field>
         <field name="list_price">80</field>
         <field name="chart_id" ref="helm.odoo_chart_demo" />
+    </record>
+
+    <record id="res_partner_mint_system_demo" model="res.partner">
+        <field name="name">Mint System GmbH</field>
+        <field
+            name="helm_product_ids"
+            eval="[(4, ref('product_odoo_community_edition_demo')),(4, ref('product_odoo_enterprise_edition_demo'))]"
+        />
     </record>
 
     <record id="odoo_chart_value_ingress_classname_demo" model="helm.chart.value">

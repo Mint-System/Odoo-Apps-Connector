@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<odoo>
+    <record id="view_partner_form" model="ir.ui.view">
+        <field name="name">helm.view_partner_form</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="kubectl.view_partner_form" />
+        <field name="arch" type="xml">
+            <page name="kubernetes" position="replace">
+                <page string="Kubernetes" name="kubernetes">
+                    <group>
+                        <group>
+                            <field name="is_provider" />
+                        </group>
+                    </group>
+                    <group string="Consulting Products">
+                        <field name="helm_product_ids" nolabel="1">
+                            <list />
+                        </field>
+                    </group>
+                </page>
+            </page>
+        </field>
+    </record>
+</odoo>
