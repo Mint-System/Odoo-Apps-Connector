@@ -5,11 +5,15 @@
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view" />
         <field name="arch" type="xml">
-            <group name="description" position="after">
-                <group string="Kubernetes" name="kubernetes">
-                    <field name="chart_id" />
-                </group>
-            </group>
+            <notebook position="inside">
+                <page string="Kubernetes" name="kubernetes">
+                    <group>
+                        <group>
+                            <field name="chart_id" />
+                        </group>
+                    </group>
+                </page>
+            </notebook>
         </field>
     </record>
 </odoo>

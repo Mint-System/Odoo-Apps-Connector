@@ -1,63 +1,39 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <record id="kubernetes_build_demo" model="helm.repo">
-        <field name="name">kubernetes-build</field>
-        <field name="url">https://kubernetes.build</field>
-    </record>
-
     <record id="ingress_nginx_demo" model="helm.repo">
         <field name="name">ingress-nginx</field>
         <field name="url">https://kubernetes.github.io/ingress-nginx</field>
     </record>
 
-    <record id="odoo_chart_demo" model="helm.chart">
-        <field name="name">odoo</field>
-        <field name="repo_id" ref="helm.kubernetes_build_demo" />
-    </record>
-
-    <record id="ingress_nginx_chart_demo" model="helm.chart">
+    <record id="chart_ingress_nginx_demo" model="helm.chart">
         <field name="name">ingress-nginx</field>
         <field name="repo_id" ref="helm.ingress_nginx_demo" />
-    </record>
-
-    <record id="product_odoo_community_edition_demo" model="product.product">
-        <field name="name">Odoo Community Edition</field>
-        <field name="type">consu</field>
-        <field name="list_price">50</field>
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
-    </record>
-
-    <record id="product_odoo_enterprise_edition_demo" model="product.product">
-        <field name="name">Odoo Enterprise Edition</field>
-        <field name="type">consu</field>
-        <field name="list_price">80</field>
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
     </record>
 
     <record id="res_partner_mint_system_demo" model="res.partner">
         <field name="name">Mint System GmbH</field>
         <field
             name="helm_product_ids"
-            eval="[(4, ref('product_odoo_community_edition_demo')),(4, ref('product_odoo_enterprise_edition_demo'))]"
+            eval="[(4, ref('product_odoo_community_edition')),(4, ref('product_odoo_enterprise_edition'))]"
         />
     </record>
 
-    <record id="odoo_chart_value_ingress_classname_demo" model="helm.chart.value">
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
+    <record id="chart_odoo_value_ingress_classname_demo" model="helm.chart.value">
+        <field name="chart_id" ref="helm.chart_odoo" />
         <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
         <field name="path">ingress.className</field>
         <field name="value">'haproxy'</field>
     </record>
 
-    <record id="odoo_chart_value_vshnpostgres_enabled_demo" model="helm.chart.value">
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
+    <record id="chart_odoo_value_vshnpostgres_enabled_demo" model="helm.chart.value">
+        <field name="chart_id" ref="helm.chart_odoo" />
         <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
         <field name="path">vshnPostgres.enabled</field>
         <field name="value">True</field>
     </record>
 
-    <record id="odoo_chart_value_cnpg_enabled_demo" model="helm.chart.value">
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
+    <record id="chart_odoo_value_cnpg_enabled_demo" model="helm.chart.value">
+        <field name="chart_id" ref="helm.chart_odoo" />
         <field name="apply">self.context_id.cluster_id.code in ['axo']</field>
         <field name="path">cnpg.enabled</field>
         <field name="value">False</field>
@@ -65,7 +41,7 @@
 
     <record id="odoo_release_demo" model="helm.release">
         <field name="name">odoo</field>
-        <field name="chart_id" ref="helm.odoo_chart_demo" />
+        <field name="chart_id" ref="helm.chart_odoo" />
         <field name="context_id" ref="kubectl.kubectl_context_kind_demo" />
         <field name="partner_id" ref="helm.res_partner_mint_system_demo" />
         <field name="create_namespace" eval="True" />

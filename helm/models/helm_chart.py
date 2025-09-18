@@ -13,7 +13,18 @@ class HelmChart(models.Model):
     name = fields.Char(required=True)
     repo_id = fields.Many2one("helm.repo", required=True)
     values = fields.Text(compute="_compute_values", string="Chart values.yaml")
-    value_ids = fields.One2many("helm.chart.value", "chart_id", string="Custom values.yaml")
+    value_ids = fields.One2many(
+        "helm.chart.value",
+        "chart_id",
+        string="Dynamic values",
+        help="These values will be computed and applied to the release.",
+    )
+    release_value_ids = fields.One2many(
+        "helm.chart.value",
+        "release_chart_id",
+        string="Predefined values",
+        help="These values will be copied to the release.",
+    )
     product_ids = fields.One2many("product.product", "chart_id")
     state = fields.Selection(related="repo_id.state")
 

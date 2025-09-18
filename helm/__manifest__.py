@@ -10,6 +10,7 @@
     "license": "AGPL-3",
     "depends": ["contacts", "product", "kubectl"],
     "data": [
+        "data/data.xml",
         "views/helm_repo_views.xml",
         "views/product_template.xml",
         "views/helm_chart_views.xml",

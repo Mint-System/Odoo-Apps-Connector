@@ -6,9 +6,9 @@ def display_notification(title, message, type):
             "title": title,
             "type": type,
             "message": message,
-            # "next": {
-            #     "type": "ir.actions.client",
-            #     "tag": "reload",
-            # },
+            "next": {
+                "type": "ir.actions.client",
+                "tag": "reload",
+            },
         },
     }

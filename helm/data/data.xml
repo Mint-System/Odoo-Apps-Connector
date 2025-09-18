@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="repo_kubernetes_build" model="helm.repo">
+        <field name="name">kubernetes-build</field>
+        <field name="url">https://kubernetes.build</field>
+    </record>
+
+    <record id="chart_odoo" model="helm.chart">
+        <field name="name">odoo</field>
+        <field name="repo_id" ref="helm.repo_kubernetes_build" />
+    </record>
+
+    <record id="product_odoo_community_edition" model="product.product">
+        <field name="name">Odoo Community Edition</field>
+        <field name="type">consu</field>
+        <field name="list_price">50</field>
+        <field name="chart_id" ref="helm.chart_odoo" />
+    </record>
+
+    <record id="product_odoo_enterprise_edition" model="product.product">
+        <field name="name">Odoo Enterprise Edition</field>
+        <field name="type">consu</field>
+        <field name="list_price">80</field>
+        <field name="chart_id" ref="helm.chart_odoo" />
+    </record>
+
+    <record id="chart_odoo_value_image" model="helm.chart.value">
+        <field name="path">image</field>
+        <field name="release_chart_id" eval="chart_odoo">
+    </record>
+
+    <record id="chart_odoo_value_image_option1" model="helm.chart.value.option">
+        <field name="value_id" ref="chart_odoo_value_image" />
+        <field name="value">mintsystem/odoo:18.0.20250909</field>
+    </record>
+
+    <record id="chart_odoo_value_image" model="helm.chart.value">
+        <field name="option_id" ref="chart_odoo_value_image_option1" />
+    </record>
+</odoo>

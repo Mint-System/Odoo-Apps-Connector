@@ -74,46 +74,46 @@ class HelmRelease(models.Model):
             else:
                 release.ingress_url = ""
 
-    def _apply_values(self):
-        """
-        Apply the custom values and chart values.
-        """
-        for release in self:
-            chart_values = release.chart_id.values  # This is a YAML string
-            try:
-                dict_values = yaml.safe_load(chart_values) or {}
-            except yaml.YAMLError as e:
-                raise ValidationError(f"Invalid YAML: {str(e)}")
+    # def _apply_values(self):
+    #     """
+    #     Apply the custom values and chart values.
+    #     """
+    #     for release in self:
+    #         chart_values = release.chart_id.values  # This is a YAML string
+    #         try:
+    #             dict_values = yaml.safe_load(chart_values) or {}
+    #         except yaml.YAMLError as e:
+    #             raise ValidationError(f"Invalid YAML: {str(e)}")
 
-            for value in release.chart_id.value_ids:
-                if safe_eval(value.apply, release._get_eval_context()):
-                    try:
-                        new_value = safe_eval(value.value, release._get_eval_context())
+    #         for value in release.chart_id.value_ids:
+    #             if safe_eval(value.apply, release._get_eval_context()):
+    #                 try:
+    #                     new_value = safe_eval(value.value, release._get_eval_context())
 
-                        # Apply to release field
-                        if value.field_id:
-                            release[value.field_id.name] = new_value
+    #                     # Apply to release field
+    #                     if value.field_id:
+    #                         release[value.field_id.name] = new_value
 
-                        def set_value(dict_values, path_parts, new_value):
-                            part = path_parts[0]
-                            if not isinstance(dict_values[part], dict):
-                                dict_values[part] = new_value
-                            else:
-                                path_parts.pop(0)
-                                set_value(dict_values[part], path_parts, new_value)
+    #                     def set_value(dict_values, path_parts, new_value):
+    #                         part = path_parts[0]
+    #                         if not isinstance(dict_values[part], dict):
+    #                             dict_values[part] = new_value
+    #                         else:
+    #                             path_parts.pop(0)
+    #                             set_value(dict_values[part], path_parts, new_value)
 
-                        # Apply to path of values.yaml
-                        if value.path:
-                            path_parts = value.path.split(".")
-                            set_value(dict_values, path_parts, new_value)
+    #                     # Apply to path of values.yaml
+    #                     if value.path:
+    #                         path_parts = value.path.split(".")
+    #                         set_value(dict_values, path_parts, new_value)
 
-                    except Exception as e:
-                        raise ValidationError(f"Invalid expression {value.value}: {str(e)}")
+    #                 except Exception as e:
+    #                     raise ValidationError(f"Invalid expression {value.value}: {str(e)}")
 
-            try:
-                release.values = yaml.safe_dump(dict_values, sort_keys=False)
-            except yaml.YAMLError as e:
-                raise ValidationError(f"Error converting to YAML: {str(e)}")
+    #         try:
+    #             release.values = yaml.safe_dump(dict_values, sort_keys=False)
+    #         except yaml.YAMLError as e:
+    #             raise ValidationError(f"Error converting to YAML: {str(e)}")
 
     def action_install(self):
         """
@@ -124,9 +124,6 @@ class HelmRelease(models.Model):
         # Check if chart has been added
         if self.chart_id.state != "added":
             raise ValidationError(_(f"The chart '{self.chart_id.name}' has not been added."))
-
-        # Apply custom values
-        self._apply_values()
 
         try:
             command = ["helm", "install", self.name, f"{self.chart_id.repo_id.name}/{self.chart_id.name}"]
