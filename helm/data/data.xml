@@ -26,7 +26,7 @@
 
     <record id="chart_odoo_value_image" model="helm.chart.value">
         <field name="path">image</field>
-        <field name="release_chart_id" eval="chart_odoo">
+        <field name="release_chart_id" eval="chart_odoo" />
     </record>
 
     <record id="chart_odoo_value_image_option1" model="helm.chart.value.option">
