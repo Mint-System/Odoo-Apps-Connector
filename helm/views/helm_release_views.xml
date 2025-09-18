@@ -59,6 +59,21 @@
                                     <field name="partner_id" />
                                     <field name="ingress_url" widget="url" />
                                 </group>
+                                <group string="Updatable values">
+                                    <field
+                                        name="value_ids"
+                                        nolabel="1"
+                                        context="{'default_release_id': id}"
+                                    >
+                                        <list>
+                                            <field name="path" />
+                                            <field
+                                                name="option_id"
+                                                context="{'default_value_id': id}"
+                                            />
+                                        </list>
+                                    </field>
+                                </group>
                                 <group string="values.yaml">
                                     <field
                                         name="values"

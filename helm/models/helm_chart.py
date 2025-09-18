@@ -52,6 +52,7 @@ class HelmChart(models.Model):
         Create release from chart. Select the first context of the cluster.
         """
         self.ensure_one()
+        release_value_ids = self.release_value_ids.copy()
         release_id = self.env["helm.release"].create(
             {
                 "name": self.name,
@@ -59,8 +60,11 @@ class HelmChart(models.Model):
                 "context_id": namespace_id.cluster_id.context_ids[0].id,
                 "namespace_id": namespace_id.id,
                 "partner_id": partner_id.id,
+                "value_ids": release_value_ids.ids,
             }
         )
+        release_value_ids.write({"chart_id": False, "release_id": release_id.id})
+
         return release_id
 
     def action_release(self):

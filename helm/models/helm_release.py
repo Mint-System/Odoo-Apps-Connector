@@ -20,15 +20,22 @@ class HelmRelease(models.Model):
     chart_id = fields.Many2one("helm.chart", help="Chart that shall be installed.", required=True)
     context_id = fields.Many2one("kubectl.context", help="Context used for installation.", required=True)
     create_namespace = fields.Boolean()
-    namespace = fields.Char()
+    namespace = fields.Char(help="Namespace with this input will be created.")
     namespace_id = fields.Many2one("kubectl.namespace", string="Linked Namespace", help="Target namespace in cluster.")
     partner_id = fields.Many2one("res.partner", string="Customer")
     state = fields.Selection(
         selection=[("draft", "Draft"), ("installed", "Installed")],
         default="draft",
     )
-    values = fields.Text(compute="_compute_values", store=True, string="Custom values.yaml")
-
+    value_ids = fields.One2many(
+        "helm.chart.value",
+        "release_id",
+        string="Updatable values",
+        help="These values can be changed.",
+    )
+    values = fields.Text(
+        compute="_compute_values", store=True, help="Values computed from the chart and the release values."
+    )
     ingress_url = fields.Char(compute="_compute_ingress_url")
 
     def _get_eval_context(self):
