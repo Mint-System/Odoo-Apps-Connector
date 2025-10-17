@@ -7,7 +7,7 @@ Odoo modules extending the `connector` module.
 Clone this repo into the Odoo addons directory.
 
 ```bash
-git clone git@github.com:Mint-System/Odoo-Apps-connector.git ./addons/connector
+git clone git@github.com:Mint-System/Odoo-Apps-Connector.git ./addons/connector
 ```
 
 ## Available modules
