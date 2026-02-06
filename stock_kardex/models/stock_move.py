@@ -31,35 +31,38 @@ class StockMove(models.Model):
     kardex_running_id = fields.Char(string="Picking BzId")
     kardex_sync = fields.Boolean(default=False)
     kardex_journal_status = fields.Char(string="Komplett")
-    has_kardex_location = fields.Boolean(compute="_compute_has_kardex_location", store=False)
-    kardex_running_id_string = fields.Char(string="BzIds", compute="_compute_kardex_running_id_string", store=False)
-    state = fields.Selection(selection_add=[("waiting_for_kardex", "Waiting for Kardex")])
-
-    # tracking_type_code = fields.Char(
-    #     string='Tracking Code',
-    #     compute='_compute_tracking_type_code',
-    #     store=False
-    # )
-    tracking_type_badge = fields.Html(
-        string="Tracking",
-        compute="_compute_tracking_type_badge",
-        sanitize=False,  # Only use if you're 100% sure your HTML is safe
-        store=False,
+    has_kardex_location = fields.Boolean(
+        compute="_compute_has_kardex_location", store=False
+    )
+    kardex_running_id_string = fields.Char(
+        string="BzIds", compute="_compute_kardex_running_id_string", store=False
+    )
+    state = fields.Selection(
+        selection_add=[("waiting_for_kardex", "Waiting for Kardex")]
     )
 
     @api.depends("move_line_ids.kardex_running_id")
     def _compute_kardex_running_id_string(self):
         for move in self:
             move.kardex_running_id_string = ", ".join(
-                map(str, move.move_line_ids.filtered(lambda line: line.kardex_running_id).mapped("kardex_running_id"))
+                map(
+                    str,
+                    move.move_line_ids.filtered(
+                        lambda line: line.kardex_running_id
+                    ).mapped("kardex_running_id"),
+                )
             )
 
     @api.depends("move_line_ids.kardex_status")
     def _compute_kardex_status(self):
         for move in self:
-            if move.move_line_ids and all(line.kardex_status == "2" for line in move.move_line_ids):
+            if move.move_line_ids and all(
+                line.kardex_status == "2" for line in move.move_line_ids
+            ):
                 move.kardex_status = "2"
-            elif move.move_line_ids and any(line.kardex_status == "3" for line in move.move_line_ids):
+            elif move.move_line_ids and any(
+                line.kardex_status == "3" for line in move.move_line_ids
+            ):
                 move.kardex_status = "3"
             else:
                 move.kardex_status = "1"
@@ -68,7 +71,9 @@ class StockMove(models.Model):
     @api.depends("move_line_ids.has_kardex_location")
     def _compute_has_kardex_location(self):
         for move in self:
-            move.has_kardex_location = any(move.move_line_ids.mapped("has_kardex_location"))
+            move.has_kardex_location = any(
+                move.move_line_ids.mapped("has_kardex_location")
+            )
 
     @api.depends("picking_id.kardex")
     def _compute_products_domain(self):
@@ -83,28 +88,6 @@ class StockMove(models.Model):
         #     obj.products_domain = domain
         for obj in self:
             obj.products_domain = []
-
-    @api.depends("product_id")
-    def _compute_tracking_type_code(self):
-        for line in self:
-            tracking = line.product_id.tracking
-            if tracking == "serial":
-                line.tracking_type_code = "S"
-            elif tracking == "lot":
-                line.tracking_type_code = "L"
-            else:
-                line.tracking_type_code = ""
-
-    @api.depends("product_id")
-    def _compute_tracking_type_badge(self):
-        for line in self:
-            tracking = line.product_id.tracking
-            badge = ""
-            if tracking == "serial":
-                badge = '<span style="background-color:#007bff;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">S</span>'
-            elif tracking == "lot":
-                badge = '<span style="background-color:#28a745;color:white;padding:2px 6px;border-radius:4px;font-size:85%;">L</span>'
-            line.tracking_type_badge = badge
 
     def _determine_picking_type(self):
         if self.picking_type_id.kardex_picking_type == "kardex_entry":
@@ -136,13 +119,18 @@ class StockMove(models.Model):
 
             kardex_picking_type = picking_type.kardex_picking_type
             _logger.info("### picking_type in stock move create %s " % (picking_type,))
-            _logger.info("### kardex picking_type_id in stock move create %s " % (kardex_picking_type,))
+            _logger.info(
+                "### kardex picking_type_id in stock move create %s "
+                % (kardex_picking_type,)
+            )
             product_id = vals.get("product_id")
             if product_id:
                 product = self.env["product.product"].browse(product_id)
 
                 last_location = product.last_location_id
-                _logger.info("### last_location in stock move create %s " % (last_location,))
+                _logger.info(
+                    "### last_location in stock move create %s " % (last_location,)
+                )
                 if last_location and kardex_picking_type == "kardex_entry":
                     # vals['location_dest_id'] = last_location.id
                     vals["location_final_id"] = last_location.id
