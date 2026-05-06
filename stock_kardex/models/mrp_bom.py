@@ -34,21 +34,25 @@ class MrpBomLine(models.Model):
     product_kardex_location = fields.Char(compute="_compute_product_kardex_location", store=False)
 
     def _compute_product_kardex_location(self):
+        proddb_exists = self.env["base.kardex.mixin"]._check_proddb()
         for bom in self:
-            product_default_code = bom.product_tmpl_id.default_code
-            data_material, data = self.env["product.template"]._read_external_object_from_proddb(
-                default_code=product_default_code
-            )
-            location_list = []
-            for row in data:
-                if row["LocationName"].startswith("Shuttle"):
-                    location_list.append("S")
-                elif row["LocationName"].startswith("Pallete"):
-                    location_list.append("P")
-                else:
-                    location_list.append("O")
+            if not proddb_exists:
+                bom.product_kardex_location = "no proddb defined"
+            else:
+                product_default_code = bom.product_tmpl_id.default_code
+                data_material, data = self.env["product.template"]._read_external_object_from_proddb(
+                    default_code=product_default_code
+                )
+                location_list = []
+                for row in data:
+                    if row["LocationName"].startswith("Shuttle"):
+                        location_list.append("S")
+                    elif row["LocationName"].startswith("Pallete"):
+                        location_list.append("P")
+                    else:
+                        location_list.append("O")
 
-            bom.product_kardex_location = ", ".join(set(location_list))
+                bom.product_kardex_location = ", ".join(set(location_list))
 
 
 #     # not needed

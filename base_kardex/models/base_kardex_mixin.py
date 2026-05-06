@@ -98,6 +98,13 @@ class BaseKardexMixin(models.AbstractModel):
         else:
             raise ValidationError(_("No active MSSQL instance found with priority=True"))
 
+    def _check_proddb(self):
+        proddb_instance = self.env["base.external.mssql"].search([("name", "=", "proddb")], limit=1)
+        if proddb_instance:
+            return True
+        return False
+
+
     def _execute_query_on_proddb(self, default_code=None, products=None):
         if default_code:
             params = ([default_code],)

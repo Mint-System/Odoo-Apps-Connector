@@ -134,11 +134,11 @@ class ProductTemplate(models.Model):
                 self.env["stock.quant"].sync_stocks(default_code=product.default_code)
 
     def get_info_from_kardex(self):
+        if not self.env["base.kardex.mixin"]._check_proddb():
+            return self._create_notification("No proddb defined")
         for product in self:
             product_default_code = product.default_code
             data_material, data = self._read_external_object_from_proddb(default_code=product_default_code)
-            _logger.warning("data_material from ppg called %s " % (data_material,))
-            _logger.info("data from ppg called %s " % (data,))
             if data_material:
                 message_list = []
                 if data:
