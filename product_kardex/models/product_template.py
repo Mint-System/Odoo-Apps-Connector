@@ -18,11 +18,6 @@ class ProductCategory(models.Model):
     _inherit = ["product.category"]
 
     kardex = fields.Boolean(default=False)
-    kardex_tracking = fields.Selection(
-        selection=[("none", "None"), ("serial", "Serial"), ("lot", "Lot")],
-        default="none",
-        string="Tracking Type",
-    )
     parent_id_name = fields.Char(related="parent_id.name")
     abbr = fields.Char(string="Abbreviation")
     is_storable = fields.Boolean(default=True)
@@ -77,9 +72,9 @@ class ProductTemplate(models.Model):
         res = super().default_get(fields_list)
         if "categ_id" in res:
             category = self.env["product.category"].browse(res["categ_id"])
-            if category and category.kardex_tracking:
-                res["tracking"] = category.kardex_tracking
-                if category.kardex_tracking != "none":
+            if category and category.tracking:
+                res["tracking"] = category.tracking
+                if category.tracking != "none":
                     res["is_storable"] = True
 
         return res
@@ -87,7 +82,7 @@ class ProductTemplate(models.Model):
     @api.onchange("categ_id")
     def _onchange_category_set_tracking(self):
         if self.categ_id and self.kardex:
-            self.tracking = self.categ_id.kardex_tracking or "none"
+            self.tracking = self.categ_id.tracking or "none"
 
     @api.onchange("categ_id")
     def _onchange_category_set_default_code(self):

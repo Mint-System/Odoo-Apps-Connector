@@ -139,12 +139,6 @@
                 <field name="abbr" string="Abbreviation" />
                 <field name="kardex" string="Kardex" />
                 <field name="parent_id_name" invisible="1" />
-                <field
-                    name="kardex_tracking"
-                    string="Tracking"
-                    class="oe_inline"
-                    invisible="not kardex"
-                />
                 <field name="is_storable" string="Bestandsführung" />
             </xpath>
         </field>
@@ -158,7 +152,7 @@
             <xpath expr="//field[@name='display_name']" position="after">
                 <field name="abbr" string="Abbreviation" />
                 <field name='kardex' string="Kardex" optional="show" />
-                <field name='kardex_tracking' string="Tracking" optional="show" />
+                <field name='tracking' string="Tracking" optional="show" />
                 <field name="is_storable" string="Bestandsführung" optional="show" />
             </xpath>
         </field>
