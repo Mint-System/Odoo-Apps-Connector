@@ -108,8 +108,6 @@
                 <field name="default_code" />
             </xpath>
             <xpath expr="//field[@name='name']" position="after">
-                <field name="kardex_search_term_one" />
-                <field name="kardex_search_term_two" />
                 <field name='kardex' string="Kardex" optional="show" />
             </xpath>
         </field>

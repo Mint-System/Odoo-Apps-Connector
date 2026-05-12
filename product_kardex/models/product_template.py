@@ -13,16 +13,6 @@ NUMBER_OF_KARDEX_PRODUCTS_TO_GET = 5
 KARDEX_DATE_HANDLING = "send"  # or 'create'
 
 
-class ProductCategory(models.Model):
-    _name = "product.category"
-    _inherit = ["product.category"]
-
-    kardex = fields.Boolean(default=False)
-    parent_id_name = fields.Char(related="parent_id.name")
-    abbr = fields.Char(string="Abbreviation")
-    is_storable = fields.Boolean(default=True)
-
-
 class ProductTemplate(models.Model):
     _name = "product.template"
     _inherit = ["product.template", "base.kardex.mixin"]

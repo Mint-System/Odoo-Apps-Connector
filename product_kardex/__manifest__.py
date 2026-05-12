@@ -8,7 +8,7 @@
     "category": "Stock",
     "version": "18.0.1.0.0",
     "license": "AGPL-3",
-    "depends": ["product", "base_kardex", "product_category_tracking]",
+    "depends": ["product", "base_kardex", "product_category_tracking"],
     "data": [
         "views/product_kardex_views.xml",
     ],
