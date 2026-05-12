@@ -104,6 +104,18 @@ class BaseKardexMixin(models.AbstractModel):
             return True
         return False
 
+    def _check_kardex(self):
+        kardexdb_instance = self.env["base.external.mssql"].search([("name", "=ilike", "kardex%")], limit=1)
+        if not kardexdb_instance:
+            _logger.warning("No Kardex database configuration found.")
+            return False
+        try:
+            with kardexdb_instance.connection_open():
+                pass
+            return True
+        except Exception as e:
+            _logger.warning("Kardex DB connection failed: %s", e)
+            return False
 
     def _execute_query_on_proddb(self, default_code=None, products=None):
         if default_code:
