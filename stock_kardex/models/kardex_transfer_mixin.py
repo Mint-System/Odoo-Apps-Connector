@@ -46,7 +46,8 @@ class KardexTransferMixin(models.AbstractModel):
             picking_id.write({"kardex_picking_state": "waiting_for_kardex"})
 
     def send_to_kardex(self, picking_origin=None):
-        _logger.info("########### SEND TO KARDEX CALLED ############")
+        if not self._check_kardex():
+            return False
 
         kardex_location = self._get_kardex_location()
 
