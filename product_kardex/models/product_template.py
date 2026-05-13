@@ -449,6 +449,9 @@ class ProductTemplate(models.Model):
         """
         if a kardex product has been changed the kardex_done flag is set to False
         """
+        if not self._check_kardex():
+            return super().write(vals)
+
         _logger.info("### vals in product template write %s " % (vals,))
         # if vals:
         #     for record in self:
