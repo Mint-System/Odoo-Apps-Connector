@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 
 class MrpProduction(models.Model):
     _name = "mrp.production"
-    _inherit = ["validation.mixin", "mrp.production"]
+    _inherit = ["mrp.production", "validation.mixin"]
     _description = "Kardex MRP Production"
 
     kardex = fields.Boolean(compute="_compute_kardex", store=True)
@@ -18,7 +18,7 @@ class MrpProduction(models.Model):
             # Check if the related product template's kardex field is True
             record.kardex = record.product_id.product_tmpl_id.kardex
 
-    @api.model
+    @api.model_create_multi
     def create(self, vals_list):
         param = self.env["ir.config_parameter"].sudo()
 

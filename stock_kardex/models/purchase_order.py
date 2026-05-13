@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 
 class PurchaseOrder(models.Model):
     _name = "purchase.order"
-    _inherit = ["validation.mixin", "purchase.order", "base.kardex.mixin"]
+    _inherit = ["purchase.order", "validation.mixin", "base.kardex.mixin"]
     _description = "Purchase Kardex Order"
 
     kardex = fields.Boolean(default=False, compute="_compute_kardex", store=True)

@@ -2,7 +2,6 @@ from odoo import api, fields, models
 
 
 class StockPickingType(models.Model):
-    _name = "stock.picking.type"
     _inherit = "stock.picking.type"
 
     kardex_picking_type = fields.Selection(

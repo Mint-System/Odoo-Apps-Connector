@@ -9,7 +9,7 @@ _logger = logging.getLogger(__name__)
 
 class StockMoveLine(models.Model):
     _name = "stock.move.line"
-    _inherit = ["kardex.transfer.mixin", "stock.move.line", "base.kardex.mixin"]
+    _inherit = ["stock.move.line", "kardex.transfer.mixin", "base.kardex.mixin"]
     _description = "Stock Move Line"
     # _depends = ["kardex.transfer.mixin"]
 

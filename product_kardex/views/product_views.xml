@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-    <record id="product_template_form_view_inherit_kardex" model="ir.ui.view">
-        <field name="name">product.template.kardex.form</field>
+    <record id="product_template_only_form_view" model="ir.ui.view">
+        <field name="name">product_kardex.product_template_only_form_view</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_only_form_view" />
         <field name="arch" type="xml">
@@ -12,7 +12,7 @@
     </record>
 
     <record id="product_template_form_view" model="ir.ui.view">
-        <field name="name">product.template.kardex.form</field>
+        <field name="name">product_kardex.product_template_form_view</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_form_view" />
         <field name="arch" type="xml">
@@ -23,6 +23,7 @@
                     string=""
                     class="btn-primary"
                     icon="fa-info"
+                    title="info from kardex"
                 />
                 <button
                     name="sync_stock_of_single_product"
@@ -30,6 +31,7 @@
                     string=""
                     class="btn-primary"
                     icon="fa-arrows-h"
+                    title="sync stock"
                 />
             </xpath>
             <xpath
@@ -99,7 +101,7 @@
     </record>
 
     <record id="product_template_tree_view" model="ir.ui.view">
-        <field name="name">product.template.kardex.tree</field>
+        <field name="name">product_kardex.product_template_tree_view</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_tree_view" />
         <field name="arch" type="xml">
@@ -113,8 +115,8 @@
         </field>
     </record>
 
-    <record id="product_template_search_view_inherited" model="ir.ui.view">
-        <field name="name">product.template.search.inherit</field>
+    <record id="product_template_search_view" model="ir.ui.view">
+        <field name="name">product_kardex.product_template_search_view</field>
         <field name="model">product.template</field>
         <field name="inherit_id" ref="product.product_template_search_view" />
         <field name="arch" type="xml">
@@ -129,7 +131,7 @@
     </record>
 
     <record id="product_category_form_view" model="ir.ui.view">
-        <field name="name">product.category.kardex.form</field>
+        <field name="name">product_kardex.product_category_form_view</field>
         <field name="model">product.category</field>
         <field name="inherit_id" ref="product.product_category_form_view" />
         <field name="arch" type="xml">
@@ -143,7 +145,7 @@
     </record>
 
     <record id="product_category_list_view" model="ir.ui.view">
-        <field name="name">product.category.kardex.list</field>
+        <field name="name">product_kardex.product_category_list_view</field>
         <field name="model">product.category</field>
         <field name="inherit_id" ref="product.product_category_list_view" />
         <field name="arch" type="xml">

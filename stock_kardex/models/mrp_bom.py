@@ -6,9 +6,7 @@ _logger = logging.getLogger(__name__)
 
 
 class MrpBom(models.Model):
-    _name = "mrp.bom"
-    _inherit = ["mrp.bom"]
-    _description = "Kardex BoM"
+    _inherit = "mrp.bom"
 
     kardex = fields.Boolean(compute="_compute_kardex", store=True)
 

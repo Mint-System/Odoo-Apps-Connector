@@ -10,7 +10,7 @@ class StockPickingJournal(models.Model):
 
     _sql_constraints = [("unique_journal", "unique(journal_id)", "The Journal ID must be unique!")]
 
-    @api.model
+    @api.model_create_multi
     def create(self, vals):
         existing = self.search([("journal_id", "=", vals.get("journal_id"))], limit=1)
         if existing:

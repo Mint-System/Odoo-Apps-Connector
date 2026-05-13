@@ -8,15 +8,15 @@
     "category": "Stock",
     "version": "18.0.1.0.0",
     "license": "AGPL-3",
-    "depends": ["product", "base_kardex", "product_category_tracking"],
+    "depends": ["stock", "base_kardex", "product_category_tracking"],
     "data": [
-        "views/product_kardex_views.xml",
+        "data/cron.xml",
+        "views/product_views.xml",
     ],
     "installable": True,
     "application": False,
     "auto_install": False,
     "images": ["images/screen.png"],
-    "demo": ["demo/document_demo.xml"],
     "assets": {
         "web.assets_backend": [
             "product_kardex/static/src/js/*.js",

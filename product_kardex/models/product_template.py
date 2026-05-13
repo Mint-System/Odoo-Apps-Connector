@@ -16,7 +16,6 @@ KARDEX_DATE_HANDLING = "send"  # or 'create'
 class ProductTemplate(models.Model):
     _name = "product.template"
     _inherit = ["product.template", "base.kardex.mixin"]
-    _description = "Kardex PPG Data"
 
     product_category_ids_domain = fields.Binary(compute="_compute_category_domain")
 
@@ -449,7 +448,7 @@ class ProductTemplate(models.Model):
         """
         if a kardex product has been changed the kardex_done flag is set to False
         """
-        if not self._check_kardex():
+        if not self._is_kardex_db_connected():
             return super().write(vals)
 
         _logger.info("### vals in product template write %s " % (vals,))

@@ -5,7 +5,6 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-
 class ValidationMixin(models.AbstractModel):
     _name = "validation.mixin"
     _description = "Validation Mixin"
