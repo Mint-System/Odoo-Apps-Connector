@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytz
 
-from odoo import _, models
+from odoo import _, api, models
 from odoo.exceptions import ValidationError
 
 # from odoo.tools import pytz
@@ -104,18 +104,18 @@ class BaseKardexMixin(models.AbstractModel):
             return True
         return False
 
+    @api.model
     def _check_kardex(self):
+        connected = False
         kardexdb_instance = self.env["base.external.mssql"].search([("name", "=ilike", "kardex%")], limit=1)
-        if not kardexdb_instance:
-            _logger.warning("No Kardex database configuration found.")
-            return False
-        try:
-            with kardexdb_instance.connection_open():
-                pass
-            return True
-        except Exception as e:
-            _logger.warning("Kardex DB connection failed: %s", e)
-            return False
+        if kardexdb_instance:
+            try:
+                with kardexdb_instance.connection_open():
+                    connected = True
+                return True
+            except Exception as e:
+                _logger.warning("Kardex DB connection failed: %s", e)
+        self.env["ir.config_parameter"].sudo().set_param("base_kardex.ext_db_connected", str(connected))
 
     def _execute_query_on_proddb(self, default_code=None, products=None):
         if default_code:
@@ -304,3 +304,9 @@ class BaseKardexMixin(models.AbstractModel):
     #     ], order='write_date desc', limit=1)
 
     #     return quant.location_id if quant else False
+    #
+
+    @api.model
+    def _is_kardex_db_connected(self):
+        val = self.env["ir.config_parameter"].sudo().get_param("base_kardex.ext_db_connected", default="False")
+        return val == "True"
