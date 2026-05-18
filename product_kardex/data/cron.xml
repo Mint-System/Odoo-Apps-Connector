@@ -4,7 +4,7 @@
     <field name="name">Check Kardex DB Connection</field>
     <field name="model_id" ref="product.model_product_template"/>
     <field name="code">model._check_kardex()</field>
-    <field name="interval_number">2</field>
+    <field name="interval_number">30</field>
     <field name="interval_type">minutes</field>
     <field name="active">True</field>
 </record>
