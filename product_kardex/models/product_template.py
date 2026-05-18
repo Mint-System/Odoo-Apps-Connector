@@ -118,7 +118,7 @@ class ProductTemplate(models.Model):
                 self.env["stock.quant"].sync_stocks(default_code=product.default_code)
 
     def get_info_from_kardex(self):
-        if not self.env["base.kardex.mixin"]._check_proddb():
+        if not self.env["base.kardex.mixin"]._is_proddb_connected():
             return self._create_notification("No proddb defined")
         for product in self:
             product_default_code = product.default_code
@@ -138,6 +138,12 @@ class ProductTemplate(models.Model):
         return self._create_notification(message)
 
     def update_to_kardex(self):
+        if not self._is_kardex_db_connected():
+            message = "No Connection to Kardex DB."
+            return self._create_notification(message)
+
+        update_counter = 0
+        not_found_counter = 0
         for product in self:
             product_vals = product.read()[0]
             if self._check_already_in_kardex(product):
@@ -145,13 +151,16 @@ class ProductTemplate(models.Model):
                     re.sub(r"<.*?>", "", product_vals["description"]) if product_vals["description"] else ""
                 )
                 self._update_external_object(product_vals)
-                message = "Kardex Articel was updated."
-                return self._create_notification(message)
+                update_counter += 1
             else:
-                message = "This Article is not known in Kardex."
-                return self._create_notification(message)
+                not_found_counter += 1
+            message = f"{update_counter} articles updated, {not_found_counter} articles not known in Kardex."
+
+            return self._create_notification(message)
 
     def send_to_kardex(self):
+        if not self._is_kardex_db_connected():
+            raise ValidationError(_("No Connection to Kardex."))
         for product in self:
             product_vals = product.read()[0]
             if self._check_already_in_kardex(product):

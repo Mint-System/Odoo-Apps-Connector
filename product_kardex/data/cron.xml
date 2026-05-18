@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
-<record id="cron_check_kardex_db" model="ir.cron">
-    <field name="name">Check Kardex DB Connection</field>
-    <field name="model_id" ref="product.model_product_template"/>
-    <field name="code">model._check_kardex()</field>
-    <field name="interval_number">30</field>
-    <field name="interval_type">minutes</field>
-    <field name="active">True</field>
-</record>
+    <record id="cron_check_kardex_db" model="ir.cron">
+        <field name="name">Check Kardex DB Connection</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="code">model._check_kardex()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_check_proddb" model="ir.cron">
+        <field name="name">Check ProdDB Connection</field>
+        <field name="model_id" ref="product.model_product_template"/>
+        <field name="code">model._check_proddb()</field>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

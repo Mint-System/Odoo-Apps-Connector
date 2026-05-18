@@ -203,7 +203,7 @@ class StockQuant(models.Model):
 
         if USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS:
             kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
-        elif not self.env["base.kardex.mixin"]._check_proddb():
+        elif not self.env["base.kardex.mixin"]._is_proddb_connected():
             kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
         else:
             data_material, kardex_data = self._get_data_direct_call(default_code=default_code, products=product_mapping)

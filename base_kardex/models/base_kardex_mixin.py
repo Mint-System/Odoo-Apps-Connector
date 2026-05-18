@@ -99,20 +99,25 @@ class BaseKardexMixin(models.AbstractModel):
             raise ValidationError(_("No active MSSQL instance found with priority=True"))
 
     def _check_proddb(self):
+        connected = False
         proddb_instance = self.env["base.external.mssql"].search([("name", "=", "proddb")], limit=1)
         if proddb_instance:
-            return True
-        return False
+            try:
+                with proddb_instance.connection_open():
+                    connected = True
+            except Exception as e:
+                _logger.warning("Proddb DB connection failed: %s", e)
+        self.env["ir.config_parameter"].sudo().set_param("base_kardex.proddb_connected", str(connected))
 
     @api.model
     def _check_kardex(self):
         connected = False
-        kardexdb_instance = self.env["base.external.mssql"].search([("name", "=ilike", "kardex%")], limit=1)
+        kardexdb_instance = self.env["base.external.mssql"].search([("name", "=ilike", "Kardex%")], limit=1)
+        _logger.warning(f"kardexdb_instance: {kardexdb_instance}")
         if kardexdb_instance:
             try:
                 with kardexdb_instance.connection_open():
                     connected = True
-                return True
             except Exception as e:
                 _logger.warning("Kardex DB connection failed: %s", e)
         self.env["ir.config_parameter"].sudo().set_param("base_kardex.ext_db_connected", str(connected))
@@ -309,4 +314,9 @@ class BaseKardexMixin(models.AbstractModel):
     @api.model
     def _is_kardex_db_connected(self):
         val = self.env["ir.config_parameter"].sudo().get_param("base_kardex.ext_db_connected", default="False")
+        return val == "True"
+
+    @api.model
+    def _is_proddb_connected(self):
+        val = self.env["ir.config_parameter"].sudo().get_param("base_kardex.proddb_connected", default="False")
         return val == "True"

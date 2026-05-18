@@ -32,7 +32,7 @@ class MrpBomLine(models.Model):
     product_kardex_location = fields.Char(compute="_compute_product_kardex_location", store=False)
 
     def _compute_product_kardex_location(self):
-        proddb_exists = self.env["base.kardex.mixin"]._check_proddb()
+        proddb_exists = self.env["base.kardex.mixin"]._is_proddb_connected()
         for bom in self:
             if not proddb_exists:
                 bom.product_kardex_location = "no proddb defined"
