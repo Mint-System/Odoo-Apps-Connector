@@ -201,7 +201,7 @@ class StockQuant(models.Model):
         if not all_products and not products and not default_code:
             return False  # No products to update
 
-        if USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS:
+        if USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS and self.env["base.kardex.mixin"]._is_kardex_db_connected():
             kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
         elif not self.env["base.kardex.mixin"]._is_proddb_connected():
             kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
