@@ -18,7 +18,7 @@ class StockMove(models.Model):
     #     domain="[('kardex', '=', parent.kardex)]",
     # )  # this adds domain to existing domain!
     kardex_id = fields.Integer(string="Kardex Id")
-    kardex_done = fields.Boolean(string="in Kardex bekannt", default=False)
+    kardex_done = fields.Boolean(related='picking_id.kardex_done', store=True)
     kardex_row_create_time = fields.Char(string="Kardex Row_Create_Time")
     kardex_row_update_time = fields.Char(string="Kardex Row_Update_Time")
     kardex_status = fields.Selection(
