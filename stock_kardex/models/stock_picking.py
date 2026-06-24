@@ -137,7 +137,7 @@ class StockPicking(models.Model):
             for move in moves:
                 sql = f"SELECT Suchbegriff, Row_Update_Time FROM PPG_Artikel WHERE Suchbegriff = '{move.product_id.default_code}'"
                 result = self._execute_query_on_mssql("select", sql)
-\               if result and result[0]["Suchbegriff"] == move.product_id.default_code:
+                if result and result[0]["Suchbegriff"] == move.product_id.default_code:
                     move.product_id.write({"kardex": True, "kardex_done": True})
                 else:
                     return
