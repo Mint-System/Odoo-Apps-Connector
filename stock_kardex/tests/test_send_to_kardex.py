@@ -128,6 +128,7 @@ class TestSendToKardex(TransactionCase):
         self.assertEqual(line.kardex_running_id, "900004")
         self.assertEqual(line.kardex_status, "1")
         self.assertEqual(line.picking_id.kardex_picking_state, "waiting_for_kardex")
+        self.assertTrue(line.picking_id.kardex_done, "the picking shows that it is known in Kardex")
 
     def test_nothing_is_sent_without_sdb_connection(self):
         line = self._make_line("kardex_get", self.kardex, self.customers)

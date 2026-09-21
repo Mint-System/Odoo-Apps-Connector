@@ -152,4 +152,5 @@ class KardexTransferMixin(models.AbstractModel):
                     "kardex_running_id": running_id,
                 }
             )
+            self.picking_id.kardex_done = True
             self._update_picking_state()
