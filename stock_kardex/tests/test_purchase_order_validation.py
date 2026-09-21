@@ -17,7 +17,8 @@ class TestPurchaseOrderPickingTypeValidation(TransactionCase):
         self.product = self.env["product.product"].create(
             {
                 "name": "Test Product",
-                "type": "product",
+                "type": "consu",
+                "is_storable": True,
                 "purchase_ok": True,
                 "uom_id": self.env.ref("uom.product_uom_unit").id,
             }
