@@ -7,7 +7,6 @@ import pytz
 from odoo import _, api, models
 from odoo.exceptions import ValidationError
 
-
 _logger = logging.getLogger(__name__)
 
 ODOO_KARDEX_PRODUCT_FIXER = {
@@ -157,11 +156,18 @@ class BaseKardexMixin(models.AbstractModel):
         result = proddb_instance.execute("select", query, params)
         return result_material, result
 
+    def _sql_placeholder(self):
+        """Parameter placeholder of the driver of the active SDB connection."""
+        driver = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)._get_db_driver()
+        return "?" if driver == "pyodbc" else "%s"
+
     def _check_already_in_kardex(self, record):
-        sql_query = f"SELECT ID, Suchbegriff FROM PPG_Artikel WHERE Suchbegriff='{record.default_code}'"
-        rows = self._execute_query_on_mssql("select", sql_query)
-        if len(rows) > 0:
-            return True
+        rows = self._execute_query_on_mssql(
+            "select",
+            f"SELECT ID, Suchbegriff FROM PPG_Artikel WHERE Suchbegriff = {self._sql_placeholder()}",
+            (record.default_code,),
+        )
+        return len(rows) > 0
 
     def _read_external_object_from_proddb(self, default_code=None, products=None):
         rows_material, rows = self._execute_query_on_proddb(default_code, products)
@@ -170,26 +176,15 @@ class BaseKardexMixin(models.AbstractModel):
     def _update_external_object(self, vals):
         table = "PPG_Artikel"
         default_code = vals.pop("default_code", None)
-        # translate vals dictionary to external database scheme
-        if default_code:
-            fixer = ODOO_KARDEX_PRODUCT_FIXER
-            kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
-            # building list
-            kardex_list = []
-            for key, value in kardex_dict.items():
-                if type(value) is int:  # Handle Integers
-                    kardex_list.append(f"{key} = {value}")
-                else:  # Default Handler
-                    kardex_list.append(f"{key} = '{value}'")
-                # generate string from key-value-pair list
-            data = ", ".join(kardex_list)
-            # building sql query
+        if not default_code:
+            raise ValidationError(_("The data contains no default code."))
 
-            sql = f"UPDATE {table} SET {data} WHERE Suchbegriff = '{default_code}'"
-            self._execute_query_on_mssql("update", sql)
-            return True
-
-        raise ValidationError(_("The data contains no default code."))
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(ODOO_KARDEX_PRODUCT_FIXER, vals))
+        placeholder = self._sql_placeholder()
+        assignments = ", ".join(f"{column} = {placeholder}" for column in kardex_dict)
+        sql = f"UPDATE {table} SET {assignments} WHERE Suchbegriff = {placeholder}"
+        self._execute_query_on_mssql("update", sql, (*kardex_dict.values(), default_code))
+        return True
 
     def _get_dates(self, record, date_handling):
         if date_handling == "create":
@@ -204,42 +199,24 @@ class BaseKardexMixin(models.AbstractModel):
         return create_time, update_time
 
     def _create_external_object(self, vals, table):
-        # get the db driver
+        """Insert a row into PPG_Artikel or PPG_Auftraege.
 
-        sqldb = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
-        db_driver = sqldb._get_db_driver()
-
-        # Pick the fixer based on table
-        if table == "PPG_Artikel":
-            fixer = ODOO_KARDEX_PRODUCT_FIXER
-        elif table == "PPG_Auftraege":
-            fixer = ODOO_KARDEX_PICKING_FIXER
-        else:
+        Returns ``(new_id, create_time, update_time, running_id)``; the timestamps
+        and the BzId are read back because the SDB sets them itself.
+        """
+        fixers = {"PPG_Artikel": ODOO_KARDEX_PRODUCT_FIXER, "PPG_Auftraege": ODOO_KARDEX_PICKING_FIXER}
+        if table not in fixers:
             raise ValueError(f"Unsupported table: {table}")
 
-        # Clean and prepare dictionary
-        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
+        kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixers[table], vals))
+        placeholders = ", ".join([self._sql_placeholder()] * len(kardex_dict))
+        sql = f"INSERT INTO {table} ({', '.join(kardex_dict)}) VALUES ({placeholders})"
+        new_id = self._execute_query_on_mssql("insert", sql, tuple(kardex_dict.values()))
 
-        # Extract columns and values
-        columns = ", ".join(kardex_dict.keys())
-        if db_driver == "pymssql":
-            placeholders = ", ".join(["%s"] * len(kardex_dict))
-        elif db_driver == "pyodbc":
-            placeholders = ", ".join(["?"] * len(kardex_dict))
-        values = tuple(kardex_dict.values())
-
-        # Construct SQL safely
-        sql = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-
-        new_id = self._execute_query_on_mssql("insert", sql, values)
-        # in case of inserting a record result is id of created object
-        # getting dates from external database
         columns = "Row_Create_Time, Row_Update_Time"
         if table == "PPG_Auftraege":
-            columns = f"{columns}, BzId"
-
-        sql = f"SELECT {columns} FROM {table} WHERE ID = {new_id}"
-        record = self._execute_query_on_mssql("select", sql)
+            columns += ", BzId"
+        record = self._execute_query_on_mssql("select", f"SELECT {columns} FROM {table} WHERE ID = {int(new_id)}")
 
         create_time = update_time = None
         running_id = ""

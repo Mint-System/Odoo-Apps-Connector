@@ -71,15 +71,11 @@ class StockPicking(models.Model):
                 picking.state = "waiting_for_kardex"
 
     def check_kardex(self):
-        for picking in self:
-            moves = self.env["stock.move"].search([("picking_id", "=", picking.id)])
-            for move in moves:
-                sql = f"SELECT Suchbegriff, Row_Update_Time FROM PPG_Artikel WHERE Suchbegriff = '{move.product_id.default_code}'"
-                result = self._execute_query_on_mssql("select", sql)
-                if result and result[0]["Suchbegriff"] == move.product_id.default_code:
-                    move.product_id.write({"kardex": True, "kardex_done": True})
-                else:
-                    return
+        """Button: mark the products of this picking as known in Kardex if PPG_Artikel has them."""
+        for move in self.move_ids:
+            if not self._check_already_in_kardex(move.product_id):
+                return
+            move.product_id.write({"kardex": True, "kardex_done": True})
 
     def _check_picking_type(self):
         if self.origin and self.env["purchase.order"].search([("name", "=", self.origin)]):
@@ -136,51 +132,18 @@ class StockPicking(models.Model):
                     picking.write({"state": "assigned"})
 
     def update_status_from_kardex(self):
-        message_list = []
-        for picking in self:
-            moves = self.env["stock.move.line"].search(
-                [
-                    ("picking_id", "=", picking.id),
-                    ("kardex_running_id", "!=", None),
-                    ("kardex_status", "not in", ["2", "4"]),
-                ]
-            )
-
-            for move in moves:
-                kardex_running_id = move.kardex_running_id
-                old_status = move.kardex_status
-                sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE BzId = {kardex_running_id}"
-                result = self._execute_query_on_mssql("select_one", sql)
-                if result:
-                    new_status = result["Status"]
-                    update_time = result["Row_Update_Time"]
-
-                    updated = False
-
-                    if new_status != old_status and update_time:
-                        updated = True
-                        move.write(
-                            {
-                                "kardex_status": str(new_status),
-                                "kardex_row_update_time": update_time,
-                            }
-                        )
-
-                    if updated:
-                        message_list.append(
-                            f"Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}."
-                        )
-
-                    else:
-                        message_list.append(f"Kardex Status for {move.product_id.name} was not updated.")
-
-                picking._update_picking_state()
-        message = ", ".join(message_list)
-        return self._create_notification(message)
+        """Button: update the status of the open Kardex lines of these pickings."""
+        lines = self.move_line_ids.filtered(
+            lambda line: line.kardex_running_id and line.kardex_status not in ("2", "4")
+        )
+        return lines.update_move_lines_from_kardex()
 
     def sync_status(self):
-        pickings = self.env["stock.picking"].search([("move_line_ids.kardex_status", "=", "1")])
-        pickings.update_status_from_kardex()
+        """Cron: ask the SDB which pending orders Kardex has fetched (status 1 -> 2)."""
+        domain = [("kardex_running_id", "!=", None), ("kardex_status", "=", "1")]
+        if self:
+            domain.append(("picking_id", "in", self.ids))
+        self.env["stock.move.line"].search(domain).update_move_lines_from_kardex()
 
     def sync_pickings(self):
         """Read the answers Kardex wrote to the journal (PPG_Journal) into the move lines it fetched.

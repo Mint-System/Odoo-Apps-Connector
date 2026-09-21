@@ -186,3 +186,29 @@ class TestJournalSync(TransactionCase):
         self.assertEqual(query.call_count, 1)
         self.assertEqual(line.kardex_status, "4")
         self.assertEqual(other_line.kardex_status, "2")
+
+    def _sync_status(self, sdb_row):
+        with patch.object(BaseKardexMixin, "_execute_query_on_mssql", return_value=sdb_row):
+            self.env["stock.picking"].sync_status()
+
+    def test_order_fetched_by_kardex_is_marked(self):
+        picking, line = self._make_line()
+        line.kardex_status = "1"
+        self._sync_status({"Status": 2, "Row_Update_Time": "Mär 21 2024  3:49PM"})
+
+        self.assertEqual(line.kardex_status, "2")
+        self.assertEqual(line.kardex_row_update_time, "Mär 21 2024  3:49PM")
+
+    def test_order_not_yet_fetched_stays_pending(self):
+        picking, line = self._make_line()
+        line.kardex_status = "1"
+        self._sync_status({"Status": 1, "Row_Update_Time": None})
+
+        self.assertEqual(line.kardex_status, "1")
+
+    def test_status_unknown_to_odoo_is_ignored(self):
+        picking, line = self._make_line()
+        line.kardex_status = "1"
+        self._sync_status({"Status": 9, "Row_Update_Time": "Mär 21 2024  3:49PM"})
+
+        self.assertEqual(line.kardex_status, "1")

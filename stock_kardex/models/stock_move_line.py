@@ -56,50 +56,26 @@ class StockMoveLine(models.Model):
                 record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
             )
 
-    def sync_move_line_status(self):
-        move_lines = self.env["stock.move.line"].search(
-            [
-                ("kardex_running_id", "!=", None),
-                ("kardex_status", "not in", ["2", "4"]),
-            ]
-        )
-        move_lines.update_move_lines_from_kardex()
-
     def update_move_lines_from_kardex(self):
-        message_list = []
-        for move in self:
-            kardex_running_id = move.kardex_running_id
-            old_status = move.kardex_status
-            sql = f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE BzId = {kardex_running_id}"
-            result = self._execute_query_on_mssql("select_one", sql)
-            if result:
-                new_status = result["Status"]
-                update_time = result["Row_Update_Time"]
-
-                updated = False
-
-                if new_status != old_status and update_time:
-                    updated = True
-                    move.write(
-                        {
-                            "kardex_status": str(new_status),
-                            "kardex_row_update_time": update_time,
-                        }
-                    )
-
-                if updated:
-                    message_list.append(
-                        f"Kardex Status for {move.product_id.name} was updated from {old_status} to {new_status}."
-                    )
-
-                else:
-                    message_list.append(f"Kardex Status for {move.product_id.name} was not updated.")
-
-            if move.picking_id:
-                picking = move.picking_id
-                picking._update_picking_state()
-        message = ", ".join(message_list)
-        return self._create_notification(message)
+        """Read the order status Kardex set in PPG_Auftraege (2 = Kardex fetched the order)."""
+        known_status = dict(self._fields["kardex_status"].selection)
+        messages = []
+        for line in self:
+            old_status = line.kardex_status
+            result = self._execute_query_on_mssql(
+                "select_one",
+                f"SELECT Status, Row_Update_Time FROM PPG_Auftraege WHERE BzId = {int(line.kardex_running_id)}",
+            )
+            new_status = str(result["Status"]) if result else None
+            if new_status in known_status and new_status != old_status and result["Row_Update_Time"]:
+                line.write({"kardex_status": new_status, "kardex_row_update_time": result["Row_Update_Time"]})
+                messages.append(
+                    f"Kardex Status for {line.product_id.name} was updated from {old_status} to {new_status}."
+                )
+            else:
+                messages.append(f"Kardex Status for {line.product_id.name} was not updated.")
+            line.picking_id._update_picking_state()
+        return self._create_notification(", ".join(messages))
 
     def _fetch_journal_rows(self):
         """Journal rows Kardex wrote for the order of this line that Odoo has not processed yet."""
