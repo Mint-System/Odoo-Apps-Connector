@@ -11,10 +11,14 @@ class StockPickingJournal(models.Model):
     _sql_constraints = [("unique_journal", "unique(journal_id)", "The Journal ID must be unique!")]
 
     @api.model_create_multi
-    def create(self, vals):
-        existing = self.search([("journal_id", "=", vals.get("journal_id"))], limit=1)
-        if existing:
-            # Update existing record with new kardex_running_id
-            existing.kardex_running_id = vals.get("kardex_running_id")
-            return existing
-        return super().create(vals)
+    def create(self, vals_list):
+        """Create journal entries; an already known journal id is updated instead."""
+        records = self.browse()
+        for vals in vals_list:
+            existing = self.search([("journal_id", "=", vals.get("journal_id"))], limit=1)
+            if existing:
+                existing.kardex_running_id = vals.get("kardex_running_id")
+                records |= existing
+            else:
+                records |= super().create([vals])
+        return records
