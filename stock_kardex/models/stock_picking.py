@@ -474,11 +474,6 @@ class StockPicking(models.Model):
                     .search([("kardex_running_id", "=", move.kardex_running_id)])
                     .mapped("journal_id")
                 )
-                picking_journal_ids_tuple = (
-                    f"({', '.join(map(str, picking_journal_ids))})" if picking_journal_ids else "('')"
-                )
-                condition1 = f"WHERE BzId = {move.kardex_running_id}"
-                condition2 = f"AND ID NOT IN {picking_journal_ids_tuple}"
 
                 # sql_simple = """
                 #         SELECT BzId,
@@ -494,7 +489,7 @@ class StockPicking(models.Model):
                 #         {condition1} {condition2}
                 # """.format(condition1=condition1, condition2=condition2)
 
-                sql = _get_sql_for_journal_query(condition1, condition2)
+                sql = _get_sql_for_journal_query(move.kardex_running_id, picking_journal_ids)
 
                 # sql = f"""
                 #     WITH CTE AS (
@@ -553,7 +548,10 @@ class StockPicking(models.Model):
                         # complete = result["MaxKomplett"]
                         serial_name = result.get("Seriennummer")
                         # lot_name = result.get("Seriennummer") or result.get("Charge")
+                        # the journal query uses '__none__' for rows without serial/lot
                         lot_name = result.get("SerienOrCharge")
+                        if lot_name == "__none__":
+                            lot_name = None
                         direction = result["Richtung"]
                         product_code = result["Suchbegriff"]
                         move.write(
@@ -579,7 +577,7 @@ class StockPicking(models.Model):
                         # new_qty_done = move_line.qty_done #- qty_done
                         new_qty_done = qty_done
                         move_line_vals = {
-                            "qty_done": new_qty_done,
+                            "quantity": new_qty_done,
                             "kardex_sync": True,
                             "kardex_status": "4",
                         }
@@ -640,8 +638,8 @@ class StockPicking(models.Model):
                         else:
                             new_stock_move_line = move.copy(
                                 {
-                                    "qty_done": qty_done,
-                                    "lot_id": move_line_vals["lot_id"],
+                                    "quantity": qty_done,
+                                    "lot_id": move_line_vals.get("lot_id"),
                                 }
                             )
 
