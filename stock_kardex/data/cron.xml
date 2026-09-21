@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Both jobs are inactive by default: activate them on the database that is connected to the SDB. -->
+<odoo noupdate="1">
+    <record id="cron_update_kardex_status" model="ir.cron">
+        <field name="name">Update Kardex Status</field>
+        <field name="model_id" ref="stock.model_stock_picking" />
+        <field name="code">if model._is_kardex_db_connected():
+    model.sync_status()</field>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="False" />
+    </record>
+    <record id="cron_sync_kardex" model="ir.cron">
+        <field name="name">Sync Kardex</field>
+        <field name="model_id" ref="stock.model_stock_picking" />
+        <field name="code">if model._is_kardex_db_connected():
+    model.sync_pickings()</field>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="active" eval="False" />
+    </record>
+</odoo>

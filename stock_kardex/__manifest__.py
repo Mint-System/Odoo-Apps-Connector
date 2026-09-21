@@ -11,6 +11,7 @@
     "depends": ["base", "stock", "mrp", "purchase", "sale", "base_kardex", "product_kardex"],
     "data": [
         "security/ir.model.access.csv",
+        "data/cron.xml",
         "views/kardex_stock_views.xml",
         "views/kardex_bom_views.xml",
         "views/kardex_production_views.xml",
