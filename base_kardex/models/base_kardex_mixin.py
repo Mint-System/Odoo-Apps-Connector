@@ -258,6 +258,7 @@ class BaseKardexMixin(models.AbstractModel):
         sql = f"SELECT {columns} FROM {table} WHERE ID = {new_id}"
         record = self._execute_query_on_mssql("select", sql)
 
+        create_time = update_time = None
         running_id = ""
         if len(record) == 1:
             create_time = record[0]["Row_Create_Time"]
