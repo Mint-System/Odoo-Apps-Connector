@@ -1,8 +1,7 @@
 {
     "name": "Stock Kardex Simulator",
     "summary": """
-        Simulate the answer of Kardex in the interface database to test the whole
-        picking round trip without waiting for the real Kardex.
+        Simulate the answer of Kardex for testing.
     """,
     "author": "Mint System GmbH",
     "website": "https://www.mint-system.ch/",
