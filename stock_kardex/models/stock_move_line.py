@@ -1,8 +1,24 @@
 import logging
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
+from odoo.tools import float_compare
 
-from .config import KARDEX_DESTINATION, KARDEX_WAREHOUSE
+from .config import (
+    CREATE_SERIAL_FOR_PRODUCTION,
+    CREATE_SERIAL_FOR_STORE,
+    KARDEX_DESTINATION,
+    KARDEX_WAREHOUSE,
+    OVERRIDE_SERIAL_FOR_PRODUCTION,
+    OVERRIDE_SERIAL_FOR_STORE,
+)
+from .helper import _get_sql_for_journal_query
+
+# journal direction -> (take serial/lot from Kardex, create it if unknown)
+LOT_POLICY = {
+    "3": (OVERRIDE_SERIAL_FOR_STORE, CREATE_SERIAL_FOR_STORE),
+    "4": (OVERRIDE_SERIAL_FOR_PRODUCTION, CREATE_SERIAL_FOR_PRODUCTION),
+}
 
 _logger = logging.getLogger(__name__)
 
@@ -84,6 +100,93 @@ class StockMoveLine(models.Model):
                 picking._update_picking_state()
         message = ", ".join(message_list)
         return self._create_notification(message)
+
+    def _fetch_journal_rows(self):
+        """Journal rows Kardex wrote for the order of this line that Odoo has not processed yet."""
+        running_id = int(self.kardex_running_id)
+        processed = self.env["stock.picking.journal"].search([("kardex_running_id", "=", running_id)])
+        return self._execute_query_on_mssql(
+            "select", _get_sql_for_journal_query(running_id, processed.mapped("journal_id"))
+        )
+
+    def _resolve_lot(self, lot_name, direction):
+        """Lot for the serial/lot number Kardex reported, following the LOT_POLICY.
+
+        Returns ``(lot, ok)``; ``ok`` is False if the lot is unknown and must not be created,
+        so the row has to be retried later.
+        """
+        lots = self.env["stock.lot"]
+        override, create = LOT_POLICY.get(direction, (False, False))
+        if not (lot_name and override):
+            return lots, True
+        lot = lots.search([("name", "=", lot_name), ("product_id", "=", self.product_id.id)], limit=1)
+        if lot or not create:
+            return lot, bool(lot)
+        try:
+            with self.env.cr.savepoint():
+                return lots.create({"name": lot_name, "product_id": self.product_id.id}), True
+        except ValidationError:
+            _logger.warning("Lot %s could not be created for %s", lot_name, self.product_id.display_name)
+            return lots, True
+
+    def _apply_journal_row(self, row):
+        """Write one journal row (quantity of one serial/lot) to this line, or to a copy of it.
+
+        A line carries the first answer; every further answer for the same order becomes
+        an additional line. Returns False if the row could not be applied yet.
+        """
+        lot_name = row["SerienOrCharge"]
+        lot, ok = self._resolve_lot(None if lot_name == "__none__" else lot_name, row["Richtung"])
+        if not ok:
+            return False
+
+        vals = {"quantity": row["MengeErledigt"], "kardex_journal_status": str(int(row["MaxKomplett"]))}
+        if lot:
+            vals["lot_id"] = lot.id
+        if self.kardex_journal_status:
+            self.copy({**vals, "kardex_status": "4", "kardex_sync": True})
+        else:
+            self.write(vals)
+        return True
+
+    def _is_journal_complete(self, row):
+        """The order is finished when Kardex reported the ordered quantity or closed the document."""
+        rounding = self.product_uom_id.rounding
+        all_reported = (
+            float_compare(float(row["MengeGesamt"]), float(row["MengeAuftrag"] or 0), precision_rounding=rounding) >= 0
+        )
+        return all_reported or int(row["BelegKomplett"]) == 2
+
+    def sync_from_journal(self):
+        """Turn the new journal rows of this line's order into quantities and lots.
+
+        The line keeps being polled (status stays 2) until the order is complete.
+        Returns the highest Komplett flag of the rows applied, 0 if there was nothing to apply.
+        """
+        self.ensure_one()
+        complete = 0
+        all_applied = True
+        last_row = None
+        for row in self._fetch_journal_rows():
+            if self.picking_id.name != row["Belegnummer"] and self.reference != row["Belegnummer"]:
+                continue
+            if not self._apply_journal_row(row):
+                all_applied = False
+                continue
+            self.env["stock.picking.journal"].create(
+                [
+                    {"journal_id": int(journal_id), "kardex_running_id": int(self.kardex_running_id)}
+                    for journal_id in row["id_list"].split(",")
+                ]
+            )
+            complete = max(complete, int(row["MaxKomplett"]))
+            last_row = row
+
+        if last_row:
+            self.move_id.write({"picked": False})
+            if all_applied and self._is_journal_complete(last_row):
+                self.write({"kardex_sync": True, "kardex_status": "4"})
+        return complete
 
     @api.model_create_multi
     def create(self, vals_list):

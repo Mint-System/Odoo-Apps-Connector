@@ -36,7 +36,10 @@ def _get_sql_for_journal_query(bzid, processed_journal_ids=()):
     """Journal rows of one Kardex order (BzId) that Odoo has not processed yet.
 
     Rows are summed per serial/lot; ``id_list`` holds the journal ids that went
-    into each sum so the caller can mark them as processed.
+    into each sum so the caller can mark them as processed. ``MengeGesamt`` is the
+    total reported for the BzId so far (processed or not), ``MengeAuftrag`` the
+    ordered quantity and ``BelegKomplett`` the highest Komplett of the whole document
+    (2 = document complete).
     """
     bzid = int(bzid)
     not_processed = ", ".join(str(int(journal_id)) for journal_id in processed_journal_ids) or "0"
@@ -82,6 +85,9 @@ def _get_sql_for_journal_query(bzid, processed_journal_ids=()):
             c.Row_Update_Time,
             c.MengeErledigt,
             c.MaxKomplett,
+            (SELECT SUM(Menge) FROM PPG_Journal WHERE BzId = c.BzId) AS MengeGesamt,
+            (SELECT TOP 1 Menge FROM PPG_Auftraege WHERE BzId = c.BzId) AS MengeAuftrag,
+            (SELECT MAX(Komplett) FROM PPG_Journal WHERE Belegnummer = c.Belegnummer) AS BelegKomplett,
             STUFF((
                 SELECT ', ' + CAST(j.ID AS VARCHAR)
                 FROM PPG_Journal j

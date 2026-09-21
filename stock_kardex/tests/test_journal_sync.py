@@ -70,14 +70,20 @@ class TestJournalSync(TransactionCase):
             "Row_Update_Time": "Mär 21 2024  3:49PM",
             "MengeErledigt": 5.0,
             "MaxKomplett": 2,
+            "MengeGesamt": 5.0,
+            "MengeAuftrag": 5.0,
+            "BelegKomplett": 2,
             "id_list": "101, 102",
         }
         row.update(overrides)
         return row
 
-    def _sync(self, rows):
-        with patch.object(BaseKardexMixin, "_execute_query_on_mssql", return_value=rows) as query:
-            self.env["stock.picking"].sync_pickings()
+    def _sync(self, *answers, picking=None):
+        """Run the sync; every entry of ``answers`` is what the SDB returns for one poll."""
+        pickings = picking or self.env["stock.picking"]
+        with patch.object(BaseKardexMixin, "_execute_query_on_mssql", side_effect=list(answers)) as query:
+            for _answer in answers:
+                pickings.sync_pickings()
         return query
 
     def test_journal_entries_are_unique(self):
@@ -89,7 +95,7 @@ class TestJournalSync(TransactionCase):
 
     def test_complete_answer_updates_line_and_picking(self):
         picking, line = self._make_line(qty=5.0)
-        query = self._sync([self._journal_row(picking, line, MengeErledigt=4.0)])
+        query = self._sync([self._journal_row(picking, line, MengeErledigt=4.0, MengeGesamt=4.0)])
 
         self.assertEqual(line.quantity, 4.0)
         self.assertEqual(line.kardex_status, "4")
@@ -128,3 +134,55 @@ class TestJournalSync(TransactionCase):
         lines = picking.move_line_ids
         self.assertEqual(sorted(lines.mapped("lot_id.name")), ["LOT-1", "LOT-2"])
         self.assertEqual(sum(lines.mapped("quantity")), 5.0)
+
+    def test_partial_answers_keep_the_line_open_until_complete(self):
+        picking, line = self._make_line(qty=5.0)
+        partial = self._journal_row(
+            picking, line, MengeErledigt=2.0, MengeGesamt=2.0, MaxKomplett=1, BelegKomplett=1, id_list="101"
+        )
+        rest = self._journal_row(picking, line, MengeErledigt=3.0, MengeGesamt=5.0, id_list="102")
+
+        self._sync([partial])
+        self.assertEqual(line.quantity, 2.0)
+        self.assertEqual(line.kardex_status, "2", "still waiting for the rest")
+        self.assertFalse(line.kardex_sync)
+        self.assertEqual(picking.kardex_status, "1")
+
+        self._sync([rest])
+        self.assertEqual(line.kardex_status, "4")
+        self.assertTrue(line.kardex_sync)
+        self.assertEqual(sorted(picking.move_line_ids.mapped("quantity")), [2.0, 3.0])
+        self.assertEqual(picking.kardex_status, "2")
+        self.assertEqual(self.env["stock.picking.journal"].search([]).mapped("journal_id"), [101, 102])
+
+    def test_document_closed_by_kardex_completes_a_short_delivery(self):
+        picking, line = self._make_line(qty=5.0)
+        self._sync([self._journal_row(picking, line, MengeErledigt=3.0, MengeGesamt=3.0, BelegKomplett=2)])
+
+        self.assertEqual(line.kardex_status, "4")
+
+    def test_unknown_lot_is_retried_instead_of_lost(self):
+        picking, line = self._make_line(tracking="lot")
+        row = self._journal_row(picking, line, SerienOrCharge="LOT-9")
+
+        with patch("odoo.addons.stock_kardex.models.stock_move_line.LOT_POLICY", {"3": (True, False)}):
+            self._sync([row])
+        self.assertEqual(line.kardex_status, "2")
+        self.assertFalse(self.env["stock.picking.journal"].search([]), "row must be read again next time")
+
+        self.env["stock.lot"].create({"name": "LOT-9", "product_id": line.product_id.id})
+        with patch("odoo.addons.stock_kardex.models.stock_move_line.LOT_POLICY", {"3": (True, False)}):
+            self._sync([row])
+        self.assertEqual(line.lot_id.name, "LOT-9")
+        self.assertEqual(line.kardex_status, "4")
+
+    def test_sync_of_one_picking_leaves_others_alone(self):
+        picking, line = self._make_line()
+        other_picking, other_line = self._make_line()
+        other_line.kardex_running_id = "900002"
+
+        query = self._sync([self._journal_row(picking, line)], picking=picking)
+
+        self.assertEqual(query.call_count, 1)
+        self.assertEqual(line.kardex_status, "4")
+        self.assertEqual(other_line.kardex_status, "2")

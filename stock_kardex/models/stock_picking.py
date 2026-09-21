@@ -1,19 +1,10 @@
 import logging
 
 from odoo import api, fields, models
-from odoo.exceptions import ValidationError
+
+from .config import KARDEX_DESTINATION, POST_PRODUCTION_LOCATION
 
 _logger = logging.getLogger(__name__)
-
-from .config import (
-    CREATE_SERIAL_FOR_PRODUCTION,
-    CREATE_SERIAL_FOR_STORE,
-    KARDEX_DESTINATION,
-    OVERRIDE_SERIAL_FOR_PRODUCTION,
-    OVERRIDE_SERIAL_FOR_STORE,
-    POST_PRODUCTION_LOCATION,
-)
-from .helper import _get_sql_for_journal_query
 
 
 class StockPicking(models.Model):
@@ -74,7 +65,7 @@ class StockPicking(models.Model):
 
     @api.depends("move_type", "move_ids.state", "move_ids.picking_id")
     def _compute_state(self):
-        res = super()._compute_state()
+        super()._compute_state()
         for picking in self:
             if picking.kardex_picking_state == "waiting_for_kardex":
                 picking.state = "waiting_for_kardex"
@@ -124,7 +115,7 @@ class StockPicking(models.Model):
                     [move.location_dest_id.name == KARDEX_DESTINATION for move in kardex_moves]
                 )
 
-                any_move_has_no_sync = any([move.kardex_sync == False for move in kardex_moves])
+                any_move_has_no_sync = any([not move.kardex_sync for move in kardex_moves])
                 if all_moves_have_kardex_destination and any_move_has_no_sync:
                     picking.write({"state": "waiting_for_kardex"})
 
@@ -136,7 +127,7 @@ class StockPicking(models.Model):
                     [move.location_id.name == KARDEX_DESTINATION for move in kardex_moves]
                 )
 
-                any_move_has_no_sync = any([move.kardex_sync == False for move in kardex_moves])
+                any_move_has_no_sync = any([not move.kardex_sync for move in kardex_moves])
                 if all_moves_have_kardex_location and any_move_has_no_sync:
                     picking.write({"state": "waiting_for_kardex"})
 
@@ -192,145 +183,24 @@ class StockPicking(models.Model):
         pickings.update_status_from_kardex()
 
     def sync_pickings(self):
-        # all pickings with status not done
+        """Read the answers Kardex wrote to the journal (PPG_Journal) into the move lines it fetched.
 
-        moves = self.env["stock.move.line"].search([("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)])
+        Called by the cron for all pickings; on a picking only for that picking.
+        """
+        domain = [("kardex_status", "=", "2"), ("kardex_running_id", "!=", None)]
+        if self:
+            domain.append(("picking_id", "in", self.ids))
+        picking_complete = {}
+        for line in self.env["stock.move.line"].search(domain):
+            complete = line.sync_from_journal()
+            if complete and line.picking_id:
+                picking_complete[line.picking_id] = max(complete, picking_complete.get(line.picking_id, 0))
 
-        picking_complete_dict = {}
-
-        for move in moves:
-            if move.kardex_running_id:
-                picking_journal_ids = (
-                    self.env["stock.picking.journal"]
-                    .search([("kardex_running_id", "=", move.kardex_running_id)])
-                    .mapped("journal_id")
-                )
-
-                sql = _get_sql_for_journal_query(move.kardex_running_id, picking_journal_ids)
-
-                results = self._execute_query_on_mssql("select", sql)
-
-                if results:
-                    for result_counter, result in enumerate(results):
-                        complete = 1
-
-                        picking_name = result["Belegnummer"]
-                        if move.picking_id.name != picking_name and move.reference != picking_name:
-                            continue
-
-                        new_journal_status = result["MaxKomplett"]
-                        journal_ids = result["id_list"]
-                        create_time = result["Row_Create_Time"]
-                        update_time = result["Row_Update_Time"]
-                        complete = max(complete, new_journal_status)
-                        serial_name = result.get("Seriennummer")
-                        # the journal query uses '__none__' for rows without serial/lot
-                        lot_name = result.get("SerienOrCharge")
-                        if lot_name == "__none__":
-                            lot_name = None
-                        direction = result["Richtung"]
-                        product_code = result["Suchbegriff"]
-                        move.write(
-                            {
-                                "kardex_journal_status": new_journal_status,
-                                "kardex_sync": True,
-                                "kardex_status": "4",
-                            }
-                        )
-
-                        for journal_id in journal_ids.split(","):
-                            self.env["stock.picking.journal"].create(
-                                {
-                                    "journal_id": journal_id,
-                                    "kardex_running_id": move.kardex_running_id,
-                                }
-                            )
-
-                        # get amounts for one move
-                        qty_done = result["MengeErledigt"]
-
-                        new_qty_done = qty_done
-                        move_line_vals = {
-                            "quantity": new_qty_done,
-                            "kardex_sync": True,
-                            "kardex_status": "4",
-                        }
-
-                        product_id = (
-                            self.env["product.product"].search([("default_code", "=", product_code)]).mapped("id")
-                        )
-                        product_object = self.env["product.product"].search([("id", "=", product_id[0])])
-
-                        if lot_name:
-                            lot = (
-                                self.env["stock.lot"]
-                                .search([("name", "=", lot_name), ("product_id", "=", product_id[0])])
-                                .mapped("id")
-                            )
-
-                            if OVERRIDE_SERIAL_FOR_STORE and direction == "3":
-                                if lot:
-                                    move_line_vals["lot_id"] = lot[0]
-
-                                elif CREATE_SERIAL_FOR_STORE:
-                                    try:
-                                        new_lot = self.env["stock.lot"].create(
-                                            {
-                                                "name": lot_name,
-                                                "product_id": product_id[0],
-                                            }
-                                        )
-                                        move_line_vals["lot_id"] = new_lot.id
-                                    except ValidationError as e:
-                                        pass
-                                else:
-                                    move_line_vals["kardex_sync"] = False
-                                    move_line_vals["kardex_status"] = "2"
-
-                            if OVERRIDE_SERIAL_FOR_PRODUCTION and direction == "4":
-                                if lot:
-                                    move_line_vals["lot_id"] = lot[0]
-                                elif CREATE_SERIAL_FOR_PRODUCTION:
-                                    try:
-                                        new_lot = self.env["stock.lot"].create(
-                                            {
-                                                "name": lot_name,
-                                                "product_id": product_id[0],
-                                            }
-                                        )
-                                        move_line_vals["lot_id"] = new_lot.id
-                                    except:
-                                        pass
-
-                                else:
-                                    move_line_vals["kardex_sync"] = False
-                                    move_line_vals["kardex_status"] = "2"
-
-                        if result_counter == 0:
-                            move.write(move_line_vals)
-                        else:
-                            new_stock_move_line = move.copy(
-                                {
-                                    "quantity": qty_done,
-                                    "lot_id": move_line_vals.get("lot_id"),
-                                }
-                            )
-
-                        if picking_complete_dict.get(picking_name) is None:
-                            picking_complete_dict[picking_name] = complete
-                        else:
-                            if complete > picking_complete_dict[picking_name]:
-                                picking_complete_dict[picking_name] = complete
-
-                        move.move_id.write({"picked": False})
-
-        for picking_key in picking_complete_dict.keys():
-            picking = self.env["stock.picking"].search([("name", "=", picking_key)])
-            if picking_complete_dict[picking_key] == 1:
+        for picking, complete in picking_complete.items():
+            if complete == 1:
                 picking.write({"kardex_status": "1"})
-            elif picking_complete_dict[picking_key] == 2:
+            elif complete == 2:
                 picking.write({"kardex_status": "2", "kardex_sync": True, "kardex_picking_state": "synced"})
-
             picking._compute_state()
 
     @api.model_create_multi
