@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_mssql_form_inherit_simulator" model="ir.ui.view">
+        <field name="name">base.external.mssql.form.inherit.simulator</field>
+        <field name="model">base.external.mssql</field>
+        <field name="inherit_id" ref="base_external_mssql.view_mssql_form" />
+        <field name="arch" type="xml">
+            <field name="database_type" position="after">
+                <field name="allow_simulation" invisible="database_type != 'interface'" />
+            </field>
+        </field>
+    </record>
+</odoo>

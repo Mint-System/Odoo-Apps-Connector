@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="view_picking_form_inherit_simulator" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.simulator</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock_kardex.view_picking_form" />
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button
+                    name="action_open_kardex_simulator"
+                    type="object"
+                    string="Kardex Simulator"
+                    invisible="not kardex_done"
+                    groups="stock.group_stock_manager"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>

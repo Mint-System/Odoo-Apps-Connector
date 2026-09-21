@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="kardex_simulator_wizard_view_form" model="ir.ui.view">
+        <field name="name">kardex.simulator.wizard.form</field>
+        <field name="model">kardex.simulator.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Kardex Simulator">
+                <field name="simulation_allowed" invisible="1" />
+                <div class="alert alert-warning" role="alert" invisible="simulation_allowed">
+                    The active SDB connection <field name="connection_id" readonly="1" nolabel="1" class="oe_inline" />
+                    does not allow simulation. You can still look at the SDB rows.
+                </div>
+                <div class="alert alert-info" role="alert" invisible="not simulation_allowed">
+                    Simulation writes fake Kardex answers into the test SDB
+                    <field name="connection_id" readonly="1" nolabel="1" class="oe_inline" />.
+                </div>
+                <group>
+                    <field name="picking_id" />
+                    <field name="scenario" />
+                </group>
+                <field name="line_ids">
+                    <list editable="bottom" create="false" delete="false">
+                        <field name="product_id" />
+                        <field name="kardex_running_id" />
+                        <field name="ordered_qty" />
+                        <field name="open_qty" />
+                        <field name="answer_qty" />
+                        <field name="lot_name" />
+                    </list>
+                </field>
+                <field name="sdb_report" readonly="1" />
+                <footer>
+                    <button
+                        name="action_simulate_answer"
+                        type="object"
+                        string="Simulate Kardex Answer"
+                        class="btn-primary"
+                        invisible="not simulation_allowed"
+                    />
+                    <button name="action_sync_now" type="object" string="Sync Now" />
+                    <button name="action_read_sdb" type="object" string="Show SDB Rows" />
+                    <button special="cancel" string="Close" />
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
