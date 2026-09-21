@@ -4,6 +4,7 @@ import string
 from datetime import datetime
 
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -15,7 +16,6 @@ from .config import (
     ODOO_KARDEX_UNIT_FIXER,
     OVERRIDE_SERIAL_FOR_PRODUCTION,
     OVERRIDE_SERIAL_FOR_STORE,
-    PICKING_TYPE_FIXER,
     POST_PRODUCTION_LOCATION,
     STOCK_PICKING_SEND_FLAG_FIXER,
 )
@@ -47,16 +47,8 @@ class StockPicking(models.Model):
     kardex_sync = fields.Boolean(default=False)
     state = fields.Selection(selection_add=[("waiting_for_kardex", "Waiting for Kardex")])
 
-    send_button_is_visible = fields.Boolean(
-        string="Send to Kardex Button Visibility", compute="_compute_send_button_is_visible", store=False
-    )
-
     update_button_is_visible = fields.Boolean(
         string="Update Kardex State Button Visibility", compute="_compute_update_button_is_visible", store=False
-    )
-
-    validate_button_is_invisible = fields.Boolean(
-        string="Validate Button Visibility", compute="_compute_validate_button_is_invisible", store=False
     )
 
     def _check_if_destination_is_kardex(self, location_id):
@@ -73,23 +65,6 @@ class StockPicking(models.Model):
                 origin = self.env[model].search([("name", "=", rec.origin)])
                 if origin and origin.kardex:
                     rec.kardex = origin.kardex
-
-    @api.depends("kardex_done", "picking_type_id")
-    def _compute_send_button_is_visible(self):
-        store_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "store"]
-        outgoing_keys = [k for k, v in PICKING_TYPE_FIXER.items() if v == "outgoing"]
-
-        for rec in self:
-            check_kardex_list = []
-            for move in rec.move_ids:
-                for move_line in move.move_line_ids:
-                    if self._check_if_destination_is_kardex(move_line.location_dest_id):
-                        check_kardex_list.append(move_line.location_dest_id.name)
-            rec.send_button_is_visible = (
-                not rec.kardex_done
-                and len(check_kardex_list) > 0
-                and (rec.picking_type_id.id in store_keys or rec.picking_type_id.id in outgoing_keys)
-            )
 
     @api.depends("kardex_done", "picking_type_id")
     def _compute_update_button_is_visible(self):
@@ -109,20 +84,6 @@ class StockPicking(models.Model):
             rec.update_button_is_visible = (
                 not all_moves_have_status_success and rec.kardex_done and any_move_has_kardex_destination
             )
-
-    @api.depends("send_button_is_visible")
-    # def _compute_validate_button_is_invisible(self):
-    #     for rec in self:
-    #         if rec.move_line_ids:
-    #             all_moves_has_kardex_destination = all(
-    #                 self._check_if_destination_is_kardex(move.location_dest_id) for move in rec.move_line_ids
-    #             )
-    #         else:
-    #             all_moves_has_kardex_destination = False
-    #         rec.validate_button_is_invisible = not all_moves_has_kardex_destination
-    def _compute_validate_button_is_invisible(self):
-        for rec in self:
-            rec.validate_button_is_invisible = rec.send_button_is_visible
 
     @api.depends("move_type", "move_ids.state", "move_ids.picking_id")
     def _compute_state(self):
@@ -262,9 +223,6 @@ class StockPicking(models.Model):
     #             write_vals["kardex"] = self.kardex
     #             picking.write(write_vals)
     #     return next_transfers
-
-    def send_to_kardex_picking(self):
-        self.send_to_kardex(PICKING_TYPE_FIXER.get(self.picking_type_id.id, None))
 
     def _check_picking_type(self):
         if self.origin and self.env["purchase.order"].search([("name", "=", self.origin)]):

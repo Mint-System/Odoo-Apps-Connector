@@ -48,12 +48,6 @@
                                 string="Check SchnittstellenDB"
                             />
                             <button
-                                name="send_to_kardex_picking"
-                                type="object"
-                                string="An Kardex senden"
-                                invisible="kardex_done"
-                            />
-                            <button
                                 name="update_status_from_kardex"
                                 type="object"
                                 string="Update Status"
@@ -81,18 +75,6 @@
                 <field name="kardex_status" string="Kardex Status" readonly="1" invisible="not kardex" />
             </xpath>
             <xpath expr="//header" position="inside">
-                <!-- <button
-                                name="send_to_kardex_picking"
-                                type="object"
-                                string="An Kardex senden"
-                                invisible="kardex_done or picking_type_id.id not in [6]"
-                /> -->
-                <button
-                    name="send_to_kardex_picking"
-                    type="object"
-                    string="An Kardex senden"
-                    invisible="not send_button_is_visible"
-                />
                 <button
                     name="update_status_from_kardex"
                     type="object"
