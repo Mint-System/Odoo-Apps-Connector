@@ -1,7 +1,8 @@
 from unittest.mock import patch
 
-from odoo.addons.base_kardex.models.base_kardex_mixin import BaseKardexMixin
 from odoo.tests.common import TransactionCase
+
+from odoo.addons.base_kardex.models.base_kardex_mixin import BaseKardexMixin
 
 
 class TestSendToKardex(TransactionCase):

@@ -7,7 +7,7 @@ _logger = logging.getLogger(__name__)
 
 class MrpProduction(models.Model):
     _name = "mrp.production"
-    _inherit = ["mrp.production", "validation.mixin"]
+    _inherit = ["validation.mixin", "mrp.production"]
     _description = "Kardex MRP Production"
 
     kardex = fields.Boolean(compute="_compute_kardex", store=True)
