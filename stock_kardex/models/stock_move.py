@@ -61,36 +61,14 @@ class StockMove(models.Model):
         for obj in self:
             obj.products_domain = []
 
-    def _determine_picking_type(self):
-        if self.picking_type_id.kardex_picking_type == "kardex_entry":
-            return "entry"
-        if self.picking_type_id.kardex_picking_type == "kardex_store":
-            return "store"
-        elif self.picking_type_id.kardex_picking_type == "kardex_postprod":
-            return "postproduction"
-        elif self.picking_type_id.kardex_picking_type == "kardex_prod":
-            return "production"
-        elif self.picking_type_id.kardex_picking_type == "kardex_get":
-            return "get"
-
     @api.model_create_multi
     def create(self, vals_list):
+        """Moves of the Kardex entry picking type end where the product was last stored."""
         for vals in vals_list:
-            _logger.info("### vals in stock move create %s " % (vals,))
-            location_final_id = vals.get("location_final_id")
-            picking_type_id = vals.get("picking_type_id")
-            picking_type = self.env["stock.picking.type"].browse(picking_type_id)
-
-            kardex_picking_type = picking_type.kardex_picking_type
-            _logger.info("### picking_type in stock move create %s " % (picking_type,))
-            _logger.info("### kardex picking_type_id in stock move create %s " % (kardex_picking_type,))
-            product_id = vals.get("product_id")
-            if product_id:
-                product = self.env["product.product"].browse(product_id)
-
-                last_location = product.last_location_id
-                _logger.info("### last_location in stock move create %s " % (last_location,))
-                if last_location and kardex_picking_type == "kardex_entry":
+            picking_type = self.env["stock.picking.type"].browse(vals.get("picking_type_id"))
+            if vals.get("product_id") and picking_type.kardex_picking_type == "kardex_entry":
+                last_location = self.env["product.product"].browse(vals["product_id"]).last_location_id
+                if last_location:
                     vals["location_final_id"] = last_location.id
 
         return super().create(vals_list)

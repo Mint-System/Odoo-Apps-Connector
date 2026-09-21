@@ -1,5 +1,3 @@
-STOCK_PICKING_SEND_FLAG_FIXER = {17: "0", 1: "", 5: ""}
-
 ODOO_KARDEX_UNIT_FIXER = {
     "Einheit(en)": "Stk",
 }
