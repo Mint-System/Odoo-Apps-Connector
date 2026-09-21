@@ -7,7 +7,6 @@ import pytz
 from odoo import _, api, models
 from odoo.exceptions import ValidationError
 
-# from odoo.tools import pytz
 
 _logger = logging.getLogger(__name__)
 
@@ -27,16 +26,12 @@ ODOO_KARDEX_PRODUCT_FIXER = {
     "kardex_search_term_two": "Info2",
     "kardex_product_group": "Artikelgruppe",
     "kardex_unit": "Einheit",
-    #'kardex_row_create_time': 'Row_Create_Time',
-    #'kardex_row_update_time': 'Row_Update_Time',
     "kardex_is_fifo": "isFIFO",
 }
 
 
 ODOO_KARDEX_PICKING_FIXER = {
     "kardex_product_id": "ArtikelID",
-    #'kardex_row_create_time': 'Row_Create_Time',
-    #'kardex_row_update_time': 'Row_Update_Time',
     "kardex_status": "Status",
     "kardex_unit": "Einheit",
     "kardex_quantity": "Menge",
@@ -209,22 +204,10 @@ class BaseKardexMixin(models.AbstractModel):
         return create_time, update_time
 
     def _create_external_object(self, vals, table):
-        # translate vals dictionary to external database scheme
-        # if table == "PPG_Artikel":
-        #     fixer = ODOO_KARDEX_PRODUCT_FIXER
-        # elif table == "PPG_Auftraege":
-        #     fixer = ODOO_KARDEX_PICKING_FIXER
-        # kardex_dict = self._replace_false_with_empty_string(self._fix_dictionary(fixer, vals))
-        # # building sql query
-        # ", ".join(["?"] * len(kardex_dict))
-        # columns = ", ".join(kardex_dict.keys())
-        # sql = f"INSERT INTO {table} ({columns}) VALUES {tuple(kardex_dict.values())}"
-
         # get the db driver
 
         sqldb = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
         db_driver = sqldb._get_db_driver()
-        # _logger.info("Database driver: %s", db_driver)
 
         # Pick the fixer based on table
         if table == "PPG_Artikel":
@@ -268,8 +251,6 @@ class BaseKardexMixin(models.AbstractModel):
         return new_id, create_time, update_time, running_id
 
     def _sync_external_db(self, query):
-        # import pdb; pdb.set_trace()
-
         # Execute the query using the external MSSQL instance
         records = self._execute_query_on_mssql("select", query)
 
@@ -292,25 +273,6 @@ class BaseKardexMixin(models.AbstractModel):
                     self.create(val_dict)
         else:
             raise ValidationError(_("No Records found in external Database"))
-
-    # def _get_destination_location_for_product(self, product):
-    #     """Determine the appropriate destination location for a product."""
-    #     if not product:
-    #         return False
-
-    #     # First preference: product's last_location_id
-    #     location = product.last_location_id
-    #     if location:
-    #         return location
-
-    #     # Second: last location with quantity > 0
-    #     quant = self.env['stock.quant'].search([
-    #         ('product_id', '=', product.id),
-    #         ('quantity', '>', 0)
-    #     ], order='write_date desc', limit=1)
-
-    #     return quant.location_id if quant else False
-    #
 
     @api.model
     def _is_kardex_db_connected(self):
