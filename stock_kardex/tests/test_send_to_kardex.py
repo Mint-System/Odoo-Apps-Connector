@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 
 from odoo.addons.base_kardex.models.base_kardex_mixin import BaseKardexMixin
@@ -16,7 +17,9 @@ class TestSendToKardex(TransactionCase):
         super().setUpClass()
         stock = cls.env.ref("stock.stock_location_stock")
         cls.customers = cls.env.ref("stock.stock_location_customers")
-        cls.kardex = cls.env["stock.location"].create({"name": "Kardex", "location_id": stock.id, "usage": "internal"})
+        cls.kardex = cls.env["stock.location"].create(
+            {"name": "Kardex", "location_id": stock.id, "usage": "internal", "kardex": True}
+        )
         cls.shelf = cls.env["stock.location"].create({"name": "Regal", "location_id": stock.id, "usage": "internal"})
 
     def _make_line(self, kardex_type, source, dest, final=None, tracking="none", with_lot=False):
@@ -139,3 +142,7 @@ class TestSendToKardex(TransactionCase):
 
         create.assert_not_called()
         self.assertFalse(line.kardex_done)
+
+    def test_only_one_location_may_be_flagged_as_kardex(self):
+        with self.assertRaises(ValidationError):
+            self.env["stock.location"].create({"name": "Second Kardex", "location_id": self.shelf.id, "kardex": True})

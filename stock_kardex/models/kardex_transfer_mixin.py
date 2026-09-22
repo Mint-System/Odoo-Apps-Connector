@@ -2,7 +2,7 @@ import logging
 
 from odoo import models
 
-from .config import KARDEX_WAREHOUSE, ODOO_KARDEX_UNIT_FIXER, TRANSFER_INVENTORY_MOVES
+from .config import ODOO_KARDEX_UNIT_FIXER, TRANSFER_INVENTORY_MOVES
 
 _logger = logging.getLogger(__name__)
 
@@ -28,7 +28,8 @@ class KardexTransferMixin(models.AbstractModel):
     _description = "Kardex Transfer Mixin"
 
     def _get_kardex_location(self):
-        return self.env["stock.location"].search([("name", "=", KARDEX_WAREHOUSE), ("usage", "=", "internal")], limit=1)
+        """The one location flagged Kardex (stock_location.kardex); see its uniqueness constraint."""
+        return self.env["stock.location"].search([("kardex", "=", True)], limit=1)
 
     def _determine_picking_type(self):
         """Transfer type of this move line, derived from the picking type (or inventory move)."""

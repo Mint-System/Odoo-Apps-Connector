@@ -2,7 +2,7 @@ import logging
 
 from odoo import api, fields, models
 
-from .config import KARDEX_DESTINATION, POST_PRODUCTION_LOCATION
+from .config import POST_PRODUCTION_LOCATION
 
 _logger = logging.getLogger(__name__)
 
@@ -36,9 +36,6 @@ class StockPicking(models.Model):
         string="Update Kardex State Button Visibility", compute="_compute_update_button_is_visible", store=False
     )
 
-    def _check_if_destination_is_kardex(self, location_id):
-        return location_id.name == KARDEX_DESTINATION
-
     @api.depends("origin")
     def _compute_kardex(self):
         for rec in self:
@@ -53,9 +50,7 @@ class StockPicking(models.Model):
         for rec in self:
             if rec.move_ids:
                 all_moves_have_status_success = all([move.kardex_status == "2" for move in rec.move_ids])
-                any_move_has_kardex_destination = any(
-                    [self._check_if_destination_is_kardex(move.location_final_id) for move in rec.move_ids]
-                )
+                any_move_has_kardex_destination = any(move.location_final_id.kardex for move in rec.move_ids)
             else:
                 all_moves_have_status_success = False
                 any_move_has_kardex_destination = False
@@ -107,9 +102,7 @@ class StockPicking(models.Model):
                     for move in kardex_moves:
                         move.write({"picked": False})
             elif picking._check_picking_type() in ["store", "postproduction"]:
-                all_moves_have_kardex_destination = all(
-                    [move.location_dest_id.name == KARDEX_DESTINATION for move in kardex_moves]
-                )
+                all_moves_have_kardex_destination = all(move.location_dest_id.kardex for move in kardex_moves)
 
                 any_move_has_no_sync = any([not move.kardex_sync for move in kardex_moves])
                 if all_moves_have_kardex_destination and any_move_has_no_sync:
@@ -119,9 +112,7 @@ class StockPicking(models.Model):
                     # TODO : Validate Aktion ausfuehren
                     picking.write({"state": "assigned"})
             elif picking._check_picking_type() == "get":
-                all_moves_have_kardex_location = all(
-                    [move.location_id.name == KARDEX_DESTINATION for move in kardex_moves]
-                )
+                all_moves_have_kardex_location = all(move.location_id.kardex for move in kardex_moves)
 
                 any_move_has_no_sync = any([not move.kardex_sync for move in kardex_moves])
                 if all_moves_have_kardex_location and any_move_has_no_sync:

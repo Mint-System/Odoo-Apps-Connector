@@ -6,7 +6,6 @@ from odoo import api, models
 from .config import (
     AGGREGATE_PALETTEN,
     COMPANY_ID,
-    KARDEX_WAREHOUSE,
     NON_KARDEX_WAREHOUSE,
     PALETTEN_WAREHOUSE,
     STOCK_WAREHOUSE,
@@ -26,6 +25,9 @@ class StockQuant(models.Model):
     def _get_location_id(self, location_name):
         location_id = self.env["stock.location"].search([("name", "=", location_name)]).mapped("id")
         return location_id
+
+    def _get_kardex_location_id(self):
+        return self.env["stock.location"].search([("kardex", "=", True)]).mapped("id")
 
     def _get_data_from_bestandsabgleich(self, default_code, product_mapping):
         if default_code:
@@ -82,8 +84,8 @@ class StockQuant(models.Model):
 
     def _get_or_create_location(self, location_name):
         if location_name == "Shuttle":
-            location = self.env["stock.location"].search([("name", "=", KARDEX_WAREHOUSE)], limit=1)
-            return location.id, KARDEX_WAREHOUSE
+            location = self.env["stock.location"].search([("kardex", "=", True)], limit=1)
+            return location.id, location.name
         location = self.env["stock.location"].search([("name", "=", location_name)], limit=1)
         if not location:
             location_stock = self.env["stock.location"].search([("name", "=", STOCK_WAREHOUSE)], limit=1)
@@ -97,7 +99,7 @@ class StockQuant(models.Model):
         remove_quants = param.get_param("kardex.remove_quants") == "True"
 
         # get stock quants of Kardex Warehouse
-        kardex_location_ids = self._get_location_id(KARDEX_WAREHOUSE)
+        kardex_location_ids = self._get_kardex_location_id()
         # _logger.info("location_ids: %s" % (location_ids,))
         if not kardex_location_ids:
             return False

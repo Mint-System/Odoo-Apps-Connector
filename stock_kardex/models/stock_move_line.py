@@ -7,8 +7,6 @@ from odoo.tools import float_compare
 from .config import (
     CREATE_SERIAL_FOR_PRODUCTION,
     CREATE_SERIAL_FOR_STORE,
-    KARDEX_DESTINATION,
-    KARDEX_WAREHOUSE,
     OVERRIDE_SERIAL_FOR_PRODUCTION,
     OVERRIDE_SERIAL_FOR_STORE,
 )
@@ -46,15 +44,11 @@ class StockMoveLine(models.Model):
 
     kardex_journal_status = fields.Char(string="Komplett")
 
-    @api.depends("location_id")
+    @api.depends("location_id", "location_dest_id")
     @api.onchange("location_id")
     def _compute_has_kardex_location(self):
-        kardex_destination = self.env["stock.location"].search([("name", "=", KARDEX_DESTINATION)], limit=1)
-        kardex_location = self.env["stock.location"].search([("name", "=", KARDEX_WAREHOUSE)], limit=1)
         for record in self:
-            record.has_kardex_location = (
-                record.location_dest_id.id == kardex_destination.id or record.location_id.id == kardex_location.id
-            )
+            record.has_kardex_location = bool(record.location_dest_id.kardex or record.location_id.kardex)
 
     def update_move_lines_from_kardex(self):
         """Read the order status Kardex set in PPG_Auftraege (2 = Kardex fetched the order)."""
