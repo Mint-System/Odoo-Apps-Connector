@@ -1,4 +1,6 @@
 from . import (
+    stock_location,
+    product_template,
     kardex_transfer_mixin,
     validation_mixin,
     stock_picking,

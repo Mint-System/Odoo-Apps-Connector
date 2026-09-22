@@ -19,7 +19,7 @@ class ProductTemplate(models.Model):
 
     product_category_ids_domain = fields.Binary(compute="_compute_category_domain")
 
-    kardex = fields.Boolean(default=False)
+    kardex = fields.Boolean(compute="_compute_product_kardex", store=True)
     kardex_id = fields.Integer(string="Kardex Id")
     kardex_product_id = fields.Integer(string="Kardex Artikel-Id")
     # kardex_product_name = fields.Char(string='Kardex Artikelbezeichnung')
@@ -77,6 +77,13 @@ class ProductTemplate(models.Model):
     def _onchange_category_set_default_code(self):
         if self.categ_id and self.kardex:
             self.default_code = self.categ_id.abbr
+
+    @api.depends("categ_id.kardex")
+    def _compute_product_kardex(self):
+        """Base rule: a product is Kardex if its category is. stock_kardex extends this
+        with the product's last location, once stock.location.kardex exists."""
+        for product in self:
+            product.kardex = bool(product.categ_id.kardex)
 
     @api.depends("kardex")
     def _compute_category_domain(self):
@@ -294,6 +301,10 @@ class ProductTemplate(models.Model):
             category = self.env["product.category"].create(
                 {"name": cat, "kardex": True, "parent_id": parent_category.id}
             )
+        elif not category.kardex:
+            # a product coming from Kardex must end up flagged as such, even if a
+            # same-named category already existed (kardex is derived from the category)
+            category.kardex = True
         return category.id
 
     def _get_unit_id(self, unit_name):

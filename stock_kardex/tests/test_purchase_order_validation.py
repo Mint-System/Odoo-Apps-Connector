@@ -9,11 +9,14 @@ class TestKardexPickingTypeValidation(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.partner = cls.env["res.partner"].create({"name": "Test Partner"})
-        cls.kardex_product = cls._make_product("Kardex Product", kardex=True)
-        cls.plain_product = cls._make_product("Plain Product", kardex=False)
+        kardex_categ = cls.env["product.category"].create({"name": "Kardex Test Category", "kardex": True})
+        plain_categ = cls.env["product.category"].create({"name": "Plain Test Category", "kardex": False})
+        cls.kardex_product = cls._make_product("Kardex Product", kardex_categ)
+        cls.plain_product = cls._make_product("Plain Product", plain_categ)
 
     @classmethod
-    def _make_product(cls, name, kardex):
+    def _make_product(cls, name, categ):
+        # "kardex" is computed from the category (and the last location); it cannot be set directly
         return cls.env["product.product"].create(
             {
                 "name": name,
@@ -21,7 +24,7 @@ class TestKardexPickingTypeValidation(TransactionCase):
                 "is_storable": True,
                 "purchase_ok": True,
                 "sale_ok": True,
-                "kardex": kardex,
+                "categ_id": categ.id,
                 "uom_id": cls.env.ref("uom.product_uom_unit").id,
             }
         )

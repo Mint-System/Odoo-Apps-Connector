@@ -242,9 +242,9 @@ class BaseKardexMixin(models.AbstractModel):
                     # Update the existing record
                     existing_product.write(val_dict)
                 else:
-                    # because product comes from kardex kardex and kardex_done is set to true
+                    # product comes from Kardex, so it is already known there;
+                    # "kardex" itself is derived from the category/location, not set here
                     val_dict["kardex_done"] = True
-                    val_dict["kardex"] = True
                     val_dict["kardex_id"] = record.ID
                     val_dict["kardex_product_id"] = record.Artikelid
                     self.create(val_dict)
