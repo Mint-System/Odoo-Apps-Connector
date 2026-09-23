@@ -29,11 +29,10 @@ class StockPickingType(models.Model):
             "kardex_store": 3,
             "kardex_get": 4,
             "kardex_prod": 4,
-            "kardex_postprod": 3
+            "kardex_postprod": 3,
         }
         for pc_type in self:
             pc_type.kardex_direction = KARDEX_DIRECTION_PICKER.get(pc_type.kardex_picking_type, False)
-
 
     @api.constrains("kardex_picking_type")
     def _check_kardex_picking_type(self):

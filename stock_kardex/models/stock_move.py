@@ -1,6 +1,7 @@
 import logging
 
-from odoo import api, fields, models
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -63,12 +64,48 @@ class StockMove(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Moves of the Kardex entry picking type end where the product was last stored."""
+        """Default the final location of Kardex entry/store moves.
+
+        Entry: goods return to where the product was last stored. Store: a Kardex
+        product (by category or last location, see product.kardex) is by default
+        routed into the Kardex location; an explicit location_final_id in vals is
+        never overridden.
+        """
         for vals in vals_list:
+            if not vals.get("product_id"):
+                continue
             picking_type = self.env["stock.picking.type"].browse(vals.get("picking_type_id"))
-            if vals.get("product_id") and picking_type.kardex_picking_type == "kardex_entry":
-                last_location = self.env["product.product"].browse(vals["product_id"]).last_location_id
-                if last_location:
-                    vals["location_final_id"] = last_location.id
+            product = self.env["product.product"].browse(vals["product_id"])
+            if picking_type.kardex_picking_type == "kardex_entry" and product.last_location_id:
+                vals["location_final_id"] = product.last_location_id.id
+            elif (
+                picking_type.kardex_picking_type == "kardex_store"
+                and product.kardex
+                and not vals.get("location_final_id")
+            ):
+                kardex_location = self.env["stock.location"].search([("kardex", "=", True)], limit=1)
+                if kardex_location:
+                    vals["location_final_id"] = kardex_location.id
 
         return super().create(vals_list)
+
+    def write(self, vals):
+        """Changing where a move ultimately goes can start or must not touch a Kardex send.
+
+        A not-yet-sent line is (re-)evaluated for send_to_kardex() when location_final_id
+        changes - this is what lets a picker override the computed default by hand. Once a
+        line has been sent, its move's location_final_id is frozen: Kardex has already been
+        told where the stock is going, and quantity/lot/status are still updated by the sync
+        (they are untouched here).
+        """
+        changed_moves = self.env["stock.move"]
+        if "location_final_id" in vals:
+            changed_moves = self.filtered(lambda move: move.location_final_id.id != vals["location_final_id"])
+            if changed_moves.move_line_ids.filtered("kardex_done"):
+                raise UserError(_("The final location of an already sent Kardex line cannot be changed."))
+
+        res = super().write(vals)
+
+        for line in changed_moves.move_line_ids.filtered(lambda line: not line.kardex_done):
+            line.send_to_kardex()
+        return res
