@@ -6,7 +6,7 @@
         <field name="model_id" ref="stock.model_stock_picking" />
         <field name="code">if model._is_kardex_db_connected():
     model.sync_status()</field>
-        <field name="interval_number">10</field>
+        <field name="interval_number">2</field>
         <field name="interval_type">minutes</field>
         <field name="active" eval="False" />
     </record>
@@ -15,7 +15,7 @@
         <field name="model_id" ref="stock.model_stock_picking" />
         <field name="code">if model._is_kardex_db_connected():
     model.sync_pickings()</field>
-        <field name="interval_number">10</field>
+        <field name="interval_number">2</field>
         <field name="interval_type">minutes</field>
         <field name="active" eval="False" />
     </record>

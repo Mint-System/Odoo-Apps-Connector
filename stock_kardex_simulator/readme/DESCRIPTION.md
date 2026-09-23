@@ -1,0 +1,1 @@
+Simulate the answer of Kardex for testing.

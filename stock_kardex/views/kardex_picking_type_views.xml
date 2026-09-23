@@ -18,6 +18,7 @@
         <field name="arch" type="xml">
             <field name="name" position="after">
                 <field name="kardex_picking_type" />
+                <field name="kardex_direction" />
             </field>
         </field>
     </record>

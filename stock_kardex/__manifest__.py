@@ -25,6 +25,7 @@
         "views/stock_quant_delete_wizard_action.xml",
         "views/stock_lot_delete_wizard_view.xml",
         "views/stock_lot_delete_wizard_action.xml",
+        "views/stock_location.xml",
     ],
     "installable": True,
     "application": False,
