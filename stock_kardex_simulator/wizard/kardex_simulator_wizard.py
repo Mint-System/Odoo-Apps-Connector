@@ -184,6 +184,7 @@ class KardexSimulatorWizard(models.TransientModel):
 
         rows = []
         for line in self.line_ids:
+            _logger.warning(f"##########  running id: {line.kardex_running_id}")
             order = self._read_sdb_order(line.kardex_running_id)
             if order["Status"] not in (1, 2):
                 raise UserError(

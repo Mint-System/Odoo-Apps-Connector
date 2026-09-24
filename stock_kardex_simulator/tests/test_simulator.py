@@ -178,18 +178,21 @@ class TestKardexSimulator(TransactionCase):
         self.assertEqual(row[5], 2.0)
         self.assertEqual(row[7], 1)
 
-    def test_wizard_opened_and_saved_like_the_web_client_keeps_move_line_id(self):
+    def test_wizard_opened_and_saved_like_the_web_client_keeps_computed_line_values(self):
         """odoo.tests.Form replays the real onchange()-then-create() round trip the browser
         uses - unlike wizard_model.create({}) below, which calls default_get() straight on
-        the server and would never have caught move_line_id being missing from the list view
-        (the client builds its create() payload from the onchange() response, which only
-        contains fields present in the view - a field used only as a default and never shown
-        must still be declared, e.g. column_invisible, or the client silently drops it)."""
+        the server and would never catch this: Odoo builds the eventual create() payload
+        from the onchange() response, and any readonly field (move_line_id, kardex_running_id,
+        ordered_qty, open_qty are all readonly=True, populated only by default_get()) is
+        silently dropped again at that point unless its <field> has force_save="1"."""
         picking = self._make_picking()
         with patch.object(BaseKardexMixin, "_execute_query_on_mssql", side_effect=FakeSdb(3.0)):
             form = Form(self.env["kardex.simulator.wizard"].with_context(default_picking_id=picking.id))
             wizard = form.save()
 
         self.assertEqual(len(wizard.line_ids), 1)
-        self.assertTrue(wizard.line_ids.move_line_id)
-        self.assertEqual(wizard.line_ids.move_line_id, picking.move_line_ids)
+        line = wizard.line_ids
+        self.assertEqual(line.move_line_id, picking.move_line_ids)
+        self.assertEqual(line.kardex_running_id, int(BZID))
+        self.assertEqual(line.ordered_qty, 3.0)
+        self.assertEqual(line.open_qty, 3.0)
