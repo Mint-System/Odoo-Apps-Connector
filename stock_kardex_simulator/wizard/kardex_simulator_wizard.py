@@ -98,7 +98,7 @@ class KardexSimulatorWizard(models.TransientModel):
 
     def _prepare_line_vals(self, move_line, scenario):
         order = self._read_sdb_order(move_line.kardex_running_id)
-        lot_name = move_line.lot_id.name or f"SIM-{move_line.kardex_running_id}"
+        lot_name = move_line.lot_id.name or ""
         vals = {
             "move_line_id": move_line.id,
             "kardex_running_id": int(move_line.kardex_running_id),

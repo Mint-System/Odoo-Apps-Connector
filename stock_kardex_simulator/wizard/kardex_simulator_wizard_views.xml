@@ -20,6 +20,7 @@
                 </group>
                 <field name="line_ids">
                     <list editable="bottom" create="false" delete="false">
+                        <field name="move_line_id" column_invisible="1" force_save="1" />
                         <field name="product_id" />
                         <field name="kardex_running_id" />
                         <field name="ordered_qty" />

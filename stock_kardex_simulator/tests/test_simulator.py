@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from odoo.exceptions import AccessError, UserError
+from odoo.tests import Form
 from odoo.tests.common import TransactionCase
 
 from odoo.addons.base_kardex.models.base_kardex_mixin import BaseKardexMixin
@@ -153,7 +154,7 @@ class TestKardexSimulator(TransactionCase):
                 strict=True,
             )
         )
-        self.assertEqual(journal["Charge"], "SIM-900001")
+        self.assertEqual(journal["Charge"], "")
         self.assertIsNone(journal["Seriennummer"])
         self.assertEqual(journal["Menge"], 3.0)
         self.assertEqual(journal["Komplett"], 2)
@@ -166,7 +167,7 @@ class TestKardexSimulator(TransactionCase):
         _picking, sdb = self._simulate(tracking="serial", qty=3.0)
 
         rows = sdb.journal_rows()
-        self.assertEqual([row[4] for row in rows], ["SIM-900001-1", "SIM-900001-2", "SIM-900001-3"])
+        self.assertEqual([row[4] for row in rows], ["-1", "-2", "-3"])
         self.assertEqual([row[5] for row in rows], [1.0, 1.0, 1.0])
         self.assertEqual([row[7] for row in rows], [1, 1, 2], "only the last row closes the document")
 
@@ -176,3 +177,19 @@ class TestKardexSimulator(TransactionCase):
         (row,) = sdb.journal_rows()
         self.assertEqual(row[5], 2.0)
         self.assertEqual(row[7], 1)
+
+    def test_wizard_opened_and_saved_like_the_web_client_keeps_move_line_id(self):
+        """odoo.tests.Form replays the real onchange()-then-create() round trip the browser
+        uses - unlike wizard_model.create({}) below, which calls default_get() straight on
+        the server and would never have caught move_line_id being missing from the list view
+        (the client builds its create() payload from the onchange() response, which only
+        contains fields present in the view - a field used only as a default and never shown
+        must still be declared, e.g. column_invisible, or the client silently drops it)."""
+        picking = self._make_picking()
+        with patch.object(BaseKardexMixin, "_execute_query_on_mssql", side_effect=FakeSdb(3.0)):
+            form = Form(self.env["kardex.simulator.wizard"].with_context(default_picking_id=picking.id))
+            wizard = form.save()
+
+        self.assertEqual(len(wizard.line_ids), 1)
+        self.assertTrue(wizard.line_ids.move_line_id)
+        self.assertEqual(wizard.line_ids.move_line_id, picking.move_line_ids)
