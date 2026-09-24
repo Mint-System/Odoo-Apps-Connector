@@ -36,14 +36,21 @@ class StockPicking(models.Model):
         string="Update Kardex State Button Visibility", compute="_compute_update_button_is_visible", store=False
     )
 
-    @api.depends("origin")
+    # @api.depends("origin")
+    # def _compute_kardex(self):
+    #     for rec in self:
+    #         rec.kardex = False
+    #         for model in ["stock.picking", "purchase.order", "mrp.production", "sale.order"]:
+    #             origin = self.env[model].search([("name", "=", rec.origin)])
+    #             if origin and origin.kardex:
+    #                 rec.kardex = origin.kardex
+
+    @api.depends("move_ids.location_final_id")
     def _compute_kardex(self):
+        kardex_location = self.env["stock.location"].search([("kardex", "=", True)], limit=1)
         for rec in self:
-            rec.kardex = False
-            for model in ["stock.picking", "purchase.order", "mrp.production", "sale.order"]:
-                origin = self.env[model].search([("name", "=", rec.origin)])
-                if origin and origin.kardex:
-                    rec.kardex = origin.kardex
+            all_moves_have_kardex_location = all(move.location_final_id.kardex for move in rec.move_ids)
+            rec.kardex = all_moves_have_kardex_location
 
     @api.depends("kardex_done", "picking_type_id")
     def _compute_update_button_is_visible(self):

@@ -156,7 +156,18 @@ class StockMoveLine(models.Model):
             self.move_id.write({"picked": False})
             if all_applied and self._is_journal_complete(last_row):
                 self.write({"kardex_sync": True, "kardex_status": "4"})
+                self._update_product_last_location()
         return complete
+
+    def _update_product_last_location(self):
+        """The product now lives at the Kardex location - Kardex has confirmed the move.
+
+        Only for Store/Post Production (stock arriving at Kardex); Get/Prod take stock out
+        to a customer or consume it, so there is no internal location to remember there.
+        product.kardex (category or last_location_id) relies on this being kept current.
+        """
+        if self._determine_picking_type() in ("store", "postproduction"):
+            self.product_id.last_location_id = self._get_kardex_location()
 
     @api.model_create_multi
     def create(self, vals_list):

@@ -62,6 +62,26 @@ class TestKardexStoreDefaults(TransactionCase):
         ):
             yield
 
+    def _complete_journal_sync(self, line, qty=1.0, direction="3"):
+        """Fake the journal answer that closes this line's order (Kardex confirmed it)."""
+        row = {
+            "BzId": int(line.kardex_running_id),
+            "Belegnummer": line.picking_id.name,
+            "SerienOrCharge": "__none__",
+            "Suchbegriff": line.product_id.default_code,
+            "Richtung": direction,
+            "Row_Create_Time": "Jan 1 2026 12:00PM",
+            "Row_Update_Time": "Jan 1 2026 12:00PM",
+            "MengeErledigt": qty,
+            "MaxKomplett": 2,
+            "MengeGesamt": qty,
+            "MengeAuftrag": qty,
+            "BelegKomplett": 2,
+            "id_list": "1",
+        }
+        with patch.object(BaseKardexMixin, "_execute_query_on_mssql", return_value=[row]):
+            line.sync_from_journal()
+
     def _make_move(self, product, location_final_id=None):
         picking = self.env["stock.picking"].create(
             {"picking_type_id": self.store_type.id, "location_id": self.shelf.id, "location_dest_id": self.shelf.id}
@@ -145,3 +165,49 @@ class TestKardexStoreDefaults(TransactionCase):
         self.assertTrue(line.kardex_done)
 
         move.write({"location_final_id": self.kardex_loc.id})  # unchanged value, must not raise
+
+    def test_completed_store_sets_product_last_location(self):
+        product = self._make_product(self.kardex_categ)
+        self.assertFalse(product.last_location_id)
+        _move, line = self._make_move(product)
+
+        self._complete_journal_sync(line)
+
+        self.assertEqual(product.last_location_id, self.kardex_loc)
+
+    def test_completed_get_does_not_set_product_last_location(self):
+        """Stock leaving Kardex (Get/Prod) has no internal "last location" to remember."""
+        get_type = self.env["stock.picking.type"].create(
+            {"name": "Kardex Get Test", "code": "outgoing", "sequence_code": "KGT", "kardex_picking_type": "kardex_get"}
+        )
+        product = self._make_product(self.kardex_categ, last_location=self.kardex_loc)
+        picking = self.env["stock.picking"].create(
+            {"picking_type_id": get_type.id, "location_id": self.kardex_loc.id, "location_dest_id": self.shelf.id}
+        )
+        move = self.env["stock.move"].create(
+            {
+                "name": product.name,
+                "picking_id": picking.id,
+                "picking_type_id": get_type.id,
+                "product_id": product.id,
+                "product_uom_qty": 1.0,
+                "location_id": self.kardex_loc.id,
+                "location_dest_id": self.shelf.id,
+            }
+        )
+        with self._sdb_connected():
+            line = self.env["stock.move.line"].create(
+                {
+                    "move_id": move.id,
+                    "picking_id": picking.id,
+                    "product_id": product.id,
+                    "quantity": 1.0,
+                    "location_id": self.kardex_loc.id,
+                    "location_dest_id": self.shelf.id,
+                }
+            )
+        self.assertTrue(line.kardex_done)
+
+        self._complete_journal_sync(line, direction="4")
+
+        self.assertEqual(product.last_location_id, self.kardex_loc, "unchanged, not cleared either")

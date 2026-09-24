@@ -70,7 +70,7 @@
                 <field name="kardex_done" />
             </xpath>
             <xpath expr="//field[@name='origin']" position="after">
-                <field name="kardex" readonly='0' />
+                <field name="kardex" readonly='1' />
                 <field name="kardex_sync" string="Sync PPG-J" readonly="1" invisible="not kardex"/>
                 <field name="kardex_status" string="Kardex Status" readonly="1" invisible="not kardex" />
             </xpath>
