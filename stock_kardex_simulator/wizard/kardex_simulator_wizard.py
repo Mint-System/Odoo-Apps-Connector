@@ -1,8 +1,12 @@
+import logging
+
 from markupsafe import Markup
 
 from odoo import Command, _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import html_escape
+
+_logger = logging.getLogger(__name__)
 
 JOURNAL_COLUMNS = (
     "STATUS",
@@ -39,19 +43,22 @@ class KardexSimulatorWizard(models.TransientModel):
         required=True,
     )
     line_ids = fields.One2many("kardex.simulator.wizard.line", "wizard_id", string="Kardex Orders")
-    connection_id = fields.Many2one("base.external.mssql", compute="_compute_connection_id")
-    simulation_allowed = fields.Boolean(compute="_compute_connection_id")
+    connection_id = fields.Many2one("base.external.mssql", readonly=True)
+    simulation_allowed = fields.Boolean(readonly=True)
     sdb_report = fields.Html(string="SDB Rows", readonly=True, sanitize=False)
-
-    def _compute_connection_id(self):
-        connection = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
-        for wizard in self:
-            wizard.connection_id = connection
-            wizard.simulation_allowed = connection.allow_simulation
 
     @api.model
     def default_get(self, fields_list):
+        """connection_id/simulation_allowed have no field on the wizard to hang an
+        @api.depends off (the value comes from base.external.mssql, not from self), so
+        onchange() never re-evaluates a compute for them on a brand-new record - only
+        default_get() reliably runs when the wizard is first opened. Same reasoning as
+        line_ids below: fill it in here, once, when the wizard is created."""
         res = super().default_get(fields_list)
+        if "connection_id" in fields_list or "simulation_allowed" in fields_list:
+            connection = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
+            res["connection_id"] = connection.id
+            res["simulation_allowed"] = connection.allow_simulation
         picking = self.env["stock.picking"].browse(res.get("picking_id"))
         if picking and "line_ids" in fields_list:
             open_lines = picking.move_line_ids.filtered(
