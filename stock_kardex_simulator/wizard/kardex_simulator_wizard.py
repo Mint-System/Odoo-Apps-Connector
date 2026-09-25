@@ -37,6 +37,7 @@ class KardexSimulatorWizard(models.TransientModel):
     scenario = fields.Selection(
         [
             ("complete", "Kardex delivers everything and closes the document"),
+            ("lotchange", "Kardex delivers everything, but changes lot"),
             ("partial", "Kardex delivers a part, more follows"),
         ],
         default="complete",
@@ -178,10 +179,12 @@ class KardexSimulatorWizard(models.TransientModel):
         }
         tracking = line.move_line_id.product_id.tracking
         if tracking == "serial":
-            # return [
-            #     {**row, "Seriennummer": f"{line.lot_name}-{number}", "Menge": 1.0} for number in range(1, int(qty) + 1)
-            # ]
-            row["Seriennummer"] = line.lot_name
+            if self.scenario == "lotchange":
+                return [
+                    {**row, "Seriennummer": f"{line.lot_name}-{number}", "Menge": 1.0} for number in range(1, int(qty) + 1)
+                ]
+            else:
+                row["Seriennummer"] = line.lot_name
         if tracking == "lot":
             row["Charge"] = line.lot_name
         return [row]
@@ -193,7 +196,6 @@ class KardexSimulatorWizard(models.TransientModel):
 
         rows = []
         for line in self.line_ids:
-            _logger.warning(f"##########  running id: {line.kardex_running_id}")
             order = self._read_sdb_order(line.kardex_running_id)
             if order["Status"] not in (1, 2):
                 raise UserError(

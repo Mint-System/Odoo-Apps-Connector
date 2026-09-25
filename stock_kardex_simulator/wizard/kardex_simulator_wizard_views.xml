@@ -44,6 +44,6 @@
                     <button special="cancel" string="Close" />
                 </footer>
             </form>
-        </field>not show_sync_button
+        </field>
     </record>
 </odoo>
