@@ -17,6 +17,7 @@
                 <group>
                     <field name="picking_id" />
                     <field name="scenario" />
+                    <field name="show_simulate_button" invisible="1" />
                 </group>
                 <field name="line_ids">
                     <list editable="bottom" create="false" delete="false">
@@ -36,13 +37,13 @@
                         type="object"
                         string="Simulate Kardex Answer"
                         class="btn-primary"
-                        invisible="not simulation_allowed"
+                        invisible="not show_simulate_button"
                     />
-                    <button name="action_sync_now" type="object" string="Sync Now" />
+                    <button name="action_sync_now" type="object" string="Sync Now" invisible="not show_sync_button"/>
                     <button name="action_read_sdb" type="object" string="Show SDB Rows" />
                     <button special="cancel" string="Close" />
                 </footer>
             </form>
-        </field>
+        </field>not show_sync_button
     </record>
 </odoo>

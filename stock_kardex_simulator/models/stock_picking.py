@@ -1,8 +1,10 @@
-from odoo import _, models
+from odoo import _, models, fields
 
 
 class StockPicking(models.Model):
     _inherit = "stock.picking"
+
+    simulated = fields.Boolean("Simulated", default=False)
 
     def action_open_kardex_simulator(self):
         self.ensure_one()
@@ -14,3 +16,5 @@ class StockPicking(models.Model):
             "target": "new",
             "context": {"default_picking_id": self.id},
         }
+
+

@@ -46,6 +46,14 @@ class KardexSimulatorWizard(models.TransientModel):
     connection_id = fields.Many2one("base.external.mssql", readonly=True)
     simulation_allowed = fields.Boolean(readonly=True)
     sdb_report = fields.Html(string="SDB Rows", readonly=True, sanitize=False)
+    show_simulate_button = fields.Boolean(compute="_compute_show_buttons")
+    show_sync_button = fields.Boolean(compute="_compute_show_buttons")
+
+    @api.depends("picking_id", "simulation_allowed")
+    def _compute_show_buttons(self):
+        for rec in self:
+            rec.show_simulate_button = rec.simulation_allowed and not rec.picking_id.simulated 
+            rec.show_sync_button = rec.simulation_allowed and not rec.picking_id.kardex_sync
 
     @api.model
     def default_get(self, fields_list):
@@ -170,9 +178,10 @@ class KardexSimulatorWizard(models.TransientModel):
         }
         tracking = line.move_line_id.product_id.tracking
         if tracking == "serial":
-            return [
-                {**row, "Seriennummer": f"{line.lot_name}-{number}", "Menge": 1.0} for number in range(1, int(qty) + 1)
-            ]
+            # return [
+            #     {**row, "Seriennummer": f"{line.lot_name}-{number}", "Menge": 1.0} for number in range(1, int(qty) + 1)
+            # ]
+            row["Seriennummer"] = line.lot_name
         if tracking == "lot":
             row["Charge"] = line.lot_name
         return [row]
@@ -220,6 +229,7 @@ class KardexSimulatorWizard(models.TransientModel):
                 count=len(rows),
             )
         )
+        self.picking_id.write({"simulated": True})
         return self.action_read_sdb()
 
     def action_sync_now(self):
