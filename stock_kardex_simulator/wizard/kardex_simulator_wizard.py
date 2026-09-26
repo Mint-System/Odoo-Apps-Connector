@@ -208,7 +208,7 @@ class KardexSimulatorWizard(models.TransientModel):
             rows += self._journal_rows(line, order)
         if not rows:
             raise UserError(_("Nothing to report: the answer quantity is 0."))
-        if self.scenario == "complete":
+        if self.scenario in ["complete","lotchange"]:
             rows[-1]["Komplett"] = 2
 
         placeholder = self._sql_placeholder()
@@ -267,4 +267,4 @@ class KardexSimulatorWizardLine(models.TransientModel):
 
     def _default_answer_qty(self, scenario, open_qty=None):
         open_qty = self.open_qty if open_qty is None else open_qty
-        return open_qty if scenario == "complete" else float(int(open_qty / 2)) or open_qty
+        return open_qty if scenario in ["complete","lotchange"] else float(int(open_qty / 2)) or open_qty
