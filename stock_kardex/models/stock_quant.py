@@ -3,41 +3,37 @@ from collections import defaultdict
 
 from odoo import api, models
 
-from .config import (
-    AGGREGATE_PALETTEN,
-    COMPANY_ID,
-    NON_KARDEX_WAREHOUSE,
-    PALETTEN_WAREHOUSE,
-    STOCK_WAREHOUSE,
-    USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS,
-)
 from .helper import _harmonize_empty_values, _transform_location, _update_locations
 
 _logger = logging.getLogger(__name__)
+
+# LocationName values that _transform_location produces for the Kardex and the palettes
+SHUTTLE = "Shuttle"
+PALETTE = "Palette"
 
 
 class StockQuant(models.Model):
     _name = "stock.quant"
     _inherit = ["stock.quant", "base.kardex.mixin"]
     _description = "Stock Quant"
-    # _inherit = "stock.quant"
 
-    def _get_location_id(self, location_name):
-        location_id = self.env["stock.location"].search([("name", "=", location_name)]).mapped("id")
-        return location_id
+    def _get_kardex_location(self):
+        """The one location flagged Kardex (stock_location.kardex)."""
+        return self.env["stock.location"].search([("kardex", "=", True)], limit=1)
 
-    def _get_kardex_location_id(self):
-        return self.env["stock.location"].search([("kardex", "=", True)]).mapped("id")
+    def _get_palette_location(self):
+        """The one location flagged Palette (stock_location.palette)."""
+        return self.env["stock.location"].search([("palette", "=", True)], limit=1)
 
-    def _get_data_from_bestandsabgleich(self, default_code, product_mapping):
+    def _get_data_from_bestandsabgleich(self, default_code=None):
+        """Latest stock per product, serial and lot from PPG_Bestandsabgleich.
+
+        The table only knows the Kardex itself, so every row is located in the shuttle.
+        """
+        conditions, params = "", []
         if default_code:
-            conditions = f"WHERE Suchbegriff IN ('{default_code}')"
-        else:
-            # conditions = f"WHERE Suchbegriff IN ('ZUS.P020.0000.A')" # for testing
-            # conditions = f"WHERE Suchbegriff IN ('MOT.101.000.003', 'FLB.101.000.002', 'DSU.101.000.001', 'GER.101.000.000')" # for testing
-            conditions = f"WHERE Suchbegriff IN {tuple(product_mapping.keys())}"
-        # conditions = f"WHERE ID > {START_STOCK_SYNC}"
-        # get data from PPG_Bestandsabgleich
+            conditions = f"WHERE Suchbegriff = {self._sql_placeholder()}"
+            params = [(default_code,)]
         ppg_sql = f"""
             WITH RankedRows AS (
                 SELECT
@@ -58,12 +54,13 @@ class StockQuant(models.Model):
             WHERE rn = 1
             ORDER BY Suchbegriff, Seriennummer, Charge;
         """
-
-        ppg_data = self._execute_query_on_mssql("select", ppg_sql)
-
-        return ppg_data
+        rows = self._execute_query_on_mssql("select", ppg_sql, *params)
+        for row in rows:
+            row["LocationName"] = SHUTTLE
+        return rows
 
     def _get_data_direct_call(self, default_code=None, products=None):
+        """Materials and stock rows from the ProdDB, renamed to the PPG_Bestandsabgleich columns."""
         replace_dict = {
             "Produktnr": "Suchbegriff",
             "Lot": "Charge",
@@ -83,489 +80,241 @@ class StockQuant(models.Model):
         return updated_data_material, updated_data
 
     def _get_or_create_location(self, location_name):
-        if location_name == "Shuttle":
-            location = self.env["stock.location"].search([("kardex", "=", True)], limit=1)
-            return location.id, location.name
+        """Odoo location of a Kardex LocationName; unknown names are created below the stock location."""
+        if location_name == SHUTTLE:
+            return self._get_kardex_location()
+        if location_name == PALETTE and self._get_palette_location():
+            return self._get_palette_location()
         location = self.env["stock.location"].search([("name", "=", location_name)], limit=1)
         if not location:
-            location_stock = self.env["stock.location"].search([("name", "=", STOCK_WAREHOUSE)], limit=1)
-            location = self.env["stock.location"].create({"name": location_name, "location_id": location_stock.id})
-        return location.id, location_name
+            kardex_location = self._get_kardex_location()
+            parent = kardex_location.warehouse_id.lot_stock_id or self.env.ref("stock.stock_location_stock")
+            location = self.env["stock.location"].create({"name": location_name, "location_id": parent.id})
+        return location
 
     @api.model
     def sync_stocks(self, default_code=None, all_products=False, all_locations=False, source_sale_order=False):
+        """Set the Odoo quants to the stock reported by Kardex.
+
+        :param default_code: sync only this product, otherwise all products with a default code
+        :param all_products: sync even if there is no quant in the Kardex location yet
+        :param all_locations: sync every location reported by Kardex, not only the Kardex itself
+        :param source_sale_order: unused, kept for the callers
+        """
         param = self.env["ir.config_parameter"].sudo()
-
         remove_quants = param.get_param("kardex.remove_quants") == "True"
+        aggregate_palettes = param.get_param("kardex.aggregate_palettes") == "True"
 
-        # get stock quants of Kardex Warehouse
-        kardex_location_ids = self._get_kardex_location_id()
-        # _logger.info("location_ids: %s" % (location_ids,))
-        if not kardex_location_ids:
+        kardex_location = self._get_kardex_location()
+        if not kardex_location:
             return False
 
-        kardex_location_id = kardex_location_ids[0]
-
-        non_kardex_location_ids = self._get_location_id(NON_KARDEX_WAREHOUSE)
-        non_kardex_location_id = non_kardex_location_ids[0]
-
-        kardex_location_name = self.env["stock.location"].browse(kardex_location_id).name
-        # _logger.info("kardex_location_id: %s" % (kardex_location_id,))
-
-        location_paletten_ids = self._get_location_id(PALETTEN_WAREHOUSE)
-        # _logger.info("location_paletten_ids: %s" % (location_paletten_ids,))
-        if not location_paletten_ids:
+        product_mapping = self._get_product_mapping(default_code)
+        quant_mapping = self._get_quant_mapping(kardex_location, all_locations)
+        if not all_products and not default_code and not any(product for product, _lot, _loc in quant_mapping):
             return False
 
-        location_paletten_id = location_paletten_ids[0]
-        location_paletten_name = self.env["stock.location"].browse(location_paletten_id).name
-        # _logger.info("location_paletten_id: %s" % (location_paletten_id,))
+        kardex_data = self._get_kardex_stock_data(default_code, product_mapping, kardex_location)
+        if kardex_data is None:
+            _logger.warning("Stock sync skipped: neither the Kardex DB nor the ProdDB is connected.")
+            return False
 
-        # company id from settings
-        company_id = COMPANY_ID
+        kardex_data = _update_locations(kardex_data, lambda loc: _transform_location(loc, aggregate_palettes))
+        kardex_data = _harmonize_empty_values(kardex_data)
+        self._set_last_location_to_kardex(kardex_data, product_mapping, kardex_location, aggregate_palettes)
+        kardex_data = self._aggregate_kardex_data(kardex_data)
+        _logger.info("kardex_data after grouping: %s", kardex_data)
 
-        # create dict with product ids and non empty default codes
-        where = []
-        params = []
-        # default_codes = ['FLB.1037.28SW.RUND.A']
-        default_codes = []
+        synced_quant_ids = self._apply_kardex_data(
+            kardex_data, product_mapping, quant_mapping, kardex_location, all_locations
+        )
+        self._reset_quants_missing_in_kardex(synced_quant_ids, kardex_location, all_locations, remove_quants)
+        return True
+
+    def _get_product_mapping(self, default_code=None):
+        """{default_code: product_id} of the products to sync."""
         query = """
             SELECT pt.default_code, pp.id
             FROM product_product pp
             JOIN product_template pt ON pp.product_tmpl_id = pt.id
         """
-        if default_codes:
-            where.append("pt.default_code IN %s")
-            params.append(tuple(default_codes))
+        if default_code:
+            self.env.cr.execute(query + " WHERE pt.default_code = %s", (default_code,))
         else:
-            where.append("pt.default_code IS NOT NULL")
-        # for testing
-        # import pdb; pdb.set_trace()
-        if where:
-            query += " WHERE " + " AND ".join(where)
+            self.env.cr.execute(query + " WHERE pt.default_code IS NOT NULL")
+        return dict(self.env.cr.fetchall())
 
-        self.env.cr.execute(query, params)
-
-        # self.env.cr.execute("""
-        #     SELECT pt.default_code, pp.id
-        #     FROM product_product pp
-        #     JOIN product_template pt ON pp.product_tmpl_id = pt.id
-        #     WHERE pt.default_code IS NOT NULL
-        # """)
-        # for testing
-
-        # self.env.cr.execute("""
-        #     SELECT pt.default_code, pp.id
-        #     FROM product_product pp
-        #     JOIN product_template pt ON pp.product_tmpl_id = pt.id
-        #     WHERE pt.default_code IN ('BAG.1142.010C.V001', 'BAG.1149.010D.V001', 'BAG.1150.010A.V001', 'BAG.1152.010A.V001', 'BAG.1155.010A.V001', 'BAG.109A.0004.V001')
-        # """)
-        # self.env.cr.execute("""
-        #     SELECT pt.default_code, pp.id
-        #     FROM product_product pp
-        #     JOIN product_template pt ON pp.product_tmpl_id = pt.id
-        #     WHERE pt.default_code IN ('BAG.109A.0004.V001')
-        # """)
-        product_mapping = dict(self.env.cr.fetchall())
-        _logger.warning("#### product_mapping: %s" % (product_mapping,))
-
-        location_ids = (kardex_location_id, location_paletten_id, non_kardex_location_id)
-        placeholders = ",".join(["%s"] * len(location_ids))
-
+    def _get_quant_mapping(self, kardex_location, all_locations):
+        """{(product_id, lot_id, location_id): quant_id} of the quants that may be synced."""
         if all_locations:
-            odoo_sql = "SELECT id, product_id, lot_id, location_id FROM stock_quant"
-            self.env.cr.execute(odoo_sql)
-
+            self.env.cr.execute("SELECT id, product_id, lot_id, location_id FROM stock_quant")
         else:
-            odoo_sql = "SELECT id, product_id, lot_id, location_id FROM stock_quant WHERE location_id = %s"
-            self.env.cr.execute(odoo_sql, (kardex_location_id,))
+            self.env.cr.execute(
+                "SELECT id, product_id, lot_id, location_id FROM stock_quant WHERE location_id = %s",
+                (kardex_location.id,),
+            )
+        return {(product, lot, location): quant for quant, product, lot, location in self.env.cr.fetchall()}
 
-        # odoo_sql = "SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN (%s)"
-        # self.env.cr.execute(odoo_sql, (location_id, location_paletten_id))
+    def _get_kardex_stock_data(self, default_code, product_mapping, kardex_location):
+        """Stock rows from the source chosen in the settings (kardex.inv_method).
 
-        # odoo_sql = f"SELECT id, product_id, lot_id FROM stock_quant WHERE location_id IN ({placeholders})"
-        # self.env.cr.execute(odoo_sql, location_ids)
-        stock_quants = self.env.cr.fetchall()
+        Falls back to the other source if the chosen one is not connected and
+        returns None if none is connected.
+        """
+        mixin = self.env["base.kardex.mixin"]
+        inv_method = self.env["ir.config_parameter"].sudo().get_param("kardex.inv_method", "ppg")
+        proddb_connected = mixin._is_proddb_connected()
+        kardex_db_connected = mixin._is_kardex_db_connected()
 
-        stock_quant_mapping = {(p, l, loc): q for q, p, l, loc in stock_quants}
-
-        # 2. Get existing lot_id mapping {lot_name → lot_id} for lots with location
-        lots_sql = "SELECT name, product_id, id FROM stock_lot WHERE location_id IS NOT NULL"
-        self.env.cr.execute(lots_sql)
-        # lots = dict(self.env.cr.fetchall())  # {lot_name: lot_id}
-        lots = self.env.cr.fetchall()
-
-        lot_mapping = {(n, p): i for n, p, i in lots}
-
-        products = tuple(set(q[1] for q in stock_quants if q[1]))
-        # _logger.warning("#### products: %s" % (products,))
-
-        if not all_products and not products and not default_code:
-            return False  # No products to update
-
-        if USE_BESTANDSABGLEICH_FOR_SYNC_STOCKS and self.env["base.kardex.mixin"]._is_kardex_db_connected():
-            kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
-        elif not self.env["base.kardex.mixin"]._is_proddb_connected():
-            kardex_data = self._get_data_from_bestandsabgleich(default_code, product_mapping)
-        else:
+        if proddb_connected and (inv_method == "direct" or not kardex_db_connected):
             data_material, kardex_data = self._get_data_direct_call(default_code=default_code, products=product_mapping)
+            self._reset_materials_without_stock(data_material, kardex_data, product_mapping, kardex_location)
+            return kardex_data
+        if kardex_db_connected:
+            return self._get_data_from_bestandsabgleich(default_code)
+        return None
 
-            kardex_data_values = {d["Suchbegriff"] for d in kardex_data}
-            data_material_values = {d["Suchbegriff"] for d in data_material}
+    def _reset_materials_without_stock(self, data_material, kardex_data, product_mapping, kardex_location):
+        """Set the Kardex quants to zero for materials the ProdDB knows but has no stock of."""
+        codes_with_stock = {row["Suchbegriff"] for row in kardex_data}
+        product_ids = tuple(
+            product_mapping[row["Suchbegriff"]]
+            for row in data_material
+            if row["Suchbegriff"] not in codes_with_stock and row["Suchbegriff"] in product_mapping
+        )
+        if product_ids:
+            self.env.cr.execute(
+                "UPDATE stock_quant SET quantity = 0 WHERE product_id IN %s AND location_id = %s",
+                (product_ids, kardex_location.id),
+            )
 
-            # Find values in material data not in kardex _data -> material with no quantity
-            not_in_kardex_data = data_material_values - kardex_data_values
+    def _set_last_location_to_kardex(self, kardex_data, product_mapping, kardex_location, aggregate_palettes):
+        """Remember the Kardex as last location of products that are stored nowhere else."""
+        kardex_names = {SHUTTLE, PALETTE} if aggregate_palettes else {SHUTTLE}
+        locations_by_code = defaultdict(set)
+        for row in kardex_data:
+            locations_by_code[row["Suchbegriff"]].add(row["LocationName"])
 
-            for product_key in not_in_kardex_data:
-                quant_id = stock_quant_mapping.get((product_mapping.get(product_key), None, None))
-                if quant_id:
-                    self.env.cr.execute(
-                        """
-                        UPDATE stock_quant
-                        SET quantity = 0
-                        WHERE product_id = %s and location_id = %s
-                    """,
-                        (product_mapping[product_key], kardex_location_id),
-                    )
+        product_ids = [
+            product_mapping[code]
+            for code, locations in locations_by_code.items()
+            if code in product_mapping and locations <= kardex_names
+        ]
+        self.env["product.product"].browse(product_ids).write({"last_location_id": kardex_location.id})
 
-        # _logger.info("### kardex_data: %s" % (kardex_data,))
-
-        # update locations
-        kardex_data = _update_locations(kardex_data, _transform_location)
-
-        # harmonize empty values
-        kardex_data = _harmonize_empty_values(kardex_data)
-
-        # _logger.info("### kardex_data: %s" % (kardex_data,))
-
-        # aggregate and grouping data
+    def _aggregate_kardex_data(self, kardex_data):
+        """Sum the stock per product, lot and location; serial numbers without lot stay single rows."""
         grouped = {}
-        grouped2 = {}  # will contain all Locations for product
-        unaggregated = []
-
-        palette_counter = 0
-
-        for item in kardex_data:
-            charge = item["Charge"]
-            serial = item["Seriennummer"]
-            suchbegriff = item["Suchbegriff"]
-            location = item.get("LocationName")
-            if location == "Palette":
-                palette_counter += 1
-            bestand = item.get("Bestand")
-
-            if charge is None and serial is not None:
-                unaggregated.append(item)  # Don't group, preserve as-is
+        serial_rows = []
+        for row in kardex_data:
+            if row["Charge"] is None and row["Seriennummer"] is not None:
+                serial_rows.append(row)
                 continue
+            key = (row["Suchbegriff"], row["Charge"], row["LocationName"])
+            group = grouped.setdefault(
+                key,
+                {
+                    "Suchbegriff": row["Suchbegriff"],
+                    "Charge": row["Charge"],
+                    "Seriennummer": None,
+                    "LocationName": row["LocationName"],
+                    "Bestand": 0.0,
+                },
+            )
+            group["Bestand"] += row["Bestand"] or 0.0
+        return list(grouped.values()) + serial_rows
 
-            # Group by charge and Suchbegriff, to avoid merging unrelated products
+    def _apply_kardex_data(self, kardex_data, product_mapping, quant_mapping, kardex_location, all_locations):
+        """Write the Kardex stock into the quants and log the changes in a sync report.
 
-            if charge:
-                key = ("charge", charge, location, suchbegriff)
-                if key not in grouped:
-                    grouped[key] = {
-                        "Charge": charge,
-                        "Seriennummer": None,
-                        "Suchbegriff": suchbegriff,
-                        "LocationName": location,
-                        "Bestand": 0.0,
-                    }
-                grouped[key]["Bestand"] += bestand
-
-            else:
-                key = ("no_charge", location, suchbegriff)
-                if key not in grouped:
-                    grouped[key] = {
-                        "Charge": None,
-                        "Seriennummer": None,
-                        "Suchbegriff": suchbegriff,
-                        "LocationName": location,
-                        "Bestand": 0.0,
-                    }
-                grouped[key]["Bestand"] += bestand
-
-            # if key not in grouped:
-            #     grouped[key] = {
-            #         'Charge': charge,
-            #         'Suchbegriff': suchbegriff,
-            #         'Seriennummer': serial,
-            #         'Bestand': 0,
-            #         'LocationName': location,
-            #         'LocationNames': [],
-            #     }
-
-            # grouped[key]['Bestand'] += item['Bestand']
-            # grouped[key]['LocationNames'].append(item['LocationName'])
-
-            # group only by Suchbegriff
-        for item in kardex_data:
-            key2 = suchbegriff
-            if key2 not in grouped2:
-                grouped2[key2] = []
-
-            grouped2[key2].append(item["LocationName"])
-
-            # _logger.info("grouped: %s" % (grouped,))
-            # _logger.info("grouped2: %s" % (grouped2,))
-            # _logger.info("unaggregated: %s" % (unaggregated,))
-
-            for key in grouped2.keys():
-                if all(x == "Shuttle" or (x == "Palette" and AGGREGATE_PALETTEN) for x in grouped2[key]):
-                    product = self.env["product.product"].search([("default_code", "=", suchbegriff)], limit=1)
-                    product.write({"last_location_id": kardex_location_id})
-                    _logger.info(
-                        "product mit default_code %s wird auf last location  %s gesetzt"
-                        % (
-                            suchbegriff,
-                            kardex_location_id,
-                        )
-                    )
-
-        # Convert to list if needed
-        kardex_data = list(grouped.values()) + unaggregated
-        _logger.info("kardex_data after grouping: %s" % (kardex_data,))
-
-        if palette_counter == 0 and source_sale_order and default_code:
-            pass
-
-        # stock_dict = {
-        #     product_mapping[Suchbegriff]: Bestand
-        #     for Suchbegriff, Bestand in self.env.cr.fetchall()
-        #     if Suchbegriff in product_mapping
-        # }
-
-        # create report for sync actions
+        Returns {product_id: [quant_id]} of the quants that were set.
+        """
         report = self.env["kardex.sync.report"].create({"name": "Sync Bestandsabgleich"})
-
-        existing_quant_map = defaultdict(list)
+        company_id = kardex_location.company_id.id or self.env.company.id
+        lot_mapping = self._get_lot_mapping()
+        synced_quant_ids = defaultdict(list)
 
         for row in kardex_data:
-            changes = []
-            default_code = row["Suchbegriff"]
-
-            # if product not listed in kardex then continue
-
-            product_exists_in_kardex = any(default_code in d.values() for d in data_material)
-            if not product_exists_in_kardex:
+            product_id = product_mapping.get(row["Suchbegriff"])
+            if not product_id:
+                continue
+            if not all_locations and row["LocationName"] not in (SHUTTLE, kardex_location.name):
                 continue
 
-            # if row["Seriennummer"] not in ("", None):
-            #     lot_name = row["Seriennummer"]
-            # elif row["Charge"] not in ("", None):
-            #     lot_name = row["Charge"]
-            # else:
-            #     lot_name = None
-            lot_name = row.get("Seriennummer") or row.get("Charge") or None
-            # _logger.info(f"### lot_name: {lot_name}")
-            # _logger.info(f"### lot_name not in lot_mapping: {lot_name not in lot_mapping}")
+            location = self._get_or_create_location(row["LocationName"])
+            lot_name = row["Seriennummer"] or row["Charge"]
             quantity = row["Bestand"]
-            location = row["LocationName"]
+            changes = []
 
-            product_id = product_mapping.get(default_code)
-            # _logger.info("### default_code: %s" % (default_code,))
-            product = self.env["product.product"].search([("default_code", "=", default_code)], limit=1)
-            # product_id = product.id
+            lot_id = None
+            if lot_name:
+                lot_id = lot_mapping.get((lot_name, product_id))
+                if not lot_id:
+                    lot_id = self._create_lot(lot_name, product_id, location.id)
+                    lot_mapping[(lot_name, product_id)] = lot_id
+                    changes.append(f"new lot: {lot_name}")
 
-            _logger.info("### product_id: %s" % (product_id,))
+            quant_id = quant_mapping.get((product_id, lot_id, location.id))
+            if quant_id:
+                self.env.cr.execute("UPDATE stock_quant SET quantity = %s WHERE id = %s", (quantity, quant_id))
+                changes.append(f"lot: {lot_name or '-'}, loc: {location.id}, qty: → {quantity}")
+            else:
+                quant_id = self._create_quant(product_id, lot_id, location.id, quantity, company_id)
+                quant_mapping[(product_id, lot_id, location.id)] = quant_id
+                changes.append(f"lot: {lot_name or '-'}, loc: {location.id}, qty: → {quantity} (new)")
+            synced_quant_ids[product_id].append(quant_id)
 
-            # quants of product with location = kardex
-            existing_kardex_quants_ids_for_product = (
-                self.env["stock.quant"]
-                .search([("product_id", "=", product_id), ("location_id", "=", kardex_location_id)])
-                .ids
-            )
-            _logger.info("### existing_kardex_quants_ids_for_product: %s" % (existing_kardex_quants_ids_for_product,))
-
-            # loc_id =
-
-            lot_id = lot_mapping.get((lot_name, product_id)) if lot_name and product_id else None
-            # existing_kardex_quants_for_product = self.env["stock.quant"].search(
-            #     [("product_id", "=", product_id), ("location_id", "=", location_id)]
-            # )
-            # _logger.info(f"### existing_kardex_quants_for_product: {existing_kardex_quants_for_product}")
-
-            # get or create location
-            location_id, location_name = self._get_or_create_location(location)
-            if not all_locations and location_name != kardex_location_name:
-                continue
-            _logger.info(
-                "### lot_name: %s, lot_id: %s, (product_id, lot_id, location_id) in stock_quant_mapping: %s, lot_name not in lot_mapping: %s"
-                % (
-                    lot_name,
-                    lot_id,
-                    (product_id, lot_id, location_id) in stock_quant_mapping,
-                    lot_name not in lot_mapping,
-                )
+            self.env["kardex.sync.report.line"].create(
+                {"report_id": report.id, "product_id": product_id, "changes": "\n".join(changes)}
             )
 
-            if lot_id and (product_id, lot_id, location_id) in stock_quant_mapping:
-                _logger.info("### Case 1")
-                # Case 1: Update existing stock_quant record with known lot for certain location
-                quant_id = stock_quant_mapping[(product_id, lot_id, location_id)]
+        self.env["stock.quant"].invalidate_model(["quantity"])
+        return synced_quant_ids
 
-                self.env.cr.execute(
-                    """
-                    UPDATE stock_quant
-                    SET quantity = %s
-                    WHERE id = %s AND location_id = %s
-                """,
-                    (quantity, quant_id, location_id),
-                )
-                changes.append(f"lot: {lot_name}, loc: {location_id}, qty:  → {quantity}")
-                existing_quant_map[product_id].append(quant_id)
+    def _get_lot_mapping(self):
+        """{(lot_name, product_id): lot_id} of all lots."""
+        self.env.cr.execute("SELECT name, product_id, id FROM stock_lot")
+        return {(name, product): lot for name, product, lot in self.env.cr.fetchall()}
 
-                if quant_id and location_id == kardex_location_id:
-                    existing_kardex_quants_ids_for_product.pop(quant_id)
+    def _create_lot(self, lot_name, product_id, location_id):
+        self.env.cr.execute(
+            """
+            INSERT INTO stock_lot (name, product_id, location_id, create_date)
+            VALUES (%s, %s, %s, NOW())
+            RETURNING id
+            """,
+            (lot_name, product_id, location_id),
+        )
+        return self.env.cr.fetchone()[0]
 
-            if lot_name and product_id and ((lot_name, product_id) not in lot_mapping):
-                # Case 2: Create a new lot if necessary
-                _logger.info("### Case 2")
-
-                self.env.cr.execute(
-                    """
-                    INSERT INTO stock_lot (
-                        name,
-                        product_id,
-                        location_id,
-                        create_date
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        %s,
-                        NOW()
-                    )
-                    RETURNING id
-                """,
-                    (lot_name, product_id, location_id),
-                )
-                lot_id = self.env.cr.fetchone()[0]
-                lot_mapping[(lot_name, product_id)] = lot_id  # Update lot mapping
-
-                _logger.warning(
-                    "### bestand anlegen fuer lot_id: %s, location: %s , location id: %s"
-                    % (lot_id, location, location_id)
-                )
-
-                # Insert new stock_quant record for product with this lot
-                self.env.cr.execute(
-                    """
-                    INSERT INTO stock_quant (
-                        product_id,
-                        lot_id,
-                        quantity,
-                        reserved_quantity,
-                        location_id,
-                        company_id,
-                        in_date,
-                        create_date
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        %s,
-                        0,
-                        %s,
-                        %s,
-                        NOW(),
-                        NOW()
-                    )
-                    RETURNING id
-                """,
-                    (product_id, lot_id, quantity, location_id, company_id),
-                )
-                # _logger.info(
-                #     f"### data provided: product_id: {product_id}, lot_id: {lot_id}, quantity: {quantity}, location_id: {location_id}, company_id: {company_id}"
-                # )
-                quant_id = self.env.cr.fetchone()[0]
-                changes.append(f"new lot: {lot_name}, location: {location_id}, qty:  → {quantity}")
-                existing_quant_map[product_id].append(quant_id)
-
-            if not lot_name:
-                if (product_id, None, location_id) in stock_quant_mapping:
-                    # Case 3: Update stock_quant for product without lot
-                    _logger.info("### Case 3")
-
-                    quant_id = stock_quant_mapping[(product_id, None, location_id)]
-                    self.env.cr.execute(
-                        """
-                        UPDATE stock_quant
-                        SET quantity = %s
-                        WHERE id = %s
-                    """,
-                        (quantity, quant_id),
-                    )
-                    changes.append(f"no lot, loc: {location_id}, qty:  → {quantity}")
-                    existing_quant_map[product_id].append(quant_id)
-
-                    if quant_id and location_id == kardex_location_id:
-                        existing_kardex_quants_ids_for_product.pop(quant_id)
-
-                else:
-                    # Case 4: Insert new stock_quant record for product with no lot which is not in stock quant
-                    _logger.info("### lot_name: %s" % (lot_name,))
-                    _logger.info("### Case 4")
-                    if product_id:
-                        self.env.cr.execute(
-                            """
-                            INSERT INTO stock_quant (
-                                product_id,
-                                lot_id,
-                                quantity,
-                                reserved_quantity,
-                                location_id,
-                                company_id,
-                                in_date,
-                                create_date
-                            )
-                            VALUES (
-                                %s,
-                                NULL,
-                                %s,
-                                0,
-                                %s,
-                                %s,
-                                NOW(),
-                                NOW()
-                            )
-                            RETURNING id
-                        """,
-                            (product_id, quantity, location_id, company_id),
-                        )
-                        quant_id = self.env.cr.fetchone()[0]
-                        existing_quant_map[product_id].append(quant_id)
-                        changes.append(f"no lot, location: {location_id}, qty:  → {quantity} (new)")
-
-            if changes:
-                self.env["kardex.sync.report.line"].create(
-                    {
-                        "report_id": report.id,
-                        "product_id": product.id,
-                        "changes": "\n".join(changes),
-                    }
-                )
-
-        # quants not found in data coming from kardex
-        _logger.info("existing quant map: %s" % (existing_quant_map,))
-        for product_id, quant_ids in existing_quant_map.items():
-            quants_without_kardex_data = self.env["stock.quant"].search(
-                [("id", "not in", quant_ids), ("product_id", "=", product_id)]
+    def _create_quant(self, product_id, lot_id, location_id, quantity, company_id):
+        self.env.cr.execute(
+            """
+            INSERT INTO stock_quant (
+                product_id, lot_id, quantity, reserved_quantity, location_id, company_id, in_date, create_date
             )
-            _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
+            VALUES (%s, %s, %s, 0, %s, %s, NOW(), NOW())
+            RETURNING id
+            """,
+            (product_id, lot_id, quantity, location_id, company_id),
+        )
+        return self.env.cr.fetchone()[0]
 
-            # set quantity to zero for these quants
-            quants_without_kardex_data.write({"quantity": 0})
+    def _reset_quants_missing_in_kardex(self, synced_quant_ids, kardex_location, all_locations, remove_quants):
+        """Set the quants of the synced products to zero that Kardex did not report.
 
-        # remove quants for kardex which are not in data from ppg
-        if existing_kardex_quants_ids_for_product and remove_quants:
-            self.env["stock.quant"].browse(existing_kardex_quants_ids_for_product).unlink()
-
-        # quants_without_kardex_data = existing_kardex_quants_for_product.filtered(lambda q: q.id not in kardex_quants)
-        # _logger.info(f"quants_without_kardex_data: {quants_without_kardex_data}")
-
-        # set quantity to zero for these quants
-        # quants_without_kardex_data.write({'quantity': 0})
-
-        # self._cr.commit()
-
-        return True
+        Only the synced locations are touched: the Kardex, or all internal locations
+        with all_locations. With the setting kardex.remove_quants the Kardex quants
+        are deleted instead.
+        """
+        location_domain = (
+            [("location_id.usage", "=", "internal")] if all_locations else [("location_id", "=", kardex_location.id)]
+        )
+        for product_id, quant_ids in synced_quant_ids.items():
+            missing_quants = self.env["stock.quant"].search(
+                [("product_id", "=", product_id), ("id", "not in", quant_ids)] + location_domain
+            )
+            _logger.info("Quants missing in Kardex data: %s", missing_quants)
+            missing_quants.write({"quantity": 0})
+            if remove_quants:
+                missing_quants.filtered(lambda quant: quant.location_id == kardex_location).unlink()

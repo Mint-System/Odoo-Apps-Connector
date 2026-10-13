@@ -1,57 +1,66 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <odoo>
     <record id="res_config_settings_view_form" model="ir.ui.view">
-        <field name="name">kardex.res.config.settings.form</field>
+        <field name="name">res.config.settings.view.form.inherit.stock_kardex</field>
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="base.res_config_settings_view_form" />
         <field name="arch" type="xml">
-            <xpath expr="//div[@id='companies']" position="after">
-                <div
-                    class="app_settings_block"
+            <xpath expr="//form" position="inside">
+                <app
                     data-string="Kardex"
                     string="Kardex"
-                    name="kardex_settings"
+                    name="stock_kardex"
+                    logo="/stock_kardex/static/description/icon.png"
                 >
-                    <h2>Kardex Einstellungen</h2>
-                    <div class="row mt16 o_settings_container">
-                        <div class="col-12 col-lg-6">
-                            <div class="content-group">
-                                <div class="row mt16">
-                                    <label
-                                        class="col-lg-8 o_light_label"
-                                        string="Test Operation"
-                                        for="kardex_test_operation"
-                                    />
-                                    <field
-                                        name="kardex_test_operation"
-                                        class="oe_inline"
-                                        style="width: 70% !important;"
-                                    />
-                                    <label
-                                        class="col-lg-8 o_light_label"
-                                        string="Set kardex quant to zero if not in ppg shuttle"
-                                        for="remove_kardex_quants_not_in_ppg_shuttle"
-                                    />
-                                    <field
-                                        name="remove_kardex_quants_not_in_ppg_shuttle"
-                                        class="oe_inline"
-                                        style="width: 70% !important;"
-                                    />
-                                    <label
-                                        class="col-lg-8 o_light_label"
-                                        string="Make quant sync before MO"
-                                        for="make_quant_sync_before_mo"
-                                    />
-                                    <field
-                                        name="make_quant_sync_before_mo"
-                                        class="oe_inline"
-                                        style="width: 70% !important;"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <block
+                        title="Stock Sync"
+                        name="kardex_stock_sync_setting_container"
+                    >
+                        <setting
+                            id="kardex_inventory_reconciliation"
+                            string="Inventory Reconciliation"
+                            help="Source of the Kardex stock. If it is not connected, the other source is used."
+                        >
+                            <field name="inventory_reconciliation" widget="radio" />
+                        </setting>
+                        <setting
+                            id="kardex_locations"
+                            string="Kardex and Palette Location"
+                            help="Flag one location as Kardex and one as Palette on the location form."
+                        >
+                            <button
+                                name="%(stock.action_location_form)d"
+                                type="action"
+                                string="Locations"
+                                icon="oi-arrow-right"
+                                class="btn-link"
+                            />
+                        </setting>
+                        <setting
+                            id="kardex_aggregate_palettes"
+                            help="Book the stock of all Kardex palettes (Palette-*) on the Palette location."
+                        >
+                            <field name="kardex_aggregate_palettes" />
+                        </setting>
+                        <setting
+                            id="kardex_remove_quants"
+                            help="Delete Kardex quants of synced products that Kardex does not report."
+                        >
+                            <field name="remove_kardex_quants_not_in_ppg_shuttle" />
+                        </setting>
+                        <setting
+                            id="kardex_make_quant_sync"
+                            help="Sync the stock of the components before a manufacturing order is created."
+                        >
+                            <field name="make_quant_sync_before_mo" />
+                        </setting>
+                    </block>
+                    <block title="Operation" name="kardex_operation_setting_container">
+                        <setting id="kardex_test_operation">
+                            <field name="kardex_test_operation" />
+                        </setting>
+                    </block>
+                </app>
             </xpath>
         </field>
     </record>

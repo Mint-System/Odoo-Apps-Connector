@@ -1,7 +1,5 @@
 import re
 
-from .config import AGGREGATE_PALETTEN
-
 
 def _get_location_base(s):
     if s:
@@ -10,10 +8,10 @@ def _get_location_base(s):
     return None
 
 
-def _transform_location(location):
+def _transform_location(location, aggregate_palettes=False):
     if _get_location_base(location) == "Shuttle":
         return "Shuttle"
-    elif _get_location_base(location) == "Palette" and AGGREGATE_PALETTEN:
+    elif _get_location_base(location) == "Palette" and aggregate_palettes:
         return "Palette"
     return location
 
