@@ -24,3 +24,8 @@ class ResConfigSettings(models.TransientModel):
     kardex_aggregate_palettes = fields.Boolean(
         string="Aggregate Palettes", config_parameter="kardex.aggregate_palettes", default=False
     )
+    kardex_last_location_partial = fields.Boolean(
+        string="Kardex as Last Location for Partial Stock",
+        config_parameter="kardex.last_location_partial",
+        default=False,
+    )

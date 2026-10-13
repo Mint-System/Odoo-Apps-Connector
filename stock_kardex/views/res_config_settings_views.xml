@@ -43,6 +43,12 @@
                             <field name="kardex_aggregate_palettes" />
                         </setting>
                         <setting
+                            id="kardex_last_location_partial"
+                            help="Set the Kardex as last location of a product as soon as part of its stock is in the Kardex, not only if all of it is."
+                        >
+                            <field name="kardex_last_location_partial" />
+                        </setting>
+                        <setting
                             id="kardex_remove_quants"
                             help="Delete Kardex quants of synced products that Kardex does not report."
                         >

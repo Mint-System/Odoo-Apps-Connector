@@ -92,3 +92,13 @@ class TestSyncStocks(TransactionCase):
         self._sync(rows, all_products=True, all_locations=True)
         self.assertEqual(self._kardex_qty(self.product, self.palette), 8)
         self.assertEqual(self._kardex_qty(self.product), 4)
+
+    def test_partly_stored_product_gets_kardex_as_last_location_only_with_setting(self):
+        rows = [self._row("TST.SYNC", 4), self._row("TST.SYNC", 2, location="Regal-01")]
+
+        self._sync(rows, all_products=True)
+        self.assertFalse(self.product.last_location_id)
+
+        self.env["ir.config_parameter"].sudo().set_param("kardex.last_location_partial", "True")
+        self._sync(rows, all_products=True)
+        self.assertEqual(self.product.last_location_id, self.kardex)

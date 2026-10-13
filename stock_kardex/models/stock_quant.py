@@ -104,6 +104,7 @@ class StockQuant(models.Model):
         param = self.env["ir.config_parameter"].sudo()
         remove_quants = param.get_param("kardex.remove_quants") == "True"
         aggregate_palettes = param.get_param("kardex.aggregate_palettes") == "True"
+        last_location_partial = param.get_param("kardex.last_location_partial") == "True"
 
         kardex_location = self._get_kardex_location()
         if not kardex_location:
@@ -121,7 +122,9 @@ class StockQuant(models.Model):
 
         kardex_data = _update_locations(kardex_data, lambda loc: _transform_location(loc, aggregate_palettes))
         kardex_data = _harmonize_empty_values(kardex_data)
-        self._set_last_location_to_kardex(kardex_data, product_mapping, kardex_location, aggregate_palettes)
+        self._set_last_location_to_kardex(
+            kardex_data, product_mapping, kardex_location, aggregate_palettes, last_location_partial
+        )
         kardex_data = self._aggregate_kardex_data(kardex_data)
         _logger.info("kardex_data after grouping: %s", kardex_data)
 
@@ -188,8 +191,13 @@ class StockQuant(models.Model):
                 (product_ids, kardex_location.id),
             )
 
-    def _set_last_location_to_kardex(self, kardex_data, product_mapping, kardex_location, aggregate_palettes):
-        """Remember the Kardex as last location of products that are stored nowhere else."""
+    def _set_last_location_to_kardex(
+        self, kardex_data, product_mapping, kardex_location, aggregate_palettes, partial=False
+    ):
+        """Remember the Kardex as last location of products that are stored nowhere else.
+
+        :param partial: also of products that are only partly stored in the Kardex
+        """
         kardex_names = {SHUTTLE, PALETTE} if aggregate_palettes else {SHUTTLE}
         locations_by_code = defaultdict(set)
         for row in kardex_data:
@@ -198,7 +206,7 @@ class StockQuant(models.Model):
         product_ids = [
             product_mapping[code]
             for code, locations in locations_by_code.items()
-            if code in product_mapping and locations <= kardex_names
+            if code in product_mapping and (locations & kardex_names if partial else locations <= kardex_names)
         ]
         self.env["product.product"].browse(product_ids).write({"last_location_id": kardex_location.id})
 
