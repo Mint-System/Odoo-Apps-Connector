@@ -7,6 +7,7 @@
         <field name="arch" type="xml">
             <field name="storage_category_id" position="after">
                 <field name="kardex" />
+                <field name="palette" />
             </field>
         </field>
     </record>
