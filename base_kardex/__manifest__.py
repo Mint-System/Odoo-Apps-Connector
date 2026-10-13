@@ -17,6 +17,7 @@
     "assets": {
         "web.assets_backend": [
             "base_kardex/static/src/js/*.js",
+            "base_kardex/static/src/scss/*.scss",
         ],
     },
 }

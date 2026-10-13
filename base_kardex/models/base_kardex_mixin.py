@@ -55,6 +55,7 @@ class BaseKardexMixin(models.AbstractModel):
             "params": {
                 "title": "Kardex Message",
                 "message": message,
+                "className": "o_base_kardex_notification",
                 "sticky": False,
                 "next": {
                     "type": "ir.actions.act_window_close",

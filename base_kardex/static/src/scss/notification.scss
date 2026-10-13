@@ -1,0 +1,4 @@
+// show the line breaks of Kardex messages
+.o_base_kardex_notification .o_notification_content {
+    white-space: pre-line;
+}

@@ -125,24 +125,23 @@ class ProductTemplate(models.Model):
                 self.env["stock.quant"].sync_stocks(default_code=product.default_code)
 
     def get_info_from_kardex(self):
+        """Notify the ProdDB stock of the products: one line per field, a blank line between rows."""
         if not self.env["base.kardex.mixin"]._is_proddb_connected():
             return self._create_notification("No proddb defined")
+        blocks = []
         for product in self:
-            product_default_code = product.default_code
-            data_material, data = self._read_external_object_from_proddb(default_code=product_default_code)
-            if data_material:
-                message_list = []
-                if data:
-                    for row in data:
-                        message_list.extend(f"{key}: {value}" for key, value in row.items() if value not in (None, ""))
-
-                    message = (" | ").join(message_list)
-                else:
-                    message = "No quantity for this article in Kardex."
+            data_material, data = self._read_external_object_from_proddb(default_code=product.default_code)
+            if not data_material:
+                blocks.append(f"{product.default_code}: This Article was not found in Kardex.")
+            elif not data:
+                blocks.append(f"{product.default_code}: No quantity for this article in Kardex.")
             else:
-                message = "This Article was not found in Kardex."
+                blocks.extend(
+                    "\n".join(f"{key}: {value}" for key, value in row.items() if value not in (None, ""))
+                    for row in data
+                )
 
-        return self._create_notification(message)
+        return self._create_notification("\n\n".join(blocks))
 
     def update_to_kardex(self):
         if not self._is_kardex_db_connected():
