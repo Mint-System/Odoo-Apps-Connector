@@ -65,7 +65,7 @@ class KardexSimulatorWizard(models.TransientModel):
         line_ids below: fill it in here, once, when the wizard is created."""
         res = super().default_get(fields_list)
         if "connection_id" in fields_list or "simulation_allowed" in fields_list:
-            connection = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
+            connection = self.env["base.kardex.mixin"]._get_sdb()
             res["connection_id"] = connection.id
             res["simulation_allowed"] = connection.allow_simulation
         picking = self.env["stock.picking"].browse(res.get("picking_id"))

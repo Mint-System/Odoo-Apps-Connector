@@ -9,6 +9,10 @@ from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
+# database names of the external data sources (base.external.mssql.database)
+SDB_DATABASE = "SchnittstellenDB"
+PRODDB_DATABASE = "prodDB"
+
 ODOO_KARDEX_PRODUCT_FIXER = {
     "kardex_product_id": "Artikelid",
     "name": "Artikelbezeichnung",
@@ -81,20 +85,25 @@ class BaseKardexMixin(models.AbstractModel):
     def _replace_false_with_empty_string(self, dict):
         return {k: "" if v is False else v for k, v in dict.items()}
 
-    def _execute_query_on_mssql(self, query_type, query, *params):
-        # Find the instance of base.external.mssql with priority=True
-        mssql_instance = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)
-        if mssql_instance:
-            # Call the execute method on the found instance
-            result = mssql_instance.execute(query_type, query, *params)
+    @api.model
+    def _get_sdb(self):
+        """The SchnittstellenDB data source in use."""
+        return self.env["base.external.mssql"]._get_by_database(SDB_DATABASE)
 
-            return result
-        else:
-            raise ValidationError(_("No active MSSQL instance found with priority=True"))
+    @api.model
+    def _get_proddb(self):
+        """The ProdDB data source in use."""
+        return self.env["base.external.mssql"]._get_by_database(PRODDB_DATABASE)
+
+    def _execute_query_on_mssql(self, query_type, query, *params):
+        mssql_instance = self._get_sdb()
+        if not mssql_instance:
+            raise ValidationError(_("No data source of database %s is used.", SDB_DATABASE))
+        return mssql_instance.execute(query_type, query, *params)
 
     def _check_proddb(self):
         connected = False
-        proddb_instance = self.env["base.external.mssql"].search([("name", "=", "proddb")], limit=1)
+        proddb_instance = self._get_proddb()
         if proddb_instance:
             try:
                 with proddb_instance.connection_open():
@@ -106,8 +115,7 @@ class BaseKardexMixin(models.AbstractModel):
     @api.model
     def _check_kardex(self):
         connected = False
-        kardexdb_instance = self.env["base.external.mssql"].search([("name", "=ilike", "Kardex%")], limit=1)
-        _logger.warning(f"kardexdb_instance: {kardexdb_instance}")
+        kardexdb_instance = self._get_sdb()
         if kardexdb_instance:
             try:
                 with kardexdb_instance.connection_open():
@@ -124,10 +132,9 @@ class BaseKardexMixin(models.AbstractModel):
         else:
             raise ValidationError(_("No products provided"))
 
-        proddb_instance = self.env["base.external.mssql"].search([("name", "=", "proddb")], limit=1)
-
+        proddb_instance = self._get_proddb()
         if not proddb_instance:
-            raise ValidationError(_("No active SQL instance found with name 'proddb'"))
+            raise ValidationError(_("No data source of database %s is used.", PRODDB_DATABASE))
 
         query_material = """
         SELECT
@@ -158,7 +165,7 @@ class BaseKardexMixin(models.AbstractModel):
 
     def _sql_placeholder(self):
         """Parameter placeholder of the driver of the active SDB connection."""
-        driver = self.env["base.external.mssql"].search([("priority", "=", True)], limit=1)._get_db_driver()
+        driver = self._get_sdb()._get_db_driver()
         return "?" if driver == "pyodbc" else "%s"
 
     def _check_already_in_kardex(self, record):
