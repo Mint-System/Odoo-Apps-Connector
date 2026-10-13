@@ -9,10 +9,6 @@ from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# database names of the external data sources (base.external.mssql.database)
-SDB_DATABASE = "SchnittstellenDB"
-PRODDB_DATABASE = "prodDB"
-
 ODOO_KARDEX_PRODUCT_FIXER = {
     "kardex_product_id": "Artikelid",
     "name": "Artikelbezeichnung",
@@ -87,18 +83,18 @@ class BaseKardexMixin(models.AbstractModel):
 
     @api.model
     def _get_sdb(self):
-        """The SchnittstellenDB data source in use."""
-        return self.env["base.external.mssql"]._get_by_database(SDB_DATABASE)
+        """The interface data source (SchnittstellenDB) in use."""
+        return self.env["base.external.mssql"]._get_by_database_type("interface")
 
     @api.model
     def _get_proddb(self):
         """The ProdDB data source in use."""
-        return self.env["base.external.mssql"]._get_by_database(PRODDB_DATABASE)
+        return self.env["base.external.mssql"]._get_by_database_type("proddb")
 
     def _execute_query_on_mssql(self, query_type, query, *params):
         mssql_instance = self._get_sdb()
         if not mssql_instance:
-            raise ValidationError(_("No data source of database %s is used.", SDB_DATABASE))
+            raise ValidationError(_("No interface data source is used."))
         return mssql_instance.execute(query_type, query, *params)
 
     def _check_proddb(self):
@@ -134,7 +130,7 @@ class BaseKardexMixin(models.AbstractModel):
 
         proddb_instance = self._get_proddb()
         if not proddb_instance:
-            raise ValidationError(_("No data source of database %s is used.", PRODDB_DATABASE))
+            raise ValidationError(_("No ProdDB data source is used."))
 
         query_material = """
         SELECT
